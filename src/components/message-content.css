@@ -1,16 +1,22 @@
-/* Base prose */
+/* ─────────────────────────────────────────────────────────────────
+   Message prose — assistant + user. The bubble container is gone,
+   so these styles cover both turns. User turns get bumped weight
+   and a slightly larger size; assistant prose keeps standard 14.5px.
+   ───────────────────────────────────────────────────────────────── */
 .message-content {
-  font-size: 13px;
-  line-height: 1.55;
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--warp-text);
   word-wrap: break-word;
   overflow-wrap: anywhere;
 }
 
 .message-content > *:first-child { margin-top: 0; }
-.message-content > *:last-child { margin-bottom: 0; }
+.message-content > *:last-child  { margin-bottom: 0; }
 
-.message-content p { margin: 0.5em 0; }
-.message-content strong { font-weight: 600; color: inherit; }
+.message-content p { margin: 0 0 8px; }
+.message-content strong { font-weight: 600; color: var(--warp-text); }
 .message-content em { font-style: italic; }
 
 .message-content h1,
@@ -34,16 +40,16 @@
 .message-content li { margin: 0.2em 0; }
 
 .message-content a {
-  color: #6ea8ff;
+  color: var(--warp-blue);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
 
 .message-content blockquote {
-  border-left: 2px solid rgba(255,255,255,0.18);
+  border-left: 2px solid var(--border-medium);
   padding-left: 0.9em;
   margin: 0.6em 0;
-  color: rgba(255,255,255,0.75);
+  color: var(--warp-text-dim);
 }
 
 /* Tables — must scroll horizontally on mobile */
@@ -53,38 +59,38 @@
   border-collapse: collapse;
   margin: 0.6em 0;
   font-size: 0.92em;
-  font-family: var(--font-mono);
+  font-family: var(--font-mono), ui-monospace, monospace;
 }
 .message-content th,
 .message-content td {
   padding: 0.3em 0.6em;
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid var(--border-soft);
   text-align: left;
 }
 .message-content th {
-  background: rgba(255,255,255,0.04);
+  background: var(--warp-bg-2);
   font-weight: 600;
 }
 
 /* Inline code */
 .md-inline-code {
-  font-family: var(--font-mono);
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 0.9em;
-  background: rgba(255,255,255,0.08);
+  background: var(--warp-bg-2);
   padding: 0.1em 0.4em;
   border-radius: 3px;
-  border: 1px solid rgba(255,255,255,0.06);
+  border: 1px solid var(--border-faint);
 }
 
-/* Code blocks */
+/* Generic fenced code block */
 .md-code-block {
-  background: #0d1117;
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 6px;
+  background: var(--warp-bg);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-sm);
   padding: 0.7em 0.9em;
   margin: 0.6em 0;
   overflow-x: auto;
-  font-family: var(--font-mono);
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 0.85em;
   line-height: 1.5;
 }
@@ -97,12 +103,12 @@
 /* Directive block — operational dispatch card */
 .directive-block {
   position: relative;
-  background: #0a1428;
-  border: 1px solid #2a3a5c;
-  border-radius: 6px;
+  background: var(--warp-blue-soft);
+  border: 1px solid rgba(91, 164, 255, 0.20);
+  border-radius: var(--radius-sm);
   padding: 1.6em 0.9em 0.7em;
   margin: 0.6em 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-mono), ui-monospace, monospace;
 }
 
 .directive-label {
@@ -112,7 +118,7 @@
   font-size: 0.65em;
   letter-spacing: 0.12em;
   font-weight: 600;
-  color: #6ea8ff;
+  color: var(--warp-blue);
   text-transform: uppercase;
 }
 
@@ -122,7 +128,7 @@
   word-break: break-word;
   font-size: 0.85em;
   line-height: 1.55;
-  color: #d4dce8;
+  color: var(--warp-text-dim);
 }
 
 .directive-pre code {
@@ -132,5 +138,13 @@
   font-family: inherit;
 }
 
-/* User bubble override — slightly tighter, no excess color on links */
-.message-content--user a { color: #cfe0ff; }
+/* User-turn override — left-aligned, plain text, weight 500, slightly
+   larger than assistant prose. Matches v2 mockup .msg-user-text. */
+.message-content--user {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--warp-text);
+  font-weight: 500;
+}
+.message-content--user p { margin: 0 0 6px; }
+.message-content--user p:last-child { margin-bottom: 0; }

@@ -167,6 +167,9 @@ export default function AppShell() {
       <main className="flex-1 min-w-0 flex flex-col">
         <ChatArea
           sessionId={activeId}
+          sessionLabel={
+            sessions.find((s) => s.id === activeId)?.label ?? null
+          }
           onOpenDrawer={() => setDrawerOpen(true)}
           onNewDirective={handleNewDirective}
           onSessionUpdated={handleSessionUpdated}

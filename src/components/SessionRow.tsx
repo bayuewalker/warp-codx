@@ -3,28 +3,33 @@
 import { useEffect, useRef, useState } from "react";
 import type { Session } from "@/lib/types";
 import { relativeTimeId } from "@/lib/relativeTime";
-import { cn } from "@/lib/cn";
 
 type Props = {
   session: Session;
   active: boolean;
+  /** Optional unread count rendered as a purple badge on the right. */
+  unread?: number;
   onSelect: () => void;
   onDelete: () => void;
 };
 
-export default function SessionRow({ session, active, onSelect, onDelete }: Props) {
+export default function SessionRow({
+  session,
+  active,
+  unread,
+  onSelect,
+  onDelete,
+}: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
 
-  // Tick relative time every 30s so "baru saja" / "1m lalu" stay fresh.
   const [, setNowTick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setNowTick((n) => n + 1), 30_000);
     return () => clearInterval(t);
   }, []);
 
-  // Close menu on outside click / Escape.
   useEffect(() => {
     if (!menuOpen) return;
     const onDocClick = (e: MouseEvent) => {
@@ -50,30 +55,25 @@ export default function SessionRow({ session, active, onSelect, onDelete }: Prop
   return (
     <div
       ref={wrapRef}
-      className={cn(
-        "group relative flex items-center gap-2 rounded-md px-2.5 py-2",
-        "border-hair",
-        active
-          ? "bg-white/[0.05] border-warp-blue/40"
-          : "border-transparent hover:bg-white/[0.03]",
-      )}
+      className="group relative"
     >
       <button
         type="button"
         onClick={onSelect}
-        className="flex-1 min-w-0 text-left"
+        className={`session-row ${active ? "active" : ""}`}
       >
-        <div
-          className={cn(
-            "truncate text-[13px] leading-tight",
-            active ? "text-white" : "text-white/85",
-          )}
-        >
-          {session.label}
+        <span className="session-status-dot" aria-hidden="true" />
+        <div className="session-row-content">
+          <div className="session-row-title">{session.label}</div>
+          <div className="session-row-meta">
+            {relativeTimeId(session.updated_at ?? session.created_at)}
+          </div>
         </div>
-        <div className="mt-1 text-[10px] text-white/35">
-          {relativeTimeId(session.updated_at ?? session.created_at)}
-        </div>
+        {typeof unread === "number" && unread > 0 && (
+          <span className="session-badge" aria-label={`${unread} unread`}>
+            {unread}
+          </span>
+        )}
       </button>
 
       <button
@@ -86,12 +86,11 @@ export default function SessionRow({ session, active, onSelect, onDelete }: Prop
           setMenuOpen((v) => !v);
           setConfirming(false);
         }}
-        className={cn(
-          "shrink-0 w-7 h-7 -mr-1 rounded-md flex items-center justify-center",
-          "text-white/45 hover:text-white hover:bg-white/[0.06]",
-          "md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100",
-          menuOpen && "opacity-100 text-white bg-white/[0.06]",
-        )}
+        className={`absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-md
+          flex items-center justify-center text-white/45 hover:text-white
+          hover:bg-white/[0.06]
+          md:opacity-0 md:group-hover:opacity-100 md:focus:opacity-100
+          ${menuOpen ? "opacity-100 text-white bg-white/[0.06]" : ""}`}
       >
         <span className="text-lg leading-none translate-y-[-1px]">⋮</span>
       </button>
@@ -99,13 +98,10 @@ export default function SessionRow({ session, active, onSelect, onDelete }: Prop
       {menuOpen && (
         <div
           role="menu"
-          className={cn(
-            "absolute right-1 top-[calc(100%+4px)] z-20 w-44",
-            "bg-warp-bg border-hair border-warp-border rounded-md",
-            "shadow-[0_0_0_0.5px_rgba(255,255,255,0.06)]",
-            "py-1 text-[12px]",
-          )}
-          style={{ background: "#16161a" }}
+          className="absolute right-1 top-[calc(100%+4px)] z-20 w-44
+            bg-warp-bg-2 border-hair border-warp-border rounded-md
+            shadow-[0_0_0_0.5px_rgba(255,255,255,0.06)]
+            py-1 text-[12px]"
         >
           {!confirming ? (
             <button

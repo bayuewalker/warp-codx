@@ -1,47 +1,68 @@
 "use client";
 
-import { Hexagon, ChevronDown } from "lucide-react";
-
 export interface SessionBarProps {
+  /** Session label shown in the bar. When omitted the bar hides itself. */
   taskTitle?: string;
-  progressPercent?: number; // 0-100
+  /**
+   * Progress 0–100. When undefined the rail hides — the spec says only
+   * show the rail when a todo block is present in the latest assistant
+   * turn, otherwise leave it out entirely.
+   */
+  progressPercent?: number;
+  /** Hard hide override (defaults to true if a title is provided). */
   visible?: boolean;
+  /** Tap handler — opens the drawer / session switcher. */
+  onTap?: () => void;
 }
 
 export default function SessionBar({
   taskTitle,
   progressPercent,
-  visible = false,
+  visible = true,
+  onTap,
 }: SessionBarProps) {
-  // Phase 2.5: render only when visible AND has task data.
-  // Phase 3 will pass real data from active issue/PR state.
   if (!visible || !taskTitle) return null;
 
-  const pct = Math.max(0, Math.min(100, progressPercent ?? 0));
+  const showRail = typeof progressPercent === "number";
+  const pct = showRail
+    ? Math.max(0, Math.min(100, progressPercent ?? 0))
+    : 0;
 
   return (
-    <div className="session-bar">
+    <button
+      type="button"
+      className="session-bar"
+      onClick={onTap}
+      aria-label={`Open session switcher for ${taskTitle}`}
+    >
       <div className="session-icon" aria-hidden="true">
-        <Hexagon size={9} strokeWidth={2} />
+        {/* Filled hexagon — matches v2 mockup */}
+        <svg viewBox="0 0 24 24">
+          <polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5" />
+        </svg>
       </div>
       <div className="session-title-block">
         <div className="session-title">
           <span>{taskTitle}</span>
-          <ChevronDown size={9} className="session-chev" />
+          <span className="session-chev" aria-hidden="true">
+            ▼
+          </span>
         </div>
-        <div
-          className="session-progress"
-          role="progressbar"
-          aria-valuenow={pct}
-          aria-valuemin={0}
-          aria-valuemax={100}
-        >
+        {showRail && (
           <div
-            className="session-progress-bar"
-            style={{ width: `${pct}%` }}
-          />
-        </div>
+            className="session-progress"
+            role="progressbar"
+            aria-valuenow={pct}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div
+              className="session-progress-bar"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+        )}
       </div>
-    </div>
+    </button>
   );
 }

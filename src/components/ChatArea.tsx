@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabase";
-import type { Message, Session } from "@/lib/types";
+import type { Message, Session, TodosPayload } from "@/lib/types";
 import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
 import SessionBar from "./SessionBar";
@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 
 type Props = {
   sessionId: string | null;
+  sessionLabel: string | null;
   onOpenDrawer: () => void;
   onNewDirective: () => void;
   onSessionUpdated: (s: Session) => void;
@@ -17,6 +18,7 @@ type Props = {
 
 export default function ChatArea({
   sessionId,
+  sessionLabel,
   onOpenDrawer,
   onNewDirective,
   onSessionUpdated,
@@ -28,8 +30,6 @@ export default function ChatArea({
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const seenIds = useRef<Set<string>>(new Set());
   // Queue of optimistic user messages we still expect Realtime to confirm.
-  // Each entry pairs the temp id with the trimmed content so that when the
-  // persisted row arrives we can swap the temp row out (instead of doubling).
   const pendingUserOptimistic = useRef<
     Array<{ tempId: string; content: string }>
   >([]);
@@ -99,8 +99,6 @@ export default function ChatArea({
           if (seenIds.current.has(m.id)) return;
           seenIds.current.add(m.id);
 
-          // If this is the persisted version of an optimistic user message,
-          // swap it in place instead of appending a duplicate.
           if (m.role === "user") {
             const queue = pendingUserOptimistic.current;
             const idx = queue.findIndex((p) => p.content === m.content);
@@ -139,9 +137,6 @@ export default function ChatArea({
       if (!sessionId || !text.trim() || streaming) return;
       const trimmed = text.trim();
 
-      // Optimistic user message. Track its temp id + content so that when
-      // Realtime delivers the persisted row we can swap it in place rather
-      // than rendering both the temp and the real row.
       const optimisticUserId = `temp-user-${Date.now()}-${Math.random()
         .toString(36)
         .slice(2, 8)}`;
@@ -192,7 +187,6 @@ export default function ChatArea({
             setStreamingText(acc);
           }
         }
-        // Final flush
         acc += decoder.decode();
         setStreamingText(acc);
       } catch (err) {
@@ -200,9 +194,6 @@ export default function ChatArea({
         setStreamingText(`[WARP•SENTINEL] ${message}`);
       } finally {
         setStreaming(false);
-        // Refresh messages so the persisted user + assistant rows take over
-        // from the optimistic + streaming text. Realtime usually beats this,
-        // but the refetch guarantees consistency.
         try {
           const r = await fetch(
             `/api/messages?sessionId=${encodeURIComponent(sessionId)}`,
@@ -219,7 +210,6 @@ export default function ChatArea({
         } catch {
           /* ignore */
         }
-        // Refresh session row (label may have changed).
         try {
           const r = await fetch("/api/sessions", { cache: "no-store" });
           if (r.ok) {
@@ -235,103 +225,128 @@ export default function ChatArea({
     [sessionId, streaming, scrollToBottom, onSessionUpdated],
   );
 
+  // Derive a 0–100 progress percentage from the last assistant message's
+  // todo block, when present. The todo payload is parsed out of any
+  // ```warp-todos … ``` fence in the most recent assistant turn.
+  const sessionProgress = useMemo(
+    () => extractTodoProgress(messages),
+    [messages],
+  );
+
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* App header (mobile) — 2-row instrument chrome.
-          Row 1 (status-strip): runtime LEDs + engine meta.
-          Row 2 (nav-strip): menu / wordmark / new-directive.
-          LED wiring: NET + RT are green (network is implied alive while we
-          render); RUN is amber when a session is active, dim otherwise;
-          AGT stays dim (real wiring in Phase 4). */}
-      <header className="app-header md:hidden">
-        <div className="status-strip">
-          <div className="led-group">
-            <span className="led led-net" aria-label="Network online" />
-            <span className="led-label">NET</span>
-            <span className="led led-rt" aria-label="Realtime connected" />
-            <span className="led-label">RT</span>
-            <span
-              className={cn(
-                "led",
-                sessionId ? "led-run--active" : "led-run--idle",
-              )}
-              aria-label={
-                sessionId ? "Run state active" : "Run state idle"
-              }
-            />
-            <span className="led-label">RUN</span>
-            <span className="led led-agt" aria-label="Agent idle" />
-            <span className="led-label">AGT</span>
-          </div>
-          <span className="engine-meta">W.A.R.P · v0.1</span>
+      {/* Status strip — 26px sticky band with NET / RT / RUN / AGT LEDs.
+          NET + RT light up unconditionally (network is implied alive while
+          the page renders). RUN pulses amber whenever a stream is in
+          flight, otherwise stays amber-still while a session is selected,
+          and dims when no session is active. AGT stays idle until Task #3
+          wires real agent state. */}
+      <header className="status-strip" role="banner">
+        <div className="status-led">
+          <span className="led-dot led-online" aria-label="Network online" />
+          NET
         </div>
-        <div className="nav-strip">
-          <button
-            type="button"
-            className="nav-icon-btn"
-            onClick={onOpenDrawer}
-            aria-label="Open sessions"
-          >
-            <svg
-              width={18}
-              height={18}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <line x1="4" y1="7" x2="20" y2="7" />
-              <line x1="4" y1="12" x2="20" y2="12" />
-              <line x1="4" y1="17" x2="20" y2="17" />
-            </svg>
-          </button>
-          <span className="brand-wordmark">
-            <span className="brand-accent">WARP</span> CodX
-          </span>
-          <button
-            type="button"
-            className="nav-icon-btn"
-            onClick={onNewDirective}
-            aria-label="New directive"
-          >
-            <svg
-              width={18}
-              height={18}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-          </button>
+        <div className="status-led">
+          <span className="led-dot led-online" aria-label="Realtime connected" />
+          RT
         </div>
+        <div className="status-led">
+          <span
+            className={cn(
+              "led-dot",
+              streaming
+                ? "led-busy led-pulse"
+                : sessionId
+                  ? "led-busy"
+                  : "led-idle",
+            )}
+            aria-label={
+              streaming
+                ? "Streaming"
+                : sessionId
+                  ? "Run state ready"
+                  : "Run state idle"
+            }
+          />
+          RUN
+        </div>
+        <div className="status-led">
+          <span className="led-dot led-idle" aria-label="Agent idle" />
+          AGT
+        </div>
+        <span className="status-spacer" />
+        <span className="status-version">W.A.R.P · v0.1</span>
       </header>
 
-      {/* Session bar — hidden in Phase 2.5. Phase 3 will wire visible + props
-          from active task state. */}
-      <SessionBar visible={false} />
+      {/* App header — 44px. Hamburger left (mobile only — drawer is the
+          persistent sidebar on desktop), wordmark center, new-directive
+          plus right. */}
+      <div className="app-header">
+        <button
+          type="button"
+          className="header-icon-btn md:invisible"
+          onClick={onOpenDrawer}
+          aria-label="Open sessions"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+        <span className="brand-wordmark">
+          <span className="brand-warp">WARP</span> CodX
+        </span>
+        <button
+          type="button"
+          className="header-icon-btn"
+          onClick={onNewDirective}
+          aria-label="New directive"
+          title="New directive"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+      </div>
+
+      {/* Session bar — appears when a session is active. */}
+      <SessionBar
+        taskTitle={sessionLabel ?? undefined}
+        progressPercent={sessionProgress}
+        onTap={onOpenDrawer}
+      />
 
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto warp-scroll px-3 md:px-6 pt-4 pb-3"
+        className="flex-1 min-h-0 overflow-y-auto warp-scroll px-4 md:px-6 pt-4 pb-3"
       >
         {!sessionId ? (
           <EmptyState onNewDirective={onNewDirective} />
         ) : loading ? (
-          <div className="text-xs text-white/35 px-1">Loading messages…</div>
+          <div className="text-xs text-warp-text-mute px-1">Loading messages…</div>
         ) : messages.length === 0 && !streaming ? (
           <EmptyConversation />
         ) : (
-          <ul className="flex flex-col gap-3 max-w-3xl mx-auto w-full">
+          <ul className="flex flex-col gap-[22px] max-w-3xl mx-auto w-full">
             {messages.map((m) => (
               <li key={m.id}>
                 <MessageBubble message={m} />
@@ -350,7 +365,7 @@ export default function ChatArea({
                   streaming
                 />
                 {streamingText.length === 0 && (
-                  <div className="mt-1 ml-1 text-[11px] text-white/45 warp-pulse">
+                  <div className="mt-1 text-[11px] text-white/45 warp-pulse">
                     WARP🔹CMD is thinking…
                   </div>
                 )}
@@ -361,8 +376,8 @@ export default function ChatArea({
       </div>
 
       {/* Input */}
-      <div className="border-t border-hair bg-warp-bg kb-inset">
-        <div className="max-w-3xl mx-auto w-full px-3 md:px-6 py-3">
+      <div className="bg-warp-bg kb-inset">
+        <div className="max-w-3xl mx-auto w-full px-3 md:px-6 pt-3 pb-3">
           <ChatInput
             disabled={!sessionId}
             isStreaming={streaming}
@@ -379,6 +394,31 @@ export default function ChatArea({
       </div>
     </div>
   );
+}
+
+/**
+ * Walk the last assistant message looking for a ```warp-todos JSON
+ * fence; if found, return done/total * 100. Returns undefined when no
+ * todo block is present so SessionBar can hide the rail entirely.
+ */
+function extractTodoProgress(messages: Message[]): number | undefined {
+  for (let i = messages.length - 1; i >= 0; i -= 1) {
+    const m = messages[i];
+    if (m.role !== "assistant") continue;
+    const match = m.content.match(/```warp-todos\s*\n([\s\S]*?)```/);
+    if (!match) return undefined;
+    try {
+      const payload = JSON.parse(match[1]) as TodosPayload;
+      const total = payload.total ?? payload.items.length;
+      if (!total) return 0;
+      const done =
+        payload.done ?? payload.items.filter((it) => it.state === "done").length;
+      return Math.round((done / total) * 100);
+    } catch {
+      return undefined;
+    }
+  }
+  return undefined;
 }
 
 function EmptyState({ onNewDirective }: { onNewDirective: () => void }) {

@@ -1,7 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+
+// Map Inter → --font-sans and JetBrains Mono → --font-mono so every
+// component CSS rule referencing var(--font-sans)/var(--font-mono) lights up
+// with the v2 mockup's typography without per-component rewrites.
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-sans",
+});
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-mono",
+});
 
 export const metadata: Metadata = {
   title: "WARP CodX",
@@ -10,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0E0E0F",
+  themeColor: "#0F1014",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -44,7 +58,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable} dark`}
+      className={`${inter.variable} ${jetbrainsMono.variable} dark`}
     >
       <body>
         {children}

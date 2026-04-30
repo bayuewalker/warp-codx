@@ -7,14 +7,21 @@ const config: Config = {
     extend: {
       colors: {
         warp: {
-          bg: "#0E0E0F",
-          blue: "#378ADD",
-          teal: "#1D9E75",
-          amber: "#BA7517",
+          // v2 palette — softer base + layered elevations.
+          bg: "#0F1014",
+          "bg-1": "#15171C",
+          "bg-2": "#1B1E25",
+          "bg-3": "#22262E",
+          blue: "#5BA4FF",
+          teal: "#3DDFA8",
+          amber: "#F2B946",
+          red: "#FF6155",
+          purple: "#B886FF",
         },
       },
       fontFamily: {
-        mono: ["var(--font-jetbrains-mono)", "ui-monospace", "monospace"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
       borderWidth: {
         hair: "0.5px",

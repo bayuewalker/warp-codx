@@ -4,161 +4,304 @@
 
 :root {
   color-scheme: dark;
-  --warp-bg: #0e0e0f;
-  --warp-bg-2: #141416;
-  --warp-text: #ffffff;
-  --warp-text-dim: rgba(255, 255, 255, 0.55);
-  --warp-text-mute: rgba(255, 255, 255, 0.35);
-  --warp-border: rgba(255, 255, 255, 0.08);
-  --warp-border-strong: rgba(255, 255, 255, 0.16);
-  --warp-blue: #378add;
-  --warp-teal: #1d9e75;
-  --warp-amber: #ba7517;
 
-  /* Geist family aliased into the existing --font-sans / --font-mono tokens
-     so that every component CSS rule referencing var(--font-sans) or
-     var(--font-mono) keeps working without rewrites. */
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui,
-    -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular,
-    Menlo, Monaco, Consolas, monospace;
+  /* ─── v2 palette: softer base + layered elevations ─────────── */
+  --warp-bg:         #0F1014;
+  --warp-bg-1:       #15171C;
+  --warp-bg-2:       #1B1E25;
+  --warp-bg-3:       #22262E;
+  --warp-bg-input:   #1A1D24;
+
+  /* Legacy aliases kept so any older component referencing
+     --warp-bg-2 (the v1 alias) continues to render. */
+  --warp-bg-2-legacy: var(--warp-bg-2);
+
+  --border-faint:    rgba(255, 255, 255, 0.06);
+  --border-soft:     rgba(255, 255, 255, 0.10);
+  --border-medium:   rgba(255, 255, 255, 0.16);
+  /* Legacy aliases — many existing classes use these names. */
+  --warp-border:        var(--border-faint);
+  --warp-border-strong: var(--border-medium);
+
+  --warp-text:        #F0F1F3;
+  --warp-text-dim:    #9CA0A8;
+  --warp-text-mute:   #6B7079;
+  --warp-text-muted:  #4A4F58;
+
+  --warp-blue:       #5BA4FF;
+  --warp-blue-dim:   #3B7BC4;
+  --warp-blue-bg:    rgba(91, 164, 255, 0.12);
+  --warp-blue-soft:  rgba(91, 164, 255, 0.06);
+
+  --warp-teal:       #3DDFA8;
+  --warp-teal-bg:    rgba(61, 223, 168, 0.10);
+
+  --warp-amber:      #F2B946;
+  --warp-amber-bg:   rgba(242, 185, 70, 0.10);
+
+  --warp-red:        #FF6155;
+  --warp-red-bg:     rgba(255, 97, 85, 0.10);
+
+  --warp-purple:     #B886FF;
+  --warp-purple-bg:  rgba(184, 134, 255, 0.10);
+
+  /* Diff tints */
+  --diff-add-bg:     rgba(61, 223, 168, 0.10);
+  --diff-add-line:   rgba(61, 223, 168, 0.25);
+  --diff-rem-bg:     rgba(255, 97, 85, 0.10);
+  --diff-rem-line:   rgba(255, 97, 85, 0.25);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  /* next/font writes the actual family into --font-sans / --font-mono via
+     the variable: option in layout.tsx, so these fallback chains are only
+     used while the font CSS is loading. */
 }
 
 html,
 body {
   background: var(--warp-bg);
   color: var(--warp-text);
-  /* App default stays mono so chat bubbles, sidebar, and directive blocks
-     keep their existing look without needing per-surface overrides. The
-     header (nav strip wordmark / status strip) and the input area opt in
-     to sans via .warp-sans. */
-  font-family: var(--font-mono);
+  /* App default is sans (Inter) — chrome strips and code blocks opt into
+     mono via .warp-mono / var(--font-mono) directly. */
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* Sans-serif opt-in for chrome (input area, meta row, send button). */
+/* Sans-serif opt-in helper (kept for back-compat with components that
+   still apply `.warp-sans`). */
 .warp-sans {
-  font-family: var(--font-sans);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+}
+.warp-mono {
+  font-family: var(--font-mono), ui-monospace, SFMono-Regular,
+    Menlo, Monaco, Consolas, monospace;
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   App header (mobile) — 2 row "instrument" chrome.
-   Row 1: status strip with LED group + engine meta.
-   Row 2: nav strip with menu / wordmark / new-directive.
-   Total height: 26 + 40 + ~1 = ~67px.
+   STATUS STRIP — 26px sticky band with NET / RT / RUN / AGT LEDs
    ───────────────────────────────────────────────────────────────── */
-.app-header {
-  display: flex;
-  flex-direction: column;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  background: rgba(0, 0, 0, 0.4);
-}
-
 .status-strip {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 5px 14px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
   height: 26px;
+  padding: 0 14px;
+  gap: 14px;
+  background: var(--warp-bg-1);
+  border-bottom: 1px solid var(--border-faint);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
 }
 
-.led-group {
+.status-led {
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 0;
+  gap: 5px;
+  color: var(--warp-text-mute);
 }
 
-.led {
-  width: 6px;
-  height: 6px;
+.led-dot {
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  display: inline-block;
   flex-shrink: 0;
+  position: relative;
+  display: inline-block;
+}
+.led-online {
+  background: var(--warp-teal);
+  box-shadow: 0 0 4px var(--warp-teal);
+}
+.led-busy {
+  background: var(--warp-amber);
+  box-shadow: 0 0 4px var(--warp-amber);
+}
+.led-idle {
+  background: var(--warp-text-muted);
+}
+.led-pulse::after {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  background: inherit;
+  opacity: 0.5;
+  animation: ledPulseRing 1.6s infinite;
+}
+@keyframes ledPulseRing {
+  0%   { transform: scale(1);   opacity: 0.5; }
+  100% { transform: scale(3);   opacity: 0;   }
 }
 
-/* LED states — hardcoded for Phase 1.5d, real wiring in Phase 4.
-   The .led-run--active / .led-run--idle modifier is toggled from
-   ChatArea based on whether a session is active. */
-.led-net  { background: #34d399; box-shadow: 0 0 4px rgba(52, 211, 153, 0.6); }
-.led-rt   { background: #34d399; box-shadow: 0 0 4px rgba(52, 211, 153, 0.6); }
-.led-run--active { background: #fbbf24; box-shadow: 0 0 4px rgba(251, 191, 36, 0.6); }
-.led-run--idle   { background: rgba(255, 255, 255, 0.20); box-shadow: none; }
-.led-agt  { background: rgba(255, 255, 255, 0.20); box-shadow: none; }
-
-.led-label {
-  color: rgba(255, 255, 255, 0.55);
-  font-weight: 500;
-  margin-right: 4px;
-}
-.led-label:last-of-type { margin-right: 0; }
-
-.engine-meta {
-  color: rgba(255, 255, 255, 0.40);
-  font-weight: 500;
+.status-spacer { flex: 1; }
+.status-version {
+  color: var(--warp-text-muted);
+  font-size: 9px;
   white-space: nowrap;
 }
 
-.nav-strip {
+/* ─────────────────────────────────────────────────────────────────
+   APP HEADER — 44px clean wordmark + nav
+   ───────────────────────────────────────────────────────────────── */
+.app-header {
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  height: 40px;
+  padding: 0 12px;
+  background: var(--warp-bg);
+  border-bottom: 1px solid var(--border-faint);
 }
 
-.nav-icon-btn {
-  background: transparent;
-  border: none;
-  padding: 6px;
+.header-icon-btn {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.65);
   cursor: pointer;
-  border-radius: 6px;
-  transition: background 120ms ease, color 120ms ease;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  color: var(--warp-text-dim);
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
 }
-.nav-icon-btn:hover {
-  color: rgba(255, 255, 255, 1);
-  background: rgba(255, 255, 255, 0.05);
+.header-icon-btn:hover {
+  background: var(--warp-bg-2);
+  color: var(--warp-text);
 }
-.nav-icon-btn:focus-visible {
-  outline: 2px solid rgba(55, 138, 221, 0.55);
+.header-icon-btn:focus-visible {
+  outline: 2px solid rgba(91, 164, 255, 0.55);
   outline-offset: 2px;
 }
 
 .brand-wordmark {
-  font-family: var(--font-mono);
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 13px;
   font-weight: 500;
   letter-spacing: 0.02em;
-  color: rgba(255, 255, 255, 0.95);
+  color: var(--warp-text);
 }
-.brand-accent { color: #3b82f6; }
+.brand-warp,
+.brand-accent {
+  color: var(--warp-blue);
+}
 
 /* ─────────────────────────────────────────────────────────────────
-   Composer (Phase 2.5 mockup v2)
-   - .input-zone-wrap : outer container
-   - .input-zone      : bordered card holding textarea + toolbar
-   - .input-toolbar   : paperclip + grid + spacer + send/stop
-   - .input-footer    : LED + model name (no state text, no stop button)
+   SESSION TITLE BAR
    ───────────────────────────────────────────────────────────────── */
+.session-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 7px;
+  border-bottom: 1px solid var(--border-faint);
+  background: transparent;
+  width: 100%;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.session-bar:hover {
+  background: var(--warp-bg-1);
+}
+.session-bar:focus-visible {
+  outline: 2px solid rgba(91, 164, 255, 0.55);
+  outline-offset: -2px;
+}
+
+.session-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--warp-blue-bg);
+  border: 1px solid var(--warp-blue-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--warp-blue);
+}
+.session-icon svg {
+  width: 9px;
+  height: 9px;
+  fill: var(--warp-blue);
+  stroke: none;
+}
+
+.session-title-block {
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.session-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--warp-text);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.session-title > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-chev {
+  color: var(--warp-text-mute);
+  flex-shrink: 0;
+}
+
+.session-progress {
+  height: 1px;
+  background: var(--warp-bg-2);
+  margin-top: 5px;
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+.session-progress-bar {
+  position: absolute;
+  top: 0; left: 0; bottom: 0;
+  background: linear-gradient(90deg, var(--warp-blue-dim), var(--warp-blue));
+  border-radius: 1px;
+  transition: width 240ms ease;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   COMPOSER — bordered card + toolbar + footer LED row
+   ───────────────────────────────────────────────────────────────── */
+.input-zone-wrap {
+  /* Sits inside ChatArea's input container; the layout handles fixed
+     positioning via flex column. */
+}
+
 .input-zone {
-  padding: 10px 14px;
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.025);
-  transition: border-color 120ms ease-out;
+  background: var(--warp-bg-input);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  padding: 14px 14px 10px;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 .input-zone[data-focused="true"] {
-  border-color: rgba(255, 255, 255, 0.20);
+  border-color: var(--border-medium);
 }
 
 .input-field {
@@ -169,10 +312,12 @@ body {
   background: transparent;
   border: 0;
   outline: none;
-  font-size: 13px;
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.95);
-  max-height: 100px; /* 5 rows × 20px */
+  color: var(--warp-text);
+  min-height: 24px;
+  max-height: 144px; /* ~6 rows */
   padding: 0;
   margin: 0;
 }
@@ -180,12 +325,11 @@ body {
   opacity: 0.5;
 }
 .input-field::placeholder {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--warp-text-muted);
   font-family: inherit;
   opacity: 1;
 }
 
-/* Toolbar — paperclip + grid placeholders + spacer + send/stop */
 .input-toolbar {
   display: flex;
   align-items: center;
@@ -198,33 +342,31 @@ body {
   height: 26px;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.40);
-  cursor: not-allowed;
+  color: var(--warp-text-mute);
+  cursor: pointer;
   border-radius: 5px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  opacity: 0.6;
-  transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+  transition: all 0.15s;
 }
-.input-tool-btn:not(:disabled):hover {
-  opacity: 1;
-  color: rgba(255, 255, 255, 0.95);
-  background: rgba(255, 255, 255, 0.05);
-  cursor: pointer;
+.input-tool-btn:hover:not(:disabled) {
+  background: var(--warp-bg-2);
+  color: var(--warp-text);
 }
-
-.input-toolbar-spacer {
-  flex: 1;
+.input-tool-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-/* Send / stop morph — same DOM node, icon swaps based on state. */
+.input-toolbar-spacer { flex: 1; }
+
 .input-send-btn {
   width: 28px;
   height: 28px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #0a0a0a;
+  background: var(--warp-text);
+  color: var(--warp-bg);
   border: none;
   border-radius: 6px;
   display: flex;
@@ -232,150 +374,224 @@ body {
   justify-content: center;
   cursor: pointer;
   flex-shrink: 0;
-  transition: background 180ms ease, color 180ms ease, transform 120ms ease;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.15s ease;
 }
-.input-send-btn:hover {
-  background: #ffffff;
+.input-send-btn:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 .input-send-btn[data-state="streaming"] {
-  background: #ef4444;
+  background: var(--warp-red);
   color: #ffffff;
 }
-.input-send-btn[data-state="streaming"]:hover {
-  background: #dc2626;
-}
 .input-send-btn:disabled {
-  background: rgba(255, 255, 255, 0.10);
-  color: rgba(255, 255, 255, 0.35);
+  opacity: 0.40;
   cursor: not-allowed;
   transform: none;
 }
-/* Streaming + disabled (no abort handler available): keep red but dimmed. */
 .input-send-btn[data-state="streaming"]:disabled {
-  background: rgba(239, 68, 68, 0.30);
-  color: rgba(255, 255, 255, 0.50);
+  background: rgba(255, 97, 85, 0.55);
+  color: rgba(255, 255, 255, 0.75);
+  opacity: 1;
 }
 .input-send-btn:focus-visible {
-  outline: 2px solid rgba(55, 138, 221, 0.55);
+  outline: 2px solid rgba(91, 164, 255, 0.55);
   outline-offset: 2px;
 }
 
-/* Footer — minimal: LED + model only */
 .input-footer {
   display: flex;
   align-items: center;
   gap: 7px;
   padding: 8px 4px 0;
-  font-family: var(--font-mono);
+  font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 10px;
   letter-spacing: 0.04em;
 }
-
 .footer-led {
   width: 6px;
   height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.30);
+  background: var(--warp-text-mute);
   transition: background 220ms ease, box-shadow 220ms ease;
 }
 .footer-led[data-health="online"] {
-  background: #10b981;
-  box-shadow: 0 0 4px rgba(16, 185, 129, 0.55);
+  background: var(--warp-teal);
+  box-shadow: 0 0 4px var(--warp-teal);
 }
 .footer-led[data-health="checking"] {
-  background: #fbbf24;
-  box-shadow: 0 0 4px rgba(251, 191, 36, 0.55);
+  background: var(--warp-amber);
+  box-shadow: 0 0 4px var(--warp-amber);
   animation: footer-led-pulse 1.4s ease-in-out infinite;
 }
 .footer-led[data-health="error"] {
-  background: #ef4444;
-  box-shadow: 0 0 4px rgba(239, 68, 68, 0.55);
+  background: var(--warp-red);
+  box-shadow: 0 0 4px var(--warp-red);
 }
 .footer-led[data-health="unknown"] {
-  background: rgba(255, 255, 255, 0.30);
+  background: var(--warp-text-mute);
 }
 @keyframes footer-led-pulse {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.45; }
 }
-
 .footer-model {
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--warp-text-dim);
   font-weight: 500;
 }
 
 /* ─────────────────────────────────────────────────────────────────
-   Session bar (Phase 2.5 shell — Phase 3 wires data)
+   DRAWER / SIDEBAR
    ───────────────────────────────────────────────────────────────── */
-.session-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px 7px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+.drawer-content {
+  padding: 14px 12px;
+  flex: 1;
+  overflow-y: auto;
 }
 
-.session-icon {
+.new-env-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  color: var(--warp-text);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: 10px;
+}
+.new-env-btn:hover:not(:disabled) {
+  background: var(--warp-bg-2);
+  border-color: var(--border-medium);
+}
+.new-env-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.new-env-btn svg {
   width: 18px;
   height: 18px;
-  border-radius: 50%;
-  background: rgba(59, 130, 246, 0.10);
-  border: 1px solid rgba(59, 130, 246, 0.30);
-  color: #3b82f6;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  color: var(--warp-text-dim);
   flex-shrink: 0;
 }
-.session-icon svg {
-  width: 9px;
-  height: 9px;
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--warp-text);
+  font-size: 14px;
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  transition: background 0.1s;
+}
+.nav-item:hover {
+  background: var(--warp-bg-2);
+}
+.nav-item svg {
+  width: 18px;
+  height: 18px;
+  color: var(--warp-text-dim);
+  flex-shrink: 0;
 }
 
-.session-title-block {
+.drawer-section {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 14px 6px;
+  color: var(--warp-text-mute);
+  font-size: 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+}
+.drawer-section svg {
+  width: 14px;
+  height: 14px;
+}
+
+.session-row {
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  transition: background 0.1s;
+}
+.session-row:hover { background: var(--warp-bg-2); }
+.session-row.active {
+  background: var(--warp-bg-2);
+}
+.session-row.active .session-status-dot {
+  background: var(--warp-blue);
+  box-shadow: 0 0 4px var(--warp-blue);
+}
+.session-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warp-text-muted);
+  flex-shrink: 0;
+}
+.session-row-content {
   flex: 1;
   overflow: hidden;
+  min-width: 0;
 }
-
-.session-title {
-  font-family: var(--font-mono);
-  font-size: 12px;
+.session-row-title {
+  font-size: 14px;
+  color: var(--warp-text);
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.95);
-  display: flex;
-  align-items: center;
-  gap: 5px;
   overflow: hidden;
-  white-space: nowrap;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.session-chev {
-  color: rgba(255, 255, 255, 0.40);
-  flex-shrink: 0;
-}
-
-.session-progress {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.08);
-  margin-top: 5px;
-  border-radius: 1px;
+.session-row-meta {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--warp-text-mute);
   overflow: hidden;
-  position: relative;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+.session-badge {
+  background: var(--warp-purple-bg);
+  color: var(--warp-purple);
+  border-radius: 12px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  flex-shrink: 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
 }
 
-.session-progress-bar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.5), #3b82f6);
-  border-radius: 1px;
-  transition: width 240ms ease;
-}
-
+/* ─────────────────────────────────────────────────────────────────
+   Layout primitives
+   ───────────────────────────────────────────────────────────────── */
 html,
 body,
 #__next {
@@ -386,9 +602,6 @@ body {
   overflow: hidden;
 }
 
-/* App shell height — prefer dynamic viewport, fall back to small viewport
-   then to layout viewport for older browsers. dvh shrinks when the mobile
-   keyboard is open on browsers that support it. */
 .warp-h-screen {
   height: 100vh;
   height: 100svh;
@@ -399,16 +612,15 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* 0.5px hairline borders rendered crisply across DPRs */
 .border-hair {
   border-width: 0.5px;
   border-style: solid;
-  border-color: var(--warp-border);
+  border-color: var(--border-faint);
 }
 .border-hair-strong {
   border-width: 0.5px;
   border-style: solid;
-  border-color: var(--warp-border-strong);
+  border-color: var(--border-medium);
 }
 
 /* Scrollbar — minimal, dark */
@@ -427,7 +639,6 @@ body {
   background: rgba(255, 255, 255, 0.18);
 }
 
-/* Subtle pulse for "thinking" indicator */
 @keyframes warpPulse {
   0%, 100% { opacity: 0.45; }
   50%      { opacity: 1; }
@@ -436,10 +647,6 @@ body {
   animation: warpPulse 1.6s ease-in-out infinite;
 }
 
-/* Mobile keyboard-aware bottom padding.
-   --warp-kb-h is set by a VisualViewport listener in layout.tsx for browsers
-   without env(keyboard-inset-height) (most iOS Safari + Android Chrome).
-   env(safe-area-inset-bottom) handles the home-indicator on notched devices. */
 .kb-inset {
   padding-bottom: max(
     env(keyboard-inset-height, 0px),
@@ -448,32 +655,14 @@ body {
   );
 }
 
-/* Caret + selection */
 textarea, input {
   caret-color: var(--warp-blue);
 }
 ::selection {
-  background: rgba(55, 138, 221, 0.35);
+  background: rgba(91, 164, 255, 0.35);
   color: #fff;
 }
 
-/* Drawer transitions */
-.drawer-enter {
-  transform: translateX(-100%);
-}
-.drawer-enter-active {
-  transform: translateX(0);
-  transition: transform 220ms ease-out;
-}
-.drawer-exit {
-  transform: translateX(0);
-}
-.drawer-exit-active {
-  transform: translateX(-100%);
-  transition: transform 200ms ease-in;
-}
-
-/* Streaming text cursor */
 .warp-cursor::after {
   content: "▍";
   color: var(--warp-blue);

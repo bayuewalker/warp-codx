@@ -1,0 +1,412 @@
+/* ─────────────────────────────────────────────────────────────────
+   Rich-block primitives — emitted by the assistant inside
+   ```warp-action / ```warp-diff / ```warp-todos / ```warp-status
+   fenced code blocks. Styles mirror the v2 mockup.
+   ───────────────────────────────────────────────────────────────── */
+
+/* ───────────── Collapsible action card ───────────── */
+.action-card {
+  background: var(--warp-bg-1);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: 0.4em 0;
+}
+.action-card-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  transition: background 0.1s;
+}
+.action-card-summary:hover { background: var(--warp-bg-2); }
+.action-chev {
+  color: var(--warp-text-mute);
+  font-size: 11px;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  display: inline-block;
+  width: 12px;
+  text-align: center;
+}
+.action-chev.open { transform: rotate(90deg); }
+.action-summary-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--warp-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+.action-summary-text .path-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--warp-text-dim);
+}
+.action-card-body {
+  padding: 0 12px 12px;
+}
+.action-detail-card {
+  background: var(--warp-bg-2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.action-detail-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+}
+.action-detail-icon {
+  color: var(--warp-text-mute);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.action-detail-text {
+  flex: 1;
+  font-size: 13px;
+  color: var(--warp-text);
+  line-height: 1.45;
+  overflow: hidden;
+  word-break: break-word;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+.action-detail-text .path-mono {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--warp-text-dim);
+}
+.action-output {
+  padding: 10px 12px;
+  background: var(--warp-bg);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  color: var(--warp-text-dim);
+  border-top: 1px solid var(--border-faint);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+/* ───────────── Diff viewer ───────────── */
+.diff-block {
+  background: var(--warp-bg-1);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: 0.4em 0;
+}
+.diff-header {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  gap: 8px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.diff-icon {
+  color: var(--warp-text-mute);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+.diff-path {
+  flex: 1;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--warp-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.diff-stats {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  flex-shrink: 0;
+  display: flex;
+  gap: 6px;
+}
+.diff-stats .add { color: var(--warp-teal); }
+.diff-stats .rem { color: var(--warp-red); }
+.diff-content {
+  background: var(--warp-bg);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow-x: auto;
+  padding: 8px 0;
+}
+.diff-line {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  align-items: center;
+  padding: 0;
+  min-height: 22px;
+}
+.diff-line .lnum {
+  text-align: right;
+  padding-right: 12px;
+  color: var(--warp-text-muted);
+  font-size: 11px;
+  user-select: none;
+}
+.diff-line .lcontent {
+  padding-right: 14px;
+  color: var(--warp-text-dim);
+  white-space: pre;
+}
+.diff-line.add {
+  background: var(--diff-add-bg);
+  border-left: 2px solid var(--diff-add-line);
+}
+.diff-line.add .lnum { color: var(--warp-teal); }
+.diff-line.add .lcontent { color: var(--warp-text); }
+.diff-line.rem {
+  background: var(--diff-rem-bg);
+  border-left: 2px solid var(--diff-rem-line);
+}
+.diff-line.rem .lnum { color: var(--warp-red); }
+.diff-line.rem .lcontent { color: var(--warp-text-dim); opacity: 0.8; }
+
+/* Inline syntax tokens */
+.syn-kw  { color: #FF7AB6; }
+.syn-str { color: #65D484; }
+.syn-com { color: #5C6473; font-style: italic; }
+.syn-num { color: #C99FFF; }
+.syn-var { color: #7DD3FC; }
+.syn-fn  { color: #F2B946; }
+
+/* ───────────── Todo block ───────────── */
+.todo-block {
+  background: var(--warp-bg-1);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: 0.4em 0;
+}
+.todo-block-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.todo-tag {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--warp-text-dim);
+  background: var(--warp-bg-3);
+  padding: 3px 8px;
+  border-radius: 4px;
+}
+.todo-progress-text {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
+  color: var(--warp-text);
+  font-variant-numeric: tabular-nums;
+}
+.todo-progress-text .done { color: var(--warp-teal); }
+.todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 0;
+}
+.todo-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  transition: background 0.1s;
+}
+.todo-item.active {
+  background: var(--warp-bg-2);
+}
+.todo-icon {
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.todo-icon-empty {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--warp-text-muted);
+  border-radius: 50%;
+}
+.todo-icon-active {
+  width: 18px;
+  height: 18px;
+  background: var(--warp-bg-3);
+  border: 1.5px solid var(--warp-blue);
+  border-radius: 4px;
+  position: relative;
+}
+.todo-icon-active::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  border: 1.5px solid var(--warp-blue);
+  border-bottom-color: transparent;
+  border-radius: 50%;
+  animation: todoSpin 1.4s linear infinite;
+}
+@keyframes todoSpin { to { transform: rotate(360deg); } }
+.todo-icon-done {
+  width: 18px;
+  height: 18px;
+  background: var(--warp-teal);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--warp-bg);
+  font-size: 11px;
+  font-weight: 700;
+}
+.todo-text-block {
+  flex: 1;
+  overflow: hidden;
+  min-width: 0;
+}
+.todo-text {
+  font-size: 13.5px;
+  color: var(--warp-text);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.todo-item.idle .todo-text {
+  color: var(--warp-text-mute);
+}
+.todo-subtext {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--warp-text-muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ───────────── Status table ───────────── */
+.status-table {
+  background: var(--warp-bg-1);
+  border: 1px solid var(--border-faint);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  font-size: 13px;
+  margin: 0.4em 0;
+}
+.status-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-faint);
+}
+.status-row:last-child { border-bottom: none; }
+.status-row.header {
+  background: var(--warp-bg-2);
+  font-weight: 500;
+  color: var(--warp-text-dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+}
+.status-cell-name { color: var(--warp-text); }
+.status-cell-note {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--warp-text-mute);
+  margin-left: 6px;
+}
+.status-ok {
+  width: 18px;
+  height: 18px;
+  background: var(--warp-teal);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--warp-bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+.status-pending {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1.5px solid var(--warp-text-muted);
+}
+.status-fail {
+  width: 18px;
+  height: 18px;
+  background: var(--warp-red);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--warp-bg);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ───────────── Inline pills ───────────── */
+.agent-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 4px;
+  border: 1px solid;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.agent-pill.cmd      { background: var(--warp-blue-bg);  color: var(--warp-blue);  border-color: rgba(91, 164, 255, 0.30); }
+.agent-pill.forge    { background: var(--warp-teal-bg);  color: var(--warp-teal);  border-color: rgba(61, 223, 168, 0.30); }
+.agent-pill.sentinel { background: var(--warp-amber-bg); color: var(--warp-amber); border-color: rgba(242, 185, 70, 0.30); }
+.agent-pill.echo     { background: rgba(255, 255, 255, 0.04); color: var(--warp-text-dim); border-color: var(--border-soft); }
+
+.branch-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px;
+  background: var(--warp-blue-soft);
+  color: var(--warp-blue);
+  border: 1px solid rgba(91, 164, 255, 0.20);
+  border-radius: 4px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.branch-badge svg {
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+}
+
+/* Markdown strong inside assistant prose — slightly elevated. */
+.markdown-strong {
+  color: var(--warp-text);
+  font-weight: 600;
+}

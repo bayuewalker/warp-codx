@@ -5,6 +5,18 @@ import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
 import "highlight.js/styles/github-dark.css";
 import "./message-content.css";
+import "./blocks/blocks.css";
+import ActionCard from "./blocks/ActionCard";
+import DiffBlock from "./blocks/DiffBlock";
+import TodoBlock from "./blocks/TodoBlock";
+import StatusTable from "./blocks/StatusTable";
+import { withInlinePills } from "./blocks/InlinePills";
+import type {
+  ActionPayload,
+  DiffPayload,
+  StatusPayload,
+  TodosPayload,
+} from "@/lib/types";
 
 interface MessageContentProps {
   content: string;
@@ -19,19 +31,28 @@ export default function MessageContent({ content, role }: MessageContentProps) {
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
         components={{
-          // Strip the auto-wrapping <pre> so our `code` override fully owns the
-          // block-level layout (needed for the directive card).
           pre({ children }) {
             return <>{children}</>;
           },
-          // Intercept fenced code blocks to detect the `directive` language.
+          p({ children }) {
+            return <p>{withInlinePills(children)}</p>;
+          },
+          li({ children }) {
+            return <li>{withInlinePills(children)}</li>;
+          },
+          strong({ children }) {
+            return (
+              <strong className="markdown-strong">
+                {withInlinePills(children)}
+              </strong>
+            );
+          },
+          em({ children }) {
+            return <em>{withInlinePills(children)}</em>;
+          },
           code({ className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || "");
+            const match = /language-([^\s]+)/.exec(className || "");
             const lang = match?.[1];
-            // react-markdown v9 dropped the `inline` prop, so detect block
-            // code two ways: (a) it has a `language-*` class (rehype-highlight
-            // wrapped its children in highlighted spans), or (b) the raw text
-            // contains a newline (unlabeled fenced blocks like ``` … ```).
             const rawText =
               typeof children === "string"
                 ? children
@@ -50,7 +71,23 @@ export default function MessageContent({ content, role }: MessageContentProps) {
               );
             }
 
-            // Custom directive block — bordered "DISPATCH READY" card.
+            if (lang === "warp-action") {
+              const payload = parseJson<ActionPayload>(rawText);
+              if (payload) return <ActionCard payload={payload} />;
+            }
+            if (lang === "warp-diff") {
+              const payload = parseJson<DiffPayload>(rawText);
+              if (payload) return <DiffBlock payload={payload} />;
+            }
+            if (lang === "warp-todos") {
+              const payload = parseJson<TodosPayload>(rawText);
+              if (payload) return <TodoBlock payload={payload} />;
+            }
+            if (lang === "warp-status") {
+              const payload = parseJson<StatusPayload>(rawText);
+              if (payload) return <StatusTable payload={payload} />;
+            }
+
             if (lang === "directive") {
               return (
                 <div className="directive-block">
@@ -62,9 +99,6 @@ export default function MessageContent({ content, role }: MessageContentProps) {
               );
             }
 
-            // Default fenced code block (highlight.js handles syntax tokens
-            // when the language is known; unlabeled blocks just render the
-            // raw text in monospace inside the styled box).
             return (
               <pre className="md-code-block">
                 <code className={className} {...props}>
@@ -86,4 +120,12 @@ export default function MessageContent({ content, role }: MessageContentProps) {
       </ReactMarkdown>
     </div>
   );
+}
+
+function parseJson<T>(src: string): T | null {
+  try {
+    return JSON.parse(src.trim()) as T;
+  } catch {
+    return null;
+  }
 }

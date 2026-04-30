@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { ArrowUp, LayoutGrid, Paperclip, Square } from "lucide-react";
 import { MODELS, formatModelSlug } from "@/lib/models";
 
 type LedHealth = "online" | "checking" | "error" | "unknown";
@@ -15,10 +14,7 @@ type Props = {
   onSend: (text: string) => void;
 };
 
-// 13px font with 1.5 line-height ≈ 20px per visual line. Allow up to 5 lines
-// before the textarea starts scrolling internally.
-const LINE_HEIGHT_PX = 20;
-const MAX_ROWS = 5;
+const MAX_HEIGHT_PX = 144;
 
 export default function ChatInput({
   disabled = false,
@@ -32,13 +28,11 @@ export default function ChatInput({
   const [focused, setFocused] = useState(false);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Auto-grow up to MAX_ROWS rows.
   useEffect(() => {
     const ta = taRef.current;
     if (!ta) return;
     ta.style.height = "auto";
-    const max = LINE_HEIGHT_PX * MAX_ROWS;
-    ta.style.height = Math.min(ta.scrollHeight, max) + "px";
+    ta.style.height = Math.min(ta.scrollHeight, MAX_HEIGHT_PX) + "px";
   }, [value]);
 
   const send = () => {
@@ -67,25 +61,15 @@ export default function ChatInput({
     }
   };
 
-  // Send button is enabled when:
-  //  - streaming AND an abort handler exists AND composer is not disabled
-  //    (so the user can stop), OR
-  //  - input has content and the composer is not otherwise disabled.
-  // `disabled` (e.g. no active session) is always absolute.
   const sendBtnDisabled = isStreaming
     ? !onStopStream || disabled
     : !value.trim() || disabled;
 
-  // Textarea is disabled while streaming or when the parent says so
-  // (e.g., no active session).
   const taDisabled = disabled || isStreaming;
 
   return (
-    <div className="input-zone-wrap warp-sans">
-      <div
-        className="input-zone"
-        data-focused={focused ? "true" : "false"}
-      >
+    <div className="input-zone-wrap">
+      <div className="input-zone" data-focused={focused ? "true" : "false"}>
         <textarea
           ref={taRef}
           rows={1}
@@ -99,34 +83,54 @@ export default function ChatInput({
           spellCheck={false}
           autoComplete="off"
           aria-label="Directive input"
-          className="input-field warp-sans"
+          className="input-field"
         />
         <div className="input-toolbar">
-          {/* Paperclip — disabled placeholder for future file attach */}
           <button
             type="button"
             className="input-tool-btn"
-            title="Attach (coming soon)"
-            disabled
+            title="Attach"
             aria-label="Attach file"
+            disabled
           >
-            <Paperclip size={14} strokeWidth={2} />
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden="true"
+              width={14}
+              height={14}
+            >
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+            </svg>
           </button>
 
-          {/* Grid — disabled placeholder for future quick actions */}
           <button
             type="button"
             className="input-tool-btn"
-            title="Quick actions (coming soon)"
+            title="Templates"
+            aria-label="Templates"
             disabled
-            aria-label="Quick actions"
           >
-            <LayoutGrid size={14} strokeWidth={2} />
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden="true"
+              width={14}
+              height={14}
+            >
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
           </button>
 
           <span className="input-toolbar-spacer" aria-hidden="true" />
 
-          {/* Send / stop morph — same DOM node, icon swaps based on state. */}
           <button
             type="button"
             className="input-send-btn"
@@ -137,15 +141,35 @@ export default function ChatInput({
             aria-label={isStreaming ? "Stop generation" : "Send"}
           >
             {isStreaming ? (
-              <Square size={12} strokeWidth={0} fill="currentColor" />
+              <svg
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                aria-hidden="true"
+                width={12}
+                height={12}
+              >
+                <rect x="6" y="6" width="12" height="12" rx="1.5" />
+              </svg>
             ) : (
-              <ArrowUp size={14} strokeWidth={2.5} />
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2.5}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+                width={14}
+                height={14}
+              >
+                <line x1="12" y1="19" x2="12" y2="5" />
+                <polyline points="5 12 12 5 19 12" />
+              </svg>
             )}
           </button>
         </div>
       </div>
 
-      {/* Footer — LED + model name only. No state text, no stop button. */}
       <div className="input-footer">
         <span
           className="footer-led"
