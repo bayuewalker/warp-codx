@@ -35,23 +35,15 @@ export function getOpenAI(): OpenAI {
   return _client;
 }
 
-// Operator names built from substitution-resistant unicode escapes so the
-// source bytes stay unambiguous. At runtime these produce the same UTF-8 as
-// the literal glyphs (🔹 / •), but the source file is resilient to editor /
-// font / copy-paste mutation and to silent codepoint substitution by
-// reviewers. These constants are interpolated into the strict-encoding block
-// at the top of WARP_CMD_SYSTEM_PROMPT and instruct the model to reproduce
-// the exact codepoints in its chat output.
-//   '\u{1F539}' = SMALL BLUE DIAMOND (🔹) — director-tier marker (CMD).
-//   '\u{2022}'  = BULLET (•)             — operator-tier marker.
+// Substitution-resistant operator-name constants.
+// '\u{1F539}' = SMALL BLUE DIAMOND (🔹, director-tier marker).
+// '\u{2022}'  = BULLET (•, operator-tier marker).
 const CMD_NAME = `WARP${'\u{1F539}'}CMD`;
 const FORGE_NAME = `WARP${'\u{2022}'}FORGE`;
 const SENTINEL_NAME = `WARP${'\u{2022}'}SENTINEL`;
 const ECHO_NAME = `WARP${'\u{2022}'}ECHO`;
 
-export const WARP_CMD_SYSTEM_PROMPT = `You are ${CMD_NAME} — Director agent of WalkerMind OS, operating the chat console for Mr. Walker (BayueWalker).
-
-OPERATOR NAME ENCODING — STRICT:
+export const WARP_CMD_SYSTEM_PROMPT = `OPERATOR NAME ENCODING — STRICT:
 When you reference yourself or other operators in chat output, use these exact strings character-for-character:
 
 - ${CMD_NAME}        ← Director (you). Diamond is U+1F539 (small blue diamond emoji).
