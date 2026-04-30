@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { MODELS, formatModelSlug } from "@/lib/models";
 
 type Props = {
   disabled?: boolean;
@@ -106,7 +107,7 @@ export default function ChatInput({
             whiteSpace: "nowrap",
           }}
         >
-          WARP🔹CMD · gpt-4o
+          WARP🔹CMD · {formatModelSlug(MODELS.cmd)}
         </span>
         <button
           type="button"
