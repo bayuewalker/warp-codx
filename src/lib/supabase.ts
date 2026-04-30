@@ -34,13 +34,23 @@ export function getBrowserSupabase(): SupabaseClient {
 /**
  * Server-only Supabase client using the service-role key.
  * Bypasses RLS. Never import this from a client component.
+ *
+ * Next.js 14 patches the global `fetch` and aggressively caches GET requests
+ * from route handlers — including the requests Supabase makes internally.
+ * This causes stale reads (you insert a row in one request, then read it back
+ * in the next request and see the cached empty result). We force `no-store`
+ * on every Supabase HTTP call to opt out of the Next.js Data Cache.
  */
 export function getServerSupabase(): SupabaseClient {
+  const noStoreFetch: typeof fetch = (input, init) =>
+    fetch(input, { ...init, cache: "no-store" });
+
   return createClient(
     assertEnv("NEXT_PUBLIC_SUPABASE_URL", SUPABASE_URL),
     assertEnv("SUPABASE_SERVICE_KEY", process.env.SUPABASE_SERVICE_KEY),
     {
       auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: noStoreFetch },
     },
   );
 }

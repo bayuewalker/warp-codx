@@ -8,7 +8,7 @@ Mobile-first command interface for orchestrating AI agents in WalkerMind OS.
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS, dark mode default
 - **Database & Realtime**: Supabase (`@supabase/supabase-js`)
-- **AI**: OpenAI SDK (gpt-4o, streaming)
+- **AI**: OpenAI SDK pointed at OpenRouter gateway (streaming). Default model `openai/gpt-4o`. Model registry in `src/lib/models.ts`.
 - **Node**: 24 (any modern Node ≥ 18.17 works)
 
 ## Project layout
@@ -29,10 +29,13 @@ Mobile-first command interface for orchestrating AI agents in WalkerMind OS.
 
 See `.env.example`. All four are required:
 
-- `OPENAI_API_KEY`
+- `OPENROUTER_API_KEY` (format `sk-or-v1-...`, get one at https://openrouter.ai/keys)
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_KEY`
+- `NEXT_PUBLIC_SITE_URL` *(optional, used for OpenRouter `HTTP-Referer` attribution)*
+
+> Note: the server-side Supabase client passes a `cache: "no-store"` fetch to opt out of Next.js 14's route-handler Data Cache. Without this, `GET` queries return stale empty results after fresh inserts in a previous request.
 
 ## Supabase schema
 
