@@ -26,6 +26,12 @@ export default function ChatArea({
   const [streamingText, setStreamingText] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const seenIds = useRef<Set<string>>(new Set());
+  // Queue of optimistic user messages we still expect Realtime to confirm.
+  // Each entry pairs the temp id with the trimmed content so that when the
+  // persisted row arrives we can swap the temp row out (instead of doubling).
+  const pendingUserOptimistic = useRef<
+    Array<{ tempId: string; content: string }>
+  >([]);
 
   // Auto-scroll to bottom when messages or streaming text update.
   const scrollToBottom = useCallback(() => {
@@ -39,6 +45,7 @@ export default function ChatArea({
   // Load messages whenever the active session changes.
   useEffect(() => {
     seenIds.current = new Set();
+    pendingUserOptimistic.current = [];
     setMessages([]);
     setStreamingText("");
     setStreaming(false);
@@ -90,6 +97,27 @@ export default function ChatArea({
           const m = payload.new as Message;
           if (seenIds.current.has(m.id)) return;
           seenIds.current.add(m.id);
+
+          // If this is the persisted version of an optimistic user message,
+          // swap it in place instead of appending a duplicate.
+          if (m.role === "user") {
+            const queue = pendingUserOptimistic.current;
+            const idx = queue.findIndex((p) => p.content === m.content);
+            if (idx !== -1) {
+              const { tempId } = queue[idx];
+              queue.splice(idx, 1);
+              setMessages((prev) => {
+                const tIdx = prev.findIndex((x) => x.id === tempId);
+                if (tIdx === -1) return [...prev, m];
+                const next = prev.slice();
+                next[tIdx] = m;
+                return next;
+              });
+              setTimeout(scrollToBottom, 0);
+              return;
+            }
+          }
+
           setMessages((prev) => [...prev, m]);
           setTimeout(scrollToBottom, 0);
         },
@@ -110,10 +138,17 @@ export default function ChatArea({
       if (!sessionId || !text.trim() || streaming) return;
       const trimmed = text.trim();
 
-      // Optimistic user message — Realtime will deliver the persisted
-      // version with the real id; we dedupe via seenIds.
-      const optimisticUserId = `temp-user-${Date.now()}`;
+      // Optimistic user message. Track its temp id + content so that when
+      // Realtime delivers the persisted row we can swap it in place rather
+      // than rendering both the temp and the real row.
+      const optimisticUserId = `temp-user-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2, 8)}`;
       const nowIso = new Date().toISOString();
+      pendingUserOptimistic.current.push({
+        tempId: optimisticUserId,
+        content: trimmed,
+      });
       setMessages((prev) => [
         ...prev,
         {
@@ -176,6 +211,7 @@ export default function ChatArea({
             const json = (await r.json()) as { messages: Message[] };
             const list = json.messages ?? [];
             seenIds.current = new Set(list.map((m) => m.id));
+            pendingUserOptimistic.current = [];
             setMessages(list);
             setStreamingText("");
           }

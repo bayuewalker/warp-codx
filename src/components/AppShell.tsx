@@ -50,17 +50,30 @@ export default function AppShell() {
 
   const handleDelete = useCallback(
     async (id: string) => {
-      const res = await fetch(`/api/sessions/${id}`, { method: "DELETE" });
-      if (!res.ok) return;
+      // Snapshot for rollback if the request fails.
+      let prevSessions: Session[] = [];
+      let prevActiveId: string | null = null;
       setSessions((prev) => {
-        const next = prev.filter((s) => s.id !== id);
-        if (activeId === id) {
-          setActiveId(next[0]?.id ?? null);
-        }
-        return next;
+        prevSessions = prev;
+        return prev.filter((s) => s.id !== id);
       });
+      setActiveId((cur) => {
+        prevActiveId = cur;
+        if (cur !== id) return cur;
+        const next = prevSessions.filter((s) => s.id !== id);
+        return next[0]?.id ?? null;
+      });
+
+      try {
+        const res = await fetch(`/api/sessions/${id}`, { method: "DELETE" });
+        if (!res.ok) throw new Error(`Delete failed (${res.status})`);
+      } catch {
+        // Roll back on failure.
+        setSessions(prevSessions);
+        setActiveId(prevActiveId);
+      }
     },
-    [activeId],
+    [],
   );
 
   const handleSessionUpdated = useCallback((updated: Session) => {
@@ -78,7 +91,7 @@ export default function AppShell() {
   }, []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-warp-bg text-white">
+    <div className="flex warp-h-screen w-screen overflow-hidden bg-warp-bg text-white">
       {/* Mobile drawer overlay */}
       <div
         className={cn(

@@ -36,6 +36,15 @@ body {
   overflow: hidden;
 }
 
+/* App shell height — prefer dynamic viewport, fall back to small viewport
+   then to layout viewport for older browsers. dvh shrinks when the mobile
+   keyboard is open on browsers that support it. */
+.warp-h-screen {
+  height: 100vh;
+  height: 100svh;
+  height: 100dvh;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
 }
@@ -77,9 +86,16 @@ body {
   animation: warpPulse 1.6s ease-in-out infinite;
 }
 
-/* Mobile keyboard-aware bottom padding */
+/* Mobile keyboard-aware bottom padding.
+   --warp-kb-h is set by a VisualViewport listener in layout.tsx for browsers
+   without env(keyboard-inset-height) (most iOS Safari + Android Chrome).
+   env(safe-area-inset-bottom) handles the home-indicator on notched devices. */
 .kb-inset {
-  padding-bottom: env(keyboard-inset-height, 0px);
+  padding-bottom: max(
+    env(keyboard-inset-height, 0px),
+    var(--warp-kb-h, 0px),
+    env(safe-area-inset-bottom, 0px)
+  );
 }
 
 /* Caret + selection */

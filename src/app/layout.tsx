@@ -28,9 +28,30 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  // Inline VisualViewport listener for mobile browsers that don't expose
+  // env(keyboard-inset-height) (most iOS Safari and Android Chrome). Sets
+  // --warp-kb-h on <html> so .kb-inset can pad above the keyboard.
+  const kbScript = `
+    (function () {
+      if (typeof window === "undefined" || !window.visualViewport) return;
+      var vv = window.visualViewport;
+      var root = document.documentElement;
+      function update() {
+        var kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        root.style.setProperty("--warp-kb-h", kb + "px");
+      }
+      vv.addEventListener("resize", update);
+      vv.addEventListener("scroll", update);
+      update();
+    })();
+  `;
+
   return (
     <html lang="en" className={`${jetbrains.variable} dark`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        <script dangerouslySetInnerHTML={{ __html: kbScript }} />
+      </body>
     </html>
   );
 }
