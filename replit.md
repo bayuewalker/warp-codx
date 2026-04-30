@@ -16,16 +16,16 @@ Mobile-first command interface for orchestrating AI agents in WalkerMind OS.
 - `src/app/` — App Router routes and layout
 - `src/app/api/` — Route Handlers (sessions, messages, chat)
 - `src/components/` — Client components (sidebar, chat, input)
-- `src/components/templates/` — Directive composer (TemplateSheet, templates.config, template-sheet.css)
+- `src/components/SessionBar.tsx` — task-state strip mounted hidden (Phase 3 wires data)
 - `src/lib/` — Supabase clients, OpenAI helpers (`WARP_CMD_SYSTEM_PROMPT` v2), hooks, utils
 
 ## Persona
 
 WARP🔹CMD is the dispatcher persona. SYSTEM_PROMPT v2 lives in `src/lib/openai.ts` (exported as `WARP_CMD_SYSTEM_PROMPT`, imported by `src/app/api/chat/route.ts`). Routes work to FORGE (build/hotfix), SENTINEL (review), ECHO (report). Branches use `WARP/{feature-slug}` lowercase-hyphen format. Refuses to invent slugs from filler input — asks one clarifying question instead.
 
-## Directive templates
+## Composer (Phase 2.5 mockup v2)
 
-Bottom-sheet composer in `src/components/templates/`. Four templates (Build, Hotfix, Review, Report) emit bracketed markdown that drops into the chat input WITHOUT auto-sending. Mr. Walker reviews, edits if needed, then taps Send. Composing over a non-empty draft prompts a confirm: OK replaces, Cancel appends.
+Bordered card with textarea + toolbar (paperclip, grid, spacer, send) and a thin footer below (LED + model name only). Paperclip and grid are disabled placeholders. The send button morphs into a red square stop button while streaming (same DOM node, icon swap via `data-state`). The footer LED reflects model health (`online` green, `checking` amber pulse, `error` red). No diamond emoji is ever rendered inside the composer.
 
 ## Scripts
 

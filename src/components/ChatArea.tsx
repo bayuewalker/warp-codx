@@ -5,6 +5,7 @@ import { getBrowserSupabase } from "@/lib/supabase";
 import type { Message, Session } from "@/lib/types";
 import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
+import SessionBar from "./SessionBar";
 import { cn } from "@/lib/cn";
 
 type Props = {
@@ -314,6 +315,10 @@ export default function ChatArea({
         </div>
       </header>
 
+      {/* Session bar — hidden in Phase 2.5. Phase 3 will wire visible + props
+          from active task state. */}
+      <SessionBar visible={false} />
+
       {/* Messages */}
       <div
         ref={scrollRef}
@@ -359,13 +364,14 @@ export default function ChatArea({
       <div className="border-t border-hair bg-warp-bg kb-inset">
         <div className="max-w-3xl mx-auto w-full px-3 md:px-6 py-3">
           <ChatInput
-            disabled={!sessionId || streaming}
+            disabled={!sessionId}
+            isStreaming={streaming}
             placeholder={
               !sessionId
                 ? "Start a new directive to begin…"
                 : streaming
-                  ? "WARP🔹CMD is responding…"
-                  : "Send a directive"
+                  ? "WARP CMD is responding…"
+                  : "Describe your task or type / for commands"
             }
             onSend={handleSend}
           />

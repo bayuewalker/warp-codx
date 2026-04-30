@@ -1,0 +1,1214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>WARP CodX v2</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Refined palette — softer than v1, more polished */
+    --bg-base:        #0F1014;
+    --bg-elev-1:      #15171C;
+    --bg-elev-2:      #1B1E25;
+    --bg-elev-3:      #22262E;
+    --bg-input:       #1A1D24;
+
+    --border-faint:   rgba(255,255,255,0.06);
+    --border-soft:    rgba(255,255,255,0.10);
+    --border-medium:  rgba(255,255,255,0.16);
+
+    --text-primary:   #F0F1F3;
+    --text-secondary: #9CA0A8;
+    --text-tertiary:  #6B7079;
+    --text-muted:     #4A4F58;
+
+    --warp-blue:      #5BA4FF;
+    --warp-blue-dim:  #3B7BC4;
+    --warp-blue-bg:   rgba(91,164,255,0.12);
+    --warp-blue-soft: rgba(91,164,255,0.06);
+
+    --warp-teal:      #3DDFA8;
+    --warp-teal-bg:   rgba(61,223,168,0.10);
+
+    --warp-amber:     #F2B946;
+    --warp-amber-bg:  rgba(242,185,70,0.10);
+
+    --warp-red:       #FF6155;
+    --warp-red-bg:    rgba(255,97,85,0.10);
+
+    --warp-purple:    #B886FF;
+    --warp-purple-bg: rgba(184,134,255,0.10);
+
+    /* Diff colors */
+    --diff-add-bg:    rgba(61,223,168,0.10);
+    --diff-add-line:  rgba(61,223,168,0.25);
+    --diff-rem-bg:    rgba(255,97,85,0.10);
+    --diff-rem-line:  rgba(255,97,85,0.25);
+
+    --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+    --font-sans: 'Inter', system-ui, sans-serif;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+  }
+
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg-base);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-x: hidden;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .phone-frame {
+    max-width: 412px;
+    margin: 0 auto;
+    min-height: 100vh;
+    background: var(--bg-base);
+    position: relative;
+    box-shadow: 0 0 0 1px var(--border-soft);
+  }
+
+  /* ═══════════════════════════════════════════════
+     STATUS STRIP
+     ═══════════════════════════════════════════════ */
+  .status-strip {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    height: 26px;
+    background: var(--bg-elev-1);
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    gap: 14px;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    font-family: var(--font-mono);
+    border-bottom: 1px solid var(--border-faint);
+  }
+  .status-led {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--text-tertiary);
+    cursor: pointer;
+  }
+  .led-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .led-online {
+    background: var(--warp-teal);
+    box-shadow: 0 0 4px var(--warp-teal);
+  }
+  .led-busy {
+    background: var(--warp-amber);
+    box-shadow: 0 0 4px var(--warp-amber);
+  }
+  .led-idle { background: var(--text-muted); }
+  .led-pulse::after {
+    content: '';
+    position: absolute; inset: -1px;
+    border-radius: 50%;
+    background: inherit;
+    opacity: 0.5;
+    animation: pulse-ring 1.6s infinite;
+  }
+  @keyframes pulse-ring {
+    0% { transform: scale(1); opacity: 0.5; }
+    100% { transform: scale(3); opacity: 0; }
+  }
+  .status-spacer { flex: 1; }
+  .status-version { color: var(--text-muted); font-size: 9px; }
+
+  /* ═══════════════════════════════════════════════
+     APP HEADER
+     ═══════════════════════════════════════════════ */
+  .app-header {
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    background: var(--bg-base);
+    border-bottom: 1px solid var(--border-faint);
+  }
+  .header-icon-btn {
+    width: 32px; height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  .header-icon-btn:hover {
+    background: var(--bg-elev-2);
+    color: var(--text-primary);
+  }
+  .header-icon-btn svg { width: 18px; height: 18px; }
+
+  /* Brand wordmark — center */
+  .brand-wordmark {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--text-primary);
+  }
+  .brand-warp {
+    color: var(--warp-blue);
+  }
+
+  /* ═══════════════════════════════════════════════
+     SESSION TITLE BAR — directly below header
+     ═══════════════════════════════════════════════ */
+  .session-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px 7px;
+    border-bottom: 1px solid var(--border-faint);
+  }
+  .session-icon {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--warp-blue-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 1px solid var(--warp-blue-dim);
+  }
+  .session-icon svg {
+    width: 9px; height: 9px;
+    fill: var(--warp-blue);
+  }
+  .session-title-block {
+    flex: 1;
+    overflow: hidden;
+  }
+  .session-title {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .session-title .chev-down {
+    color: var(--text-tertiary);
+    font-size: 9px;
+  }
+  .session-progress {
+    height: 1px;
+    background: var(--bg-elev-2);
+    margin-top: 5px;
+    border-radius: 1px;
+    overflow: hidden;
+    position: relative;
+  }
+  .session-progress-bar {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 70%;
+    background: linear-gradient(90deg, var(--warp-blue-dim), var(--warp-blue));
+    border-radius: 1px;
+  }
+
+  /* ═══════════════════════════════════════════════
+     CHAT AREA
+     ═══════════════════════════════════════════════ */
+  .chat-area {
+    padding: 18px 16px 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  /* USER MESSAGE — clean, no bubble decoration */
+  .msg-user {
+    align-self: flex-start;
+    max-width: 100%;
+    width: 100%;
+  }
+  .msg-user-text {
+    font-size: 15px;
+    line-height: 1.55;
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  /* CMD ASSISTANT response */
+  .msg-cmd {
+    align-self: flex-start;
+    max-width: 100%;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .msg-cmd-prose {
+    font-size: 14.5px;
+    line-height: 1.6;
+    color: var(--text-primary);
+  }
+  .msg-cmd-prose p { margin: 0 0 8px; }
+
+  /* ═══════════════════════════════════════════════
+     COLLAPSIBLE ACTION CARD — file changes, commands, etc
+     Following Open Code's "Replaced text in..." pattern
+     ═══════════════════════════════════════════════ */
+  .action-card {
+    background: var(--bg-elev-1);
+    border: 1px solid var(--border-faint);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  .action-card-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .action-card-summary:hover { background: var(--bg-elev-2); }
+  .action-chev {
+    color: var(--text-tertiary);
+    font-size: 11px;
+    transition: transform 0.2s;
+    flex-shrink: 0;
+  }
+  .action-chev.open { transform: rotate(90deg); }
+  .action-summary-text {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .action-card-body {
+    padding: 0 12px 12px;
+  }
+  .action-detail-card {
+    background: var(--bg-elev-2);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+  .action-detail-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  .action-detail-icon {
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .action-detail-text {
+    flex: 1;
+    font-size: 13px;
+    color: var(--text-primary);
+    line-height: 1.45;
+    overflow: hidden;
+    word-break: break-all;
+  }
+  .action-detail-text .path-mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .action-output {
+    padding: 10px 12px;
+    background: var(--bg-base);
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border-faint);
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* ═══════════════════════════════════════════════
+     DIFF VIEWER — Open Code style
+     ═══════════════════════════════════════════════ */
+  .diff-block {
+    background: var(--bg-elev-1);
+    border: 1px solid var(--border-faint);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  .diff-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 12px;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-faint);
+  }
+  .diff-icon {
+    color: var(--text-tertiary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .diff-path {
+    flex: 1;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .diff-stats {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    flex-shrink: 0;
+    display: flex;
+    gap: 6px;
+  }
+  .diff-stats .add { color: var(--warp-teal); }
+  .diff-stats .rem { color: var(--warp-red); }
+  .diff-content {
+    background: var(--bg-base);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    overflow-x: auto;
+    padding: 8px 0;
+  }
+  .diff-line {
+    display: grid;
+    grid-template-columns: 36px 1fr;
+    align-items: center;
+    padding: 0;
+    min-height: 22px;
+  }
+  .diff-line .lnum {
+    text-align: right;
+    padding-right: 12px;
+    color: var(--text-muted);
+    font-size: 11px;
+    user-select: none;
+  }
+  .diff-line .lcontent {
+    padding-right: 14px;
+    color: var(--text-secondary);
+    white-space: pre;
+  }
+  .diff-line.add {
+    background: var(--diff-add-bg);
+    border-left: 2px solid var(--diff-add-line);
+  }
+  .diff-line.add .lnum { color: var(--warp-teal); }
+  .diff-line.add .lcontent { color: var(--text-primary); }
+  .diff-line.rem {
+    background: var(--diff-rem-bg);
+    border-left: 2px solid var(--diff-rem-line);
+  }
+  .diff-line.rem .lnum { color: var(--warp-red); }
+  .diff-line.rem .lcontent { color: var(--text-secondary); opacity: 0.8; }
+
+  /* Code syntax */
+  .syn-kw  { color: #FF7AB6; }
+  .syn-str { color: #65D484; }
+  .syn-com { color: #5C6473; font-style: italic; }
+  .syn-num { color: #C99FFF; }
+  .syn-var { color: #7DD3FC; }
+  .syn-fn  { color: #F2B946; }
+
+  /* ═══════════════════════════════════════════════
+     TODO BLOCK — Open Code "TODOS X/Y" style
+     ═══════════════════════════════════════════════ */
+  .todo-block {
+    background: var(--bg-elev-1);
+    border: 1px solid var(--border-faint);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+  .todo-block-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-faint);
+  }
+  .todo-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--text-secondary);
+    background: var(--bg-elev-3);
+    padding: 3px 8px;
+    border-radius: 4px;
+  }
+  .todo-progress-text {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .todo-progress-text .done { color: var(--warp-teal); }
+  .todo-list {
+    list-style: none;
+    margin: 0;
+    padding: 6px 0;
+  }
+  .todo-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .todo-item:hover { background: var(--bg-elev-2); }
+  .todo-item.active {
+    background: var(--bg-elev-2);
+  }
+  .todo-icon {
+    width: 22px; height: 22px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .todo-icon-empty {
+    width: 18px; height: 18px;
+    border: 1.5px solid var(--text-muted);
+    border-radius: 50%;
+  }
+  .todo-icon-active {
+    width: 18px; height: 18px;
+    background: var(--bg-elev-3);
+    border: 1.5px solid var(--warp-blue);
+    border-radius: 4px;
+    position: relative;
+  }
+  .todo-icon-active::after {
+    content: '';
+    position: absolute;
+    inset: 3px;
+    border: 1.5px solid var(--warp-blue);
+    border-bottom-color: transparent;
+    border-radius: 50%;
+    animation: spin 1.4s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .todo-icon-done {
+    width: 18px; height: 18px;
+    background: var(--warp-teal);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bg-base);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .todo-text-block {
+    flex: 1;
+    overflow: hidden;
+  }
+  .todo-text {
+    font-size: 13.5px;
+    color: var(--text-primary);
+    line-height: 1.4;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .todo-item:not(.done):not(.active) .todo-text {
+    color: var(--text-tertiary);
+  }
+  .todo-subtext {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 2px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .todo-arrow {
+    color: var(--text-tertiary);
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  /* ═══════════════════════════════════════════════
+     STATUS TABLE
+     ═══════════════════════════════════════════════ */
+  .status-table {
+    background: var(--bg-elev-1);
+    border: 1px solid var(--border-faint);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    font-size: 13px;
+  }
+  .status-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border-faint);
+  }
+  .status-row:last-child { border-bottom: none; }
+  .status-row.header {
+    background: var(--bg-elev-2);
+    font-weight: 500;
+    color: var(--text-secondary);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 8px 14px;
+  }
+  .status-cell-name { color: var(--text-primary); }
+  .status-cell-value {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .status-ok {
+    width: 18px; height: 18px;
+    background: var(--warp-teal);
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bg-base);
+    font-size: 12px;
+    font-weight: 700;
+  }
+
+  /* ═══════════════════════════════════════════════
+     INLINE PILLS — agent + branch + status
+     ═══════════════════════════════════════════════ */
+  .agent-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    border-radius: 4px;
+    border: 1px solid;
+    line-height: 1.5;
+  }
+  .agent-pill.cmd      { background: var(--warp-blue-bg);   color: var(--warp-blue);   border-color: rgba(91,164,255,0.3); }
+  .agent-pill.forge    { background: var(--warp-teal-bg);   color: var(--warp-teal);   border-color: rgba(61,223,168,0.3); }
+  .agent-pill.sentinel { background: var(--warp-amber-bg);  color: var(--warp-amber);  border-color: rgba(242,185,70,0.3); }
+  .agent-pill.echo     { background: rgba(255,255,255,0.04); color: var(--text-secondary); border-color: var(--border-soft); }
+
+  .branch-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 1px 7px;
+    background: var(--warp-blue-soft);
+    color: var(--warp-blue);
+    border: 1px solid rgba(91,164,255,0.20);
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    line-height: 1.5;
+  }
+  .branch-badge svg { width: 11px; height: 11px; }
+
+  /* ═══════════════════════════════════════════════
+     INPUT ZONE — Open Code style
+     ═══════════════════════════════════════════════ */
+  .input-zone-wrap {
+    position: fixed;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 412px;
+    width: 100%;
+    background: linear-gradient(to top, var(--bg-base) 65%, transparent);
+    padding: 14px 12px 14px;
+    z-index: 40;
+  }
+  .input-zone {
+    background: var(--bg-input);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-lg);
+    padding: 14px 14px 10px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .input-zone:focus-within {
+    border-color: var(--border-medium);
+  }
+  .input-field {
+    width: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    resize: none;
+    min-height: 24px;
+    max-height: 144px;
+    line-height: 1.5;
+  }
+  .input-field::placeholder {
+    color: var(--text-muted);
+  }
+  .input-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 8px;
+  }
+  .input-tool-btn {
+    width: 26px; height: 26px;
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .input-tool-btn:hover {
+    background: var(--bg-elev-2);
+    color: var(--text-primary);
+  }
+  .input-tool-btn svg { width: 14px; height: 14px; }
+
+  .input-toolbar-spacer { flex: 1; }
+
+  /* Send button morphs into stop while streaming.
+     Same DOM node — icon swap via [data-state] attr. */
+  .input-send-btn {
+    width: 28px; height: 28px;
+    background: var(--text-primary);
+    color: var(--bg-base);
+    border: none;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease, transform 0.15s ease;
+    position: relative;
+  }
+  .input-send-btn:hover {
+    transform: translateY(-1px);
+  }
+  .input-send-btn svg { width: 14px; height: 14px; }
+  .input-send-btn .send-icon { display: block; }
+  .input-send-btn .stop-icon { display: none; }
+
+  /* Streaming state: red square stop icon, dark bg */
+  .input-send-btn[data-state="streaming"] {
+    background: var(--warp-red);
+    color: white;
+  }
+  .input-send-btn[data-state="streaming"] .send-icon { display: none; }
+  .input-send-btn[data-state="streaming"] .stop-icon { display: block; }
+  .input-send-btn[data-state="streaming"] svg { width: 12px; height: 12px; }
+
+  /* Disabled (empty input, idle) */
+  .input-send-btn:disabled {
+    opacity: 0.40;
+    cursor: not-allowed;
+  }
+  .input-send-btn:disabled:hover { transform: none; }
+
+  /* Footer — LED + model only. No state text, no stop button. */
+  .input-footer {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 4px 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+  }
+  .footer-led {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--text-tertiary);
+    transition: background 220ms ease, box-shadow 220ms ease;
+  }
+  .footer-led[data-health="online"] {
+    background: #10b981;
+    box-shadow: 0 0 4px rgba(16,185,129,0.55);
+  }
+  .footer-led[data-health="checking"] {
+    background: #fbbf24;
+    box-shadow: 0 0 4px rgba(251,191,36,0.55);
+    animation: footer-led-pulse 1.4s ease-in-out infinite;
+  }
+  .footer-led[data-health="error"] {
+    background: var(--warp-red);
+    box-shadow: 0 0 4px rgba(239,68,68,0.55);
+  }
+  .footer-led[data-health="unknown"] {
+    background: var(--text-tertiary);
+  }
+  @keyframes footer-led-pulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.45; }
+  }
+  .footer-model {
+    color: var(--text-secondary);
+    font-weight: 500;
+  }
+
+  /* ═══════════════════════════════════════════════
+     SIDEBAR DRAWER — Cursor style
+     ═══════════════════════════════════════════════ */
+  .drawer {
+    position: fixed;
+    top: 0; left: 0;
+    width: 320px;
+    max-width: 88vw;
+    height: 100vh;
+    background: var(--bg-base);
+    border-right: 1px solid var(--border-soft);
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .drawer.open { transform: translateX(0); }
+  .drawer-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(3px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.22s;
+    z-index: 99;
+  }
+  .drawer-overlay.show { opacity: 1; pointer-events: auto; }
+
+  .drawer-content { padding: 14px 12px; flex: 1; overflow-y: auto; }
+
+  .new-env-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-bottom: 10px;
+  }
+  .new-env-btn:hover {
+    background: var(--bg-elev-2);
+    border-color: var(--border-medium);
+  }
+  .new-env-btn svg { width: 18px; height: 18px; color: var(--text-secondary); }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 14px;
+    transition: background 0.1s;
+  }
+  .nav-item:hover { background: var(--bg-elev-2); }
+  .nav-item svg { width: 18px; height: 18px; color: var(--text-secondary); flex-shrink: 0; }
+
+  .drawer-section {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 14px 14px 6px;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    font-family: var(--font-mono);
+    cursor: pointer;
+  }
+  .drawer-section svg { width: 14px; height: 14px; }
+
+  .session-row {
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .session-row:hover { background: var(--bg-elev-2); }
+  .session-row.active {
+    background: var(--bg-elev-2);
+  }
+  .session-row.active .session-status-dot {
+    background: var(--warp-blue);
+    box-shadow: 0 0 4px var(--warp-blue);
+  }
+  .session-status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--text-muted);
+    flex-shrink: 0;
+  }
+  .session-row-content { flex: 1; overflow: hidden; }
+  .session-row-title {
+    font-size: 14px;
+    color: var(--text-primary);
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .session-row-meta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+  .session-badge {
+    background: var(--warp-purple-bg);
+    color: var(--warp-purple);
+    border-radius: 12px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+  }
+
+  .markdown-strong { color: var(--text-primary); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+
+  <!-- STATUS STRIP -->
+  <div class="status-strip">
+    <div class="status-led"><span class="led-dot led-online"></span>NET</div>
+    <div class="status-led"><span class="led-dot led-online"></span>RT</div>
+    <div class="status-led"><span class="led-dot led-busy led-pulse"></span>RUN</div>
+    <div class="status-led"><span class="led-dot led-idle"></span>AGT</div>
+    <div class="status-spacer"></div>
+    <span class="status-version">W.A.R.P · v0.1</span>
+  </div>
+
+  <!-- APP HEADER — clean wordmark + nav -->
+  <div class="app-header">
+    <div class="header-icon-btn" onclick="toggleDrawer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </div>
+
+    <div class="brand-wordmark">
+      <span class="brand-warp">WARP</span> CodX
+    </div>
+
+    <div class="header-icon-btn" title="New directive">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </div>
+  </div>
+
+  <!-- SESSION TITLE BAR -->
+  <div class="session-bar">
+    <div class="session-icon">
+      <svg viewBox="0 0 24 24"><polygon points="12,2 22,8.5 22,15.5 12,22 2,15.5 2,8.5"/></svg>
+    </div>
+    <div class="session-title-block">
+      <div class="session-title">
+        Build Dashboard with PR Panel
+        <span class="chev-down">▼</span>
+      </div>
+      <div class="session-progress"><div class="session-progress-bar"></div></div>
+    </div>
+  </div>
+
+  <!-- CHAT AREA -->
+  <div class="chat-area">
+
+    <!-- USER MESSAGE — clean, no decoration -->
+    <div class="msg-user">
+      <div class="msg-user-text">Build dashboard dengan real-time PR panel dan metrics. Branch slug: dashboard-ui.</div>
+    </div>
+
+    <!-- CMD ASSISTANT response -->
+    <div class="msg-cmd">
+
+      <div class="msg-cmd-prose">
+        <p>Routing ke <span class="agent-pill forge">WARP•FORGE</span> di <span class="branch-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><path d="M6 9v3a3 3 0 0 0 3 3h6"/></svg>WARP/dashboard-ui</span>. Pre-flight checks dulu sebelum dispatch.</p>
+      </div>
+
+      <!-- TODO BLOCK — Open Code style -->
+      <div class="todo-block">
+        <div class="todo-block-header">
+          <span class="todo-tag">TODOS</span>
+          <span class="todo-progress-text"><span class="done">3</span>/4</span>
+        </div>
+        <ul class="todo-list">
+          <li class="todo-item done">
+            <div class="todo-icon"><div class="todo-icon-done">✓</div></div>
+            <div class="todo-text-block">
+              <div class="todo-text">Validate branch slug format</div>
+              <div class="todo-subtext">passed: WARP/dashboard-ui</div>
+            </div>
+            <span class="todo-arrow">›</span>
+          </li>
+          <li class="todo-item done">
+            <div class="todo-icon"><div class="todo-icon-done">✓</div></div>
+            <div class="todo-text-block">
+              <div class="todo-text">Check no conflicting open PRs</div>
+              <div class="todo-subtext">0 conflicts found</div>
+            </div>
+            <span class="todo-arrow">›</span>
+          </li>
+          <li class="todo-item done">
+            <div class="todo-icon"><div class="todo-icon-done">✓</div></div>
+            <div class="todo-text-block">
+              <div class="todo-text">Verify FORGE agent operational</div>
+              <div class="todo-subtext">last heartbeat: 3s ago</div>
+            </div>
+            <span class="todo-arrow">›</span>
+          </li>
+          <li class="todo-item active">
+            <div class="todo-icon"><div class="todo-icon-active"></div></div>
+            <div class="todo-text-block">
+              <div class="todo-text">Awaiting dispatch confirmation</div>
+              <div class="todo-subtext">tap DISPATCH below to proceed</div>
+            </div>
+            <span class="todo-arrow">›</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- COLLAPSIBLE ACTION CARD — file change preview -->
+      <div class="action-card">
+        <div class="action-card-summary" onclick="this.querySelector('.action-chev').classList.toggle('open'); this.parentElement.querySelector('.action-card-body').style.display = this.parentElement.querySelector('.action-card-body').style.display === 'none' ? 'block' : 'none'">
+          <span class="action-chev open">›</span>
+          <span class="action-summary-text">Will create <span class="path-mono" style="color:var(--text-secondary)">src/components/pr/PRPanel.tsx</span></span>
+        </div>
+        <div class="action-card-body">
+          <div class="action-detail-card">
+            <div class="action-detail-header">
+              <span class="action-detail-icon">‹›</span>
+              <span class="action-detail-text">New file at <span class="path-mono">src/components/pr/PRPanel.tsx</span></span>
+            </div>
+            <div class="action-output">{"action":"create","scope":"new file","est_lines":120}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DIFF VIEWER — Open Code style -->
+      <div class="diff-block">
+        <div class="diff-header">
+          <span class="diff-icon">‹›</span>
+          <span class="diff-path">src/app/api/github/route.ts</span>
+          <span class="diff-stats"><span class="add">+8</span><span class="rem">-2</span></span>
+        </div>
+        <div class="diff-content">
+          <div class="diff-line"><span class="lnum">12</span><span class="lcontent">  <span class="syn-kw">const</span> octokit = <span class="syn-kw">new</span> <span class="syn-fn">Octokit</span>({ auth: <span class="syn-var">token</span> })</span></div>
+          <div class="diff-line"><span class="lnum">13</span><span class="lcontent"></span></div>
+          <div class="diff-line rem"><span class="lnum">-</span><span class="lcontent">  <span class="syn-kw">const</span> { <span class="syn-var">data</span> } = <span class="syn-kw">await</span> octokit.pulls.<span class="syn-fn">list</span>({ owner, repo })</span></div>
+          <div class="diff-line add"><span class="lnum">+</span><span class="lcontent">  <span class="syn-kw">const</span> { <span class="syn-var">data</span> } = <span class="syn-kw">await</span> octokit.pulls.<span class="syn-fn">list</span>({</span></div>
+          <div class="diff-line add"><span class="lnum">+</span><span class="lcontent">    owner, repo, <span class="syn-var">state</span>: <span class="syn-str">'open'</span>,</span></div>
+          <div class="diff-line add"><span class="lnum">+</span><span class="lcontent">    <span class="syn-var">sort</span>: <span class="syn-str">'updated'</span>, <span class="syn-var">per_page</span>: <span class="syn-num">30</span></span></div>
+          <div class="diff-line add"><span class="lnum">+</span><span class="lcontent">  })</span></div>
+          <div class="diff-line"><span class="lnum">15</span><span class="lcontent"></span></div>
+          <div class="diff-line"><span class="lnum">16</span><span class="lcontent">  <span class="syn-kw">return</span> Response.<span class="syn-fn">json</span>(data)</span></div>
+        </div>
+      </div>
+
+      <!-- STATUS TABLE -->
+      <div class="msg-cmd-prose">
+        <p>Environment ready for dispatch:</p>
+      </div>
+
+      <div class="status-table">
+        <div class="status-row header">
+          <span>Component</span>
+          <span>Status</span>
+        </div>
+        <div class="status-row">
+          <span class="status-cell-name">Branch <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-tertiary)">WARP/dashboard-ui</span></span>
+          <span class="status-ok">✓</span>
+        </div>
+        <div class="status-row">
+          <span class="status-cell-name">FORGE agent</span>
+          <span class="status-ok">✓</span>
+        </div>
+        <div class="status-row">
+          <span class="status-cell-name">GitHub API connection</span>
+          <span class="status-ok">✓</span>
+        </div>
+        <div class="status-row">
+          <span class="status-cell-name">Test suite passing</span>
+          <span class="status-ok">✓</span>
+        </div>
+      </div>
+
+      <div class="msg-cmd-prose">
+        <p>All checks passed. Ready when you are — tap <strong class="markdown-strong">Dispatch</strong> to launch <span class="agent-pill forge">WARP•FORGE</span>.</p>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- INPUT ZONE — Open Code style -->
+  <div class="input-zone-wrap">
+    <div class="input-zone">
+      <textarea class="input-field" rows="1" placeholder="Describe your task or type / for commands"></textarea>
+
+      <div class="input-toolbar">
+        <button class="input-tool-btn" title="Attach">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </button>
+        <button class="input-tool-btn" title="Templates">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </button>
+
+        <span class="input-toolbar-spacer"></span>
+
+        <!-- Send/Stop button — same DOM node, icon swaps based on state. Demo: idle. Streaming variant shown via .is-streaming class. -->
+        <button class="input-send-btn" title="Send" data-state="idle" onclick="toggleSendState(this)" aria-label="Send">
+          <svg class="send-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+          <svg class="stop-icon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="input-footer">
+      <span class="footer-led" data-health="online" title="anthropic/claude-sonnet-4.6 — connected"></span>
+      <span class="footer-model">sonnet-4.6</span>
+    </div>
+  </div>
+
+  <!-- DRAWER — Cursor style sidebar -->
+  <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+  <div class="drawer" id="drawer">
+    <div class="drawer-content">
+
+      <button class="new-env-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Directive
+      </button>
+
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Home
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+        Sessions
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        Pull Requests
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Job History
+      </div>
+
+      <div class="drawer-section">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+        bayuewalker/walkermind-os
+      </div>
+
+      <div class="session-row active">
+        <span class="session-status-dot"></span>
+        <div class="session-row-content">
+          <div class="session-row-title">Build Dashboard with PR Panel</div>
+          <div class="session-row-meta">WARP/dashboard-ui · forge · 4 todos</div>
+        </div>
+        <span class="session-badge">3</span>
+      </div>
+
+      <div class="session-row">
+        <span class="session-status-dot"></span>
+        <div class="session-row-content">
+          <div class="session-row-title">Hotfix: PR merge order race</div>
+          <div class="session-row-meta">WARP/fix-pr-loop · sentinel · 2j</div>
+        </div>
+      </div>
+
+      <div class="session-row">
+        <span class="session-status-dot"></span>
+        <div class="session-row-content">
+          <div class="session-row-title">Q1 Sprint Report Generation</div>
+          <div class="session-row-meta">echo · kemarin</div>
+        </div>
+      </div>
+
+      <div class="session-row">
+        <span class="session-status-dot"></span>
+        <div class="session-row-content">
+          <div class="session-row-title">Rebrand audit: legacy NWAP refs</div>
+          <div class="session-row-meta">WARP/cleanup-legacy-refs · sentinel · 3h</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+function toggleDrawer() {
+  document.getElementById('drawer').classList.toggle('open');
+  document.getElementById('drawerOverlay').classList.toggle('show');
+}
+function toggleSendState(btn) {
+  // Demo only: cycle idle ↔ streaming. Real impl: wired to chat hook isStreaming.
+  const next = btn.dataset.state === 'streaming' ? 'idle' : 'streaming';
+  btn.dataset.state = next;
+  btn.title = next === 'streaming' ? 'Stop' : 'Send';
+  btn.setAttribute('aria-label', next === 'streaming' ? 'Stop generation' : 'Send');
+}
+const ta = document.querySelector('.input-field');
+ta.addEventListener('input', () => {
+  ta.style.height = 'auto';
+  ta.style.height = Math.min(ta.scrollHeight, 144) + 'px';
+});
+</script>
+
+</body>
+</html>

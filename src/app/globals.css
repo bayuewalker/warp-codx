@@ -144,44 +144,236 @@ body {
 .brand-accent { color: #3b82f6; }
 
 /* ─────────────────────────────────────────────────────────────────
-   Input area — placeholder color and send-pill states.
-   The send button is now a 32×32 white icon-only square (Change 3).
+   Composer (Phase 2.5 mockup v2)
+   - .input-zone-wrap : outer container
+   - .input-zone      : bordered card holding textarea + toolbar
+   - .input-toolbar   : paperclip + grid + spacer + send/stop
+   - .input-footer    : LED + model name (no state text, no stop button)
    ───────────────────────────────────────────────────────────────── */
-.warp-input-textarea::placeholder {
+.input-zone {
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  transition: border-color 120ms ease-out;
+}
+.input-zone[data-focused="true"] {
+  border-color: rgba(255, 255, 255, 0.20);
+}
+
+.input-field {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  resize: none;
+  background: transparent;
+  border: 0;
+  outline: none;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.95);
+  max-height: 100px; /* 5 rows × 20px */
+  padding: 0;
+  margin: 0;
+}
+.input-field:disabled {
+  opacity: 0.5;
+}
+.input-field::placeholder {
   color: rgba(255, 255, 255, 0.35);
   font-family: inherit;
   opacity: 1;
 }
 
-.input-send {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+/* Toolbar — paperclip + grid placeholders + spacer + send/stop */
+.input-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.input-tool-btn {
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.40);
+  cursor: not-allowed;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+}
+.input-tool-btn:not(:disabled):hover {
+  opacity: 1;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+}
+
+.input-toolbar-spacer {
+  flex: 1;
+}
+
+/* Send / stop morph — same DOM node, icon swaps based on state. */
+.input-send-btn {
+  width: 28px;
+  height: 28px;
   background: rgba(255, 255, 255, 0.95);
   color: #0a0a0a;
   border: none;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 120ms ease, opacity 120ms ease,
-    transform 120ms ease;
   flex-shrink: 0;
+  transition: background 180ms ease, color 180ms ease, transform 120ms ease;
 }
-.input-send:hover {
+.input-send-btn:hover {
   background: #ffffff;
   transform: translateY(-1px);
 }
-.input-send:active { transform: translateY(0); }
-.input-send:disabled {
+.input-send-btn[data-state="streaming"] {
+  background: #ef4444;
+  color: #ffffff;
+}
+.input-send-btn[data-state="streaming"]:hover {
+  background: #dc2626;
+}
+.input-send-btn:disabled {
   background: rgba(255, 255, 255, 0.10);
   color: rgba(255, 255, 255, 0.35);
   cursor: not-allowed;
   transform: none;
 }
-.input-send:focus-visible {
+/* Streaming + disabled (no abort handler available): keep red but dimmed. */
+.input-send-btn[data-state="streaming"]:disabled {
+  background: rgba(239, 68, 68, 0.30);
+  color: rgba(255, 255, 255, 0.50);
+}
+.input-send-btn:focus-visible {
   outline: 2px solid rgba(55, 138, 221, 0.55);
   outline-offset: 2px;
+}
+
+/* Footer — minimal: LED + model only */
+.input-footer {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 4px 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+
+.footer-led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.30);
+  transition: background 220ms ease, box-shadow 220ms ease;
+}
+.footer-led[data-health="online"] {
+  background: #10b981;
+  box-shadow: 0 0 4px rgba(16, 185, 129, 0.55);
+}
+.footer-led[data-health="checking"] {
+  background: #fbbf24;
+  box-shadow: 0 0 4px rgba(251, 191, 36, 0.55);
+  animation: footer-led-pulse 1.4s ease-in-out infinite;
+}
+.footer-led[data-health="error"] {
+  background: #ef4444;
+  box-shadow: 0 0 4px rgba(239, 68, 68, 0.55);
+}
+.footer-led[data-health="unknown"] {
+  background: rgba(255, 255, 255, 0.30);
+}
+@keyframes footer-led-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+.footer-model {
+  color: rgba(255, 255, 255, 0.65);
+  font-weight: 500;
+}
+
+/* ─────────────────────────────────────────────────────────────────
+   Session bar (Phase 2.5 shell — Phase 3 wires data)
+   ───────────────────────────────────────────────────────────────── */
+.session-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 7px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.session-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(59, 130, 246, 0.10);
+  border: 1px solid rgba(59, 130, 246, 0.30);
+  color: #3b82f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.session-icon svg {
+  width: 9px;
+  height: 9px;
+}
+
+.session-title-block {
+  flex: 1;
+  overflow: hidden;
+}
+
+.session-title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.session-chev {
+  color: rgba(255, 255, 255, 0.40);
+  flex-shrink: 0;
+}
+
+.session-progress {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin-top: 5px;
+  border-radius: 1px;
+  overflow: hidden;
+  position: relative;
+}
+
+.session-progress-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.5), #3b82f6);
+  border-radius: 1px;
+  transition: width 240ms ease;
 }
 
 html,
