@@ -9,9 +9,9 @@ type Props = {
   onSend: (text: string) => void;
 };
 
-// 14px font with 1.5 line-height ≈ 21px per visual line. Allow up to 5 lines
+// 13px font with 1.5 line-height ≈ 20px per visual line. Allow up to 5 lines
 // before the textarea starts scrolling internally.
-const LINE_HEIGHT_PX = 21;
+const LINE_HEIGHT_PX = 20;
 const MAX_ROWS = 5;
 const VERTICAL_PADDING_PX = 0; // textarea has no extra padding; container pads.
 
@@ -80,7 +80,7 @@ export default function ChatInput({
         aria-label="Directive input"
         className="warp-sans warp-input-textarea block w-full min-w-0 resize-none bg-transparent border-0 outline-none disabled:opacity-50"
         style={{
-          fontSize: 14,
+          fontSize: 13,
           lineHeight: 1.5,
           color: "rgba(255,255,255,0.95)",
           maxHeight,
@@ -113,29 +113,26 @@ export default function ChatInput({
           type="button"
           onClick={send}
           disabled={!canSend}
-          aria-label="Send"
+          aria-label="Send directive"
           className="input-send"
-          style={{
-            fontFamily: "inherit",
-            fontSize: 12,
-            color: canSend ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.7)",
-            padding: "4px 10px",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 6,
-            background: "transparent",
-            opacity: canSend ? 1 : 0.4,
-            cursor: canSend ? "pointer" : "not-allowed",
-            transition:
-              "border-color 120ms ease-out, color 120ms ease-out, opacity 120ms ease-out",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            lineHeight: 1,
-            whiteSpace: "nowrap",
-          }}
         >
-          <span>Send</span>
-          <span aria-hidden>↵</span>
+          {/* Inline ArrowUp — same visual as lucide-react ArrowUp at
+              size=16, strokeWidth=2. Inline SVG keeps Phase 1.5d's
+              "no new packages beyond geist" constraint. */}
+          <svg
+            width={16}
+            height={16}
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="12" y1="19" x2="12" y2="5" />
+            <polyline points="5 12 12 5 19 12" />
+          </svg>
         </button>
       </div>
     </div>

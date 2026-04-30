@@ -14,6 +14,14 @@
   --warp-blue: #378add;
   --warp-teal: #1d9e75;
   --warp-amber: #ba7517;
+
+  /* Geist family aliased into the existing --font-sans / --font-mono tokens
+     so that every component CSS rule referencing var(--font-sans) or
+     var(--font-mono) keeps working without rewrites. */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui,
+    -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular,
+    Menlo, Monaco, Consolas, monospace;
 }
 
 html,
@@ -22,32 +30,154 @@ body {
   color: var(--warp-text);
   /* App default stays mono so chat bubbles, sidebar, and directive blocks
      keep their existing look without needing per-surface overrides. The
-     header wordmark and the input area opt in to sans via .warp-sans. */
-  font-family: var(--font-mono), ui-monospace, SFMono-Regular,
-    Menlo, Monaco, Consolas, monospace;
+     header (nav strip wordmark / status strip) and the input area opt in
+     to sans via .warp-sans. */
+  font-family: var(--font-mono);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
 /* Sans-serif opt-in for chrome (input area, meta row, send button). */
 .warp-sans {
-  font-family: var(--font-sans), Inter, ui-sans-serif, system-ui,
-    -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans);
 }
 
-/* Input area placeholder + send-pill hover (cannot be expressed inline). */
+/* ─────────────────────────────────────────────────────────────────
+   App header (mobile) — 2 row "instrument" chrome.
+   Row 1: status strip with LED group + engine meta.
+   Row 2: nav strip with menu / wordmark / new-directive.
+   Total height: 26 + 40 + ~1 = ~67px.
+   ───────────────────────────────────────────────────────────────── */
+.app-header {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.status-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  height: 26px;
+}
+
+.led-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.led {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* LED states — hardcoded for Phase 1.5d, real wiring in Phase 4.
+   The .led-run--active / .led-run--idle modifier is toggled from
+   ChatArea based on whether a session is active. */
+.led-net  { background: #34d399; box-shadow: 0 0 4px rgba(52, 211, 153, 0.6); }
+.led-rt   { background: #34d399; box-shadow: 0 0 4px rgba(52, 211, 153, 0.6); }
+.led-run--active { background: #fbbf24; box-shadow: 0 0 4px rgba(251, 191, 36, 0.6); }
+.led-run--idle   { background: rgba(255, 255, 255, 0.20); box-shadow: none; }
+.led-agt  { background: rgba(255, 255, 255, 0.20); box-shadow: none; }
+
+.led-label {
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 500;
+  margin-right: 4px;
+}
+.led-label:last-of-type { margin-right: 0; }
+
+.engine-meta {
+  color: rgba(255, 255, 255, 0.40);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.nav-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  height: 40px;
+}
+
+.nav-icon-btn {
+  background: transparent;
+  border: none;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 120ms ease, color 120ms ease;
+}
+.nav-icon-btn:hover {
+  color: rgba(255, 255, 255, 1);
+  background: rgba(255, 255, 255, 0.05);
+}
+.nav-icon-btn:focus-visible {
+  outline: 2px solid rgba(55, 138, 221, 0.55);
+  outline-offset: 2px;
+}
+
+.brand-wordmark {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: rgba(255, 255, 255, 0.95);
+}
+.brand-accent { color: #3b82f6; }
+
+/* ─────────────────────────────────────────────────────────────────
+   Input area — placeholder color and send-pill states.
+   The send button is now a 32×32 white icon-only square (Change 3).
+   ───────────────────────────────────────────────────────────────── */
 .warp-input-textarea::placeholder {
   color: rgba(255, 255, 255, 0.35);
   font-family: inherit;
   opacity: 1;
 }
-.input-send:not(:disabled):hover {
-  border-color: rgba(255, 255, 255, 0.25) !important;
-  color: rgba(255, 255, 255, 1) !important;
+
+.input-send {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  color: #0a0a0a;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 120ms ease, opacity 120ms ease,
+    transform 120ms ease;
+  flex-shrink: 0;
 }
-.input-send:not(:disabled):active {
-  border-color: rgba(255, 255, 255, 0.3) !important;
-  color: rgba(255, 255, 255, 1) !important;
+.input-send:hover {
+  background: #ffffff;
+  transform: translateY(-1px);
+}
+.input-send:active { transform: translateY(0); }
+.input-send:disabled {
+  background: rgba(255, 255, 255, 0.10);
+  color: rgba(255, 255, 255, 0.35);
+  cursor: not-allowed;
+  transform: none;
 }
 .input-send:focus-visible {
   outline: 2px solid rgba(55, 138, 221, 0.55);

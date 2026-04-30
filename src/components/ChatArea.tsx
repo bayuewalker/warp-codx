@@ -236,75 +236,82 @@ export default function ChatArea({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Top bar (mobile) — slim "instrument" chrome.
-          Vertical padding 12px puts the header in the 44–52px range; the
-          divider is softer than the default hairline (0.06 vs 0.08) so it
-          recedes into the surface. */}
-      <header
-        className="md:hidden flex items-center justify-between px-3 bg-warp-bg"
-        style={{
-          paddingTop: 12,
-          paddingBottom: 12,
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
-        }}
-      >
-        <button
-          type="button"
-          aria-label="Open sessions"
-          onClick={onOpenDrawer}
-          className="w-9 h-9 -ml-1 rounded-md text-white/70 hover:text-white active:text-white hover:bg-white/[0.06] flex items-center justify-center"
-        >
-          <svg
-            width={20}
-            height={20}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <line x1="4" y1="7" x2="20" y2="7" />
-            <line x1="4" y1="12" x2="20" y2="12" />
-            <line x1="4" y1="17" x2="20" y2="17" />
-          </svg>
-        </button>
-        <div
-          className="flex items-baseline gap-1.5"
-          style={{
-            fontFamily:
-              "var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace",
-            fontSize: 15,
-            fontWeight: 500,
-            letterSpacing: "0.02em",
-            lineHeight: 1,
-          }}
-        >
-          <span className="text-warp-blue">WARP</span>
-          <span className="text-white/85">CodX</span>
+      {/* App header (mobile) — 2-row instrument chrome.
+          Row 1 (status-strip): runtime LEDs + engine meta.
+          Row 2 (nav-strip): menu / wordmark / new-directive.
+          LED wiring: NET + RT are green (network is implied alive while we
+          render); RUN is amber when a session is active, dim otherwise;
+          AGT stays dim (real wiring in Phase 4). */}
+      <header className="app-header md:hidden">
+        <div className="status-strip">
+          <div className="led-group">
+            <span className="led led-net" aria-label="Network online" />
+            <span className="led-label">NET</span>
+            <span className="led led-rt" aria-label="Realtime connected" />
+            <span className="led-label">RT</span>
+            <span
+              className={cn(
+                "led",
+                sessionId ? "led-run--active" : "led-run--idle",
+              )}
+              aria-label={
+                sessionId ? "Run state active" : "Run state idle"
+              }
+            />
+            <span className="led-label">RUN</span>
+            <span className="led led-agt" aria-label="Agent idle" />
+            <span className="led-label">AGT</span>
+          </div>
+          <span className="engine-meta">W.A.R.P · v0.1</span>
         </div>
-        <button
-          type="button"
-          aria-label="New directive"
-          onClick={onNewDirective}
-          className="w-9 h-9 -mr-1 rounded-md text-white/70 hover:text-white active:text-white hover:bg-white/[0.06] flex items-center justify-center"
-        >
-          <svg
-            width={20}
-            height={20}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
+        <div className="nav-strip">
+          <button
+            type="button"
+            className="nav-icon-btn"
+            onClick={onOpenDrawer}
+            aria-label="Open sessions"
           >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
+            <svg
+              width={18}
+              height={18}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="4" y1="7" x2="20" y2="7" />
+              <line x1="4" y1="12" x2="20" y2="12" />
+              <line x1="4" y1="17" x2="20" y2="17" />
+            </svg>
+          </button>
+          <span className="brand-wordmark">
+            <span className="brand-accent">WARP</span> CodX
+          </span>
+          <button
+            type="button"
+            className="nav-icon-btn"
+            onClick={onNewDirective}
+            aria-label="New directive"
+          >
+            <svg
+              width={18}
+              height={18}
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+        </div>
       </header>
 
       {/* Messages */}

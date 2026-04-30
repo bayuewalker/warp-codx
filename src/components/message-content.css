@@ -1,6 +1,6 @@
 /* Base prose */
 .message-content {
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1.55;
   word-wrap: break-word;
   overflow-wrap: anywhere;
@@ -53,7 +53,7 @@
   border-collapse: collapse;
   margin: 0.6em 0;
   font-size: 0.92em;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 .message-content th,
 .message-content td {
@@ -68,7 +68,7 @@
 
 /* Inline code */
 .md-inline-code {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.9em;
   background: rgba(255,255,255,0.08);
   padding: 0.1em 0.4em;
@@ -84,7 +84,7 @@
   padding: 0.7em 0.9em;
   margin: 0.6em 0;
   overflow-x: auto;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
   font-size: 0.85em;
   line-height: 1.5;
 }
@@ -102,7 +102,7 @@
   border-radius: 6px;
   padding: 1.6em 0.9em 0.7em;
   margin: 0.6em 0;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: var(--font-mono);
 }
 
 .directive-label {
