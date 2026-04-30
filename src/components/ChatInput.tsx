@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
-import { cn } from "@/lib/cn";
 
 type Props = {
   disabled?: boolean;
@@ -9,23 +8,27 @@ type Props = {
   onSend: (text: string) => void;
 };
 
-const LINE_HEIGHT_PX = 20; // matches text-[13px] / leading-relaxed roughly
-const MAX_ROWS = 6;
+// 14px font with 1.5 line-height ≈ 21px per visual line. Allow up to 5 lines
+// before the textarea starts scrolling internally.
+const LINE_HEIGHT_PX = 21;
+const MAX_ROWS = 5;
+const VERTICAL_PADDING_PX = 0; // textarea has no extra padding; container pads.
 
 export default function ChatInput({
   disabled = false,
-  placeholder = "Type a message…",
+  placeholder = "Send a directive",
   onSend,
 }: Props) {
   const [value, setValue] = useState("");
+  const [focused, setFocused] = useState(false);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Auto-grow up to MAX_ROWS rows
+  // Auto-grow up to MAX_ROWS rows.
   useEffect(() => {
     const ta = taRef.current;
     if (!ta) return;
     ta.style.height = "auto";
-    const max = LINE_HEIGHT_PX * MAX_ROWS + 16;
+    const max = LINE_HEIGHT_PX * MAX_ROWS + VERTICAL_PADDING_PX;
     ta.style.height = Math.min(ta.scrollHeight, max) + "px";
   }, [value]);
 
@@ -48,14 +51,18 @@ export default function ChatInput({
   };
 
   const canSend = value.trim().length > 0 && !disabled;
+  const maxHeight = LINE_HEIGHT_PX * MAX_ROWS + VERTICAL_PADDING_PX;
 
   return (
     <div
-      className={cn(
-        "flex items-end gap-2 rounded-lg border-hair border-warp-border",
-        "bg-white/[0.025] px-2.5 py-2",
-        "focus-within:border-warp-blue/45",
-      )}
+      className="warp-sans"
+      style={{
+        padding: "10px 14px",
+        border: `1px solid rgba(255,255,255,${focused ? 0.2 : 0.1})`,
+        borderRadius: 12,
+        background: "rgba(255,255,255,0.025)",
+        transition: "border-color 120ms ease-out",
+      }}
     >
       <textarea
         ref={taRef}
@@ -63,34 +70,73 @@ export default function ChatInput({
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={onKeyDown}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         placeholder={placeholder}
         disabled={disabled}
         spellCheck={false}
         autoComplete="off"
-        className={cn(
-          "flex-1 min-w-0 resize-none bg-transparent outline-none",
-          "text-[13px] leading-relaxed text-white placeholder:text-white/30",
-          "py-1 px-1",
-          "disabled:opacity-50",
-        )}
-        style={{ maxHeight: LINE_HEIGHT_PX * MAX_ROWS + 16 }}
+        aria-label="Directive input"
+        className="warp-sans warp-input-textarea block w-full min-w-0 resize-none bg-transparent border-0 outline-none disabled:opacity-50"
+        style={{
+          fontSize: 14,
+          lineHeight: 1.5,
+          color: "rgba(255,255,255,0.95)",
+          maxHeight,
+          padding: 0,
+          margin: 0,
+        }}
       />
-      <button
-        type="button"
-        onClick={send}
-        disabled={!canSend}
-        aria-label="Send"
-        className={cn(
-          "shrink-0 h-9 px-3 rounded-md text-[12px] font-medium",
-          "transition-colors flex items-center gap-1.5",
-          canSend
-            ? "bg-warp-blue text-black hover:bg-warp-blue/90 active:bg-warp-blue/80"
-            : "bg-white/[0.06] text-white/30",
-        )}
+      <div
+        className="input-meta warp-sans"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 8,
+          paddingTop: 6,
+        }}
       >
-        <span>Send</span>
-        <span aria-hidden className="text-base leading-none">↵</span>
-      </button>
+        <span
+          className="input-model"
+          style={{
+            fontSize: 11,
+            color: "rgba(255,255,255,0.40)",
+            letterSpacing: "0.03em",
+            whiteSpace: "nowrap",
+          }}
+        >
+          WARP🔹CMD · gpt-4o
+        </span>
+        <button
+          type="button"
+          onClick={send}
+          disabled={!canSend}
+          aria-label="Send"
+          className="input-send"
+          style={{
+            fontFamily: "inherit",
+            fontSize: 12,
+            color: canSend ? "rgba(255,255,255,0.7)" : "rgba(255,255,255,0.7)",
+            padding: "4px 10px",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 6,
+            background: "transparent",
+            opacity: canSend ? 1 : 0.4,
+            cursor: canSend ? "pointer" : "not-allowed",
+            transition:
+              "border-color 120ms ease-out, color 120ms ease-out, opacity 120ms ease-out",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            lineHeight: 1,
+            whiteSpace: "nowrap",
+          }}
+        >
+          <span>Send</span>
+          <span aria-hidden>↵</span>
+        </button>
+      </div>
     </div>
   );
 }

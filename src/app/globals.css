@@ -35,6 +35,25 @@ body {
     -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
+/* Input area placeholder + send-pill hover (cannot be expressed inline). */
+.warp-input-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+  font-family: inherit;
+  opacity: 1;
+}
+.input-send:not(:disabled):hover {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: rgba(255, 255, 255, 1) !important;
+}
+.input-send:not(:disabled):active {
+  border-color: rgba(255, 255, 255, 0.3) !important;
+  color: rgba(255, 255, 255, 1) !important;
+}
+.input-send:focus-visible {
+  outline: 2px solid rgba(55, 138, 221, 0.55);
+  outline-offset: 2px;
+}
+
 html,
 body,
 #__next {
