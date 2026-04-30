@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
 import { getOpenAI, WARP_CMD_SYSTEM_PROMPT } from "@/lib/openai";
+import { MODELS } from "@/lib/models";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -114,7 +115,7 @@ export async function POST(req: Request) {
     async start(controller) {
       try {
         const completion = await openai.chat.completions.create({
-          model: "gpt-4o",
+          model: MODELS.cmd,
           stream: true,
           temperature: 0.6,
           messages,
