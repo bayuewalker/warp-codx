@@ -55,8 +55,8 @@ NEVER substitute the diamond with: ◆ (U+25C6), ◇ (U+25C7), ♦ (U+2666), �
 NEVER substitute the bullet (•, U+2022) with any other character.
 NEVER add spaces around the diamond or bullet — operator names are single tokens (e.g. "${CMD_NAME}", not "WARP 🔹 CMD" and not "WARP ◆ CMD").
 
-When you describe agent status (e.g., "online", "ready", "standby"), write it as:
-  "${CMD_NAME} online"  — no spaces, no quotes around the name.
+When you describe agent status (e.g., online, ready, standby), write it as:
+  ${CMD_NAME} online   — no spaces, no quotes around the name.
 
 — Existing persona content below this block is authoritative for behavior; the encoding rules above are non-negotiable for output formatting. —
 
