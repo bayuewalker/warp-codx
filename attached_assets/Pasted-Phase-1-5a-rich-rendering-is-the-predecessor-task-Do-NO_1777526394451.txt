@@ -1,0 +1,145 @@
+Phase 1.5a (rich rendering) is the predecessor task. **Do NOT start this until 1.5a is merged and verified.** This is **Phase 1.5b — UI Chrome Typography Refinement**, a surgical change to header and input area only.
+
+═══════════════════════════════════════════════════════════
+CONTEXT — what's wrong right now
+═══════════════════════════════════════════════════════════
+
+The current Phase 1 UI uses JetBrains Mono everywhere — including the app header wordmark and the input textarea placeholder. This makes the chrome feel terminal-heavy. Reference apps like Cursor and Claude.ai use proportional sans-serif for chrome and reserve mono for content (code, structured data, identifiers).
+
+Mr. Walker's feedback: "ganti text fonts dan ukuran text buat lebih kecil. Header WARP CodX lebih kecil dan minimalis aja. Untuk bagian lain jangan dirubah."
+
+═══════════════════════════════════════════════════════════
+SCOPE — exactly two surfaces
+═══════════════════════════════════════════════════════════
+
+**Touch ONLY these two components:**
+
+1. App header (top bar containing the "WARP CodX" wordmark, hamburger menu, and "+" button)
+2. Chat input area (the bottom textarea with placeholder + send button)
+
+**Do NOT touch:**
+- Chat bubbles (user or assistant) — keep current rendering, keep MessageContent component from 1.5a unchanged
+- Sidebar drawer (session list, "+ New directive" button, footer "WalkerMind OS · v0.1") — keep mono
+- Directive blocks from 1.5a
+- Color tokens, background colors, layout structure, spacing rules outside these two surfaces
+
+═══════════════════════════════════════════════════════════
+CHANGES — header
+═══════════════════════════════════════════════════════════
+
+In the header component:
+
+1. **Wordmark** ("WARP CodX"):
+   - Font: keep `JetBrains Mono` (preserves brand identity at the small scale)
+   - Size: `15px` (down from current ~20-22px)
+   - Weight: `500`
+   - Letter-spacing: `0.02em`
+   - Color: keep current (the "WARP" blue accent + "CodX" white pattern stays)
+
+2. **Header bar dimensions:**
+   - Vertical padding: `12px` top and bottom
+   - Total header height should land between `44px` and `52px`
+
+3. **Icons** (hamburger left, "+" right):
+   - Size: `20px`
+   - Stroke width: `1.5` (if using lucide-react icons, set `strokeWidth={1.5}`)
+   - Color: `rgba(255,255,255,0.7)` default, `rgba(255,255,255,1)` on hover/active
+
+4. **Border-bottom under header:**
+   - Keep existing `1px solid` divider
+   - Color: `rgba(255,255,255,0.06)` (very subtle — instrument feel, not terminal)
+
+═══════════════════════════════════════════════════════════
+CHANGES — input area
+═══════════════════════════════════════════════════════════
+
+The bottom input region currently shows "Issue a directive to..." in JetBrains Mono. Refactor it as follows:
+
+1. **Container:**
+   - Padding: `10px 14px`
+   - Border: `1px solid rgba(255,255,255,0.10)`
+   - Border-radius: `12px`
+   - Background: keep current dark surface tone
+   - Margin around: keep current
+
+2. **Textarea (the actual input field):**
+   - Font-family: `Inter, ui-sans-serif, system-ui, sans-serif` — **NOT** JetBrains Mono
+   - Font-size: `14px`
+   - Line-height: `1.5`
+   - Color: `rgba(255,255,255,0.95)` (typed text)
+   - Placeholder color: `rgba(255,255,255,0.35)`
+   - Placeholder text: change from "Issue a directive to..." to **`Send a directive`** (shorter, cleaner)
+   - Min-height: 1 line, max-height before scroll: 5 lines
+   - Background: transparent (inherits container)
+   - Border: none (container has the border)
+   - Focus state: no outline, container border-color shifts to `rgba(255,255,255,0.20)`
+
+3. **Model indicator row (NEW — add below textarea, above/aside the send button):**
+
+   ```tsx
+   <div className="input-meta">
+     <span className="input-model">WARP🔹CMD · gpt-4o</span>
+     <button className="input-send" ...>Send ↵</button>
+   </div>
+   ```
+
+   Styling:
+   - `.input-meta` flex row, align-items center, justify-content space-between, padding-top 6px
+   - `.input-model` font Inter, 11px, color `rgba(255,255,255,0.40)`, letter-spacing `0.03em`, no truncation needed at mobile width — fits comfortably
+   - `.input-send` button: font Inter 12px, color `rgba(255,255,255,0.7)`, padding `4px 10px`, border `1px solid rgba(255,255,255,0.12)`, border-radius `6px`, background transparent. On hover: border becomes `rgba(255,255,255,0.25)`, color full white. Disabled state when textarea empty: opacity 0.4, cursor not-allowed.
+
+4. **Send button label:**
+   - Keep `Send ↵` (the return arrow signals keyboard shortcut affordance)
+
+═══════════════════════════════════════════════════════════
+FONT IMPORT — Inter
+═══════════════════════════════════════════════════════════
+
+If Inter is not yet loaded, add it to the root layout. Next.js 14 idiomatic way:
+
+```typescript
+// src/app/layout.tsx (or wherever fonts are loaded)
+import { Inter, JetBrains_Mono } from 'next/font/google'
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-sans',
+  display: 'swap',
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ['latin'],
+  variable: '--font-mono',
+  display: 'swap',
+})
+
+// In body className: add `${inter.variable} ${jetbrainsMono.variable}`
+```
+
+Then in globals.css, ensure base body uses `var(--font-sans)` as fallback default — but DO NOT change existing rules that explicitly set `font-family: var(--font-mono)` for chat content, sidebar, directive blocks, etc.
+
+═══════════════════════════════════════════════════════════
+VERIFICATION — confirm ALL before saying done
+═══════════════════════════════════════════════════════════
+
+Take screenshots of each:
+
+1. **Header height:** Should be visibly slimmer than before. Wordmark "WARP CodX" should look refined, not chunky.
+2. **Input placeholder:** Reads in proportional sans-serif now, not monospace. Reads like prose.
+3. **Model indicator:** Visible below textarea: `WARP🔹CMD · gpt-4o` in muted gray. The diamond emoji 🔹 must render correctly (test on mobile).
+4. **Mobile width 360px:** Header doesn't wrap, input model indicator + send button stay on same row.
+5. **Chat bubbles unchanged:** Open a session with rendered markdown — verify bubbles, sidebar, directive blocks are visually identical to pre-1.5b.
+6. **Send a test message:** Verify input still functions — text typed in Inter, sends correctly, stream renders.
+
+═══════════════════════════════════════════════════════════
+HARD CONSTRAINTS — DO NOT VIOLATE
+═══════════════════════════════════════════════════════════
+
+- DO NOT change any styling on chat bubbles, sidebar items, directive blocks, or message content
+- DO NOT change color tokens, backgrounds, or layout outside the header and input
+- DO NOT add packages (Inter is loaded via next/font/google, no new npm install)
+- DO NOT modify API routes, DB, streaming, or send logic — only typography and meta-row markup
+- DO NOT introduce a settings panel, model picker dropdown, or anything beyond the static `WARP🔹CMD · gpt-4o` text
+- The model indicator is **display-only** for now — clicking it does nothing. Functionality comes in Phase 4.
+
+Phase 1.5b is purely chrome typography. After this lands, the app should feel like an operational instrument, not a terminal demo.

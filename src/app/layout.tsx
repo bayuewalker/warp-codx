@@ -1,10 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { JetBrains_Mono } from "next/font/google";
+import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
+// Sans-serif for chrome (header wordmark stays mono; input + meta row use sans).
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+// Mono is the app default (chat content, sidebar, directive blocks).
 const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
-  variable: "--font-jetbrains-mono",
+  variable: "--font-mono",
   display: "swap",
 });
 
@@ -47,7 +55,10 @@ export default function RootLayout({
   `;
 
   return (
-    <html lang="en" className={`${jetbrains.variable} dark`}>
+    <html
+      lang="en"
+      className={`${inter.variable} ${jetbrains.variable} dark`}
+    >
       <body>
         {children}
         <script dangerouslySetInnerHTML={{ __html: kbScript }} />
