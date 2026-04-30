@@ -1,27 +1,50 @@
-# Workspace
+# WARP CodX
 
-## Overview
-
-pnpm workspace monorepo using TypeScript. Each package manages its own dependencies.
+Mobile-first command interface for orchestrating AI agents in WalkerMind OS.
 
 ## Stack
 
-- **Monorepo tool**: pnpm workspaces
-- **Node.js version**: 24
-- **Package manager**: pnpm
-- **TypeScript version**: 5.9
-- **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
-- **Build**: esbuild (CJS bundle)
+- **Framework**: Next.js 14 (App Router) — standalone, no monorepo
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS, dark mode default
+- **Database & Realtime**: Supabase (`@supabase/supabase-js`)
+- **AI**: OpenAI SDK (gpt-4o, streaming)
+- **Node**: 24 (any modern Node ≥ 18.17 works)
 
-## Key Commands
+## Project layout
 
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- `pnpm --filter @workspace/api-server run dev` — run API server locally
+- `src/app/` — App Router routes and layout
+- `src/app/api/` — Route Handlers (sessions, messages, chat)
+- `src/components/` — Client components (sidebar, chat, input)
+- `src/lib/` — Supabase clients, OpenAI helpers, hooks, utils
 
-See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details.
+## Scripts
+
+- `npm run dev` — start dev server on port 3000
+- `npm run build` — production build
+- `npm start` — run production build on port 3000
+- `npm run lint` — run Next.js lint
+
+## Environment variables
+
+See `.env.example`. All four are required:
+
+- `OPENAI_API_KEY`
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_KEY`
+
+## Supabase schema
+
+Run the SQL in `supabase.sql` in the Supabase SQL Editor before first use.
+
+## Portability
+
+This project is a vanilla Next.js 14 app with **zero** Replit-specific code paths.
+It deploys as-is to fly.io, Vercel, or any Node.js host:
+
+```
+npm install
+npm run build
+npm start
+```

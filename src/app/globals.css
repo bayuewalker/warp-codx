@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --warp-bg: #0e0e0f;
+  --warp-bg-2: #141416;
+  --warp-text: #ffffff;
+  --warp-text-dim: rgba(255, 255, 255, 0.55);
+  --warp-text-mute: rgba(255, 255, 255, 0.35);
+  --warp-border: rgba(255, 255, 255, 0.08);
+  --warp-border-strong: rgba(255, 255, 255, 0.16);
+  --warp-blue: #378add;
+  --warp-teal: #1d9e75;
+  --warp-amber: #ba7517;
+}
+
+html,
+body {
+  background: var(--warp-bg);
+  color: var(--warp-text);
+  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular,
+    Menlo, Monaco, Consolas, monospace;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+html,
+body,
+#__next {
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 0.5px hairline borders rendered crisply across DPRs */
+.border-hair {
+  border-width: 0.5px;
+  border-style: solid;
+  border-color: var(--warp-border);
+}
+.border-hair-strong {
+  border-width: 0.5px;
+  border-style: solid;
+  border-color: var(--warp-border-strong);
+}
+
+/* Scrollbar — minimal, dark */
+.warp-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.warp-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.warp-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+}
+.warp-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Subtle pulse for "thinking" indicator */
+@keyframes warpPulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+.warp-pulse {
+  animation: warpPulse 1.6s ease-in-out infinite;
+}
+
+/* Mobile keyboard-aware bottom padding */
+.kb-inset {
+  padding-bottom: env(keyboard-inset-height, 0px);
+}
+
+/* Caret + selection */
+textarea, input {
+  caret-color: var(--warp-blue);
+}
+::selection {
+  background: rgba(55, 138, 221, 0.35);
+  color: #fff;
+}
+
+/* Drawer transitions */
+.drawer-enter {
+  transform: translateX(-100%);
+}
+.drawer-enter-active {
+  transform: translateX(0);
+  transition: transform 220ms ease-out;
+}
+.drawer-exit {
+  transform: translateX(0);
+}
+.drawer-exit-active {
+  transform: translateX(-100%);
+  transition: transform 200ms ease-in;
+}
+
+/* Streaming text cursor */
+.warp-cursor::after {
+  content: "▍";
+  color: var(--warp-blue);
+  margin-left: 1px;
+  animation: warpCursorBlink 0.9s steps(2) infinite;
+}
+@keyframes warpCursorBlink {
+  50% { opacity: 0; }
+}
