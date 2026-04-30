@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { ArrowUp, LayoutGrid } from "lucide-react";
 import { MODELS, formatModelSlug } from "@/lib/models";
+import TemplateSheet from "./templates/TemplateSheet";
 
 type Props = {
   disabled?: boolean;
@@ -22,6 +24,7 @@ export default function ChatInput({
 }: Props) {
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
 
   // Auto-grow up to MAX_ROWS rows.
@@ -49,6 +52,31 @@ export default function ChatInput({
       e.preventDefault();
       send();
     }
+  };
+
+  // Templates → drop composed markdown into textarea WITHOUT auto-sending.
+  // Mr. Walker reviews and taps Send himself. Guard against silently nuking
+  // an unsent draft.
+  const handleCompose = (markdown: string) => {
+    const existing = value.trim();
+    let next = markdown;
+    if (existing.length > 0) {
+      const ok =
+        typeof window !== "undefined" &&
+        window.confirm(
+          "You have an unsent draft. Replace it with the template? Cancel to append below.",
+        );
+      next = ok ? markdown : value.replace(/\s+$/, "") + "\n\n" + markdown;
+    }
+    setValue(next);
+    // Focus + move caret to end so editing the dropped block is one tap.
+    requestAnimationFrame(() => {
+      const ta = taRef.current;
+      if (!ta) return;
+      ta.focus();
+      const end = next.length;
+      ta.setSelectionRange(end, end);
+    });
   };
 
   const canSend = value.trim().length > 0 && !disabled;
@@ -98,17 +126,32 @@ export default function ChatInput({
           paddingTop: 6,
         }}
       >
-        <span
-          className="input-model"
-          style={{
-            fontSize: 11,
-            color: "rgba(255,255,255,0.40)",
-            letterSpacing: "0.03em",
-            whiteSpace: "nowrap",
-          }}
-        >
-          WARP🔹CMD · {formatModelSlug(MODELS.cmd)}
-        </span>
+        {/* Left: templates trigger + model chip */}
+        <div className="input-meta-left">
+          <button
+            type="button"
+            className="input-templates-btn"
+            onClick={() => setSheetOpen(true)}
+            aria-label="Open templates"
+            aria-haspopup="dialog"
+            aria-expanded={sheetOpen}
+          >
+            <LayoutGrid size={14} strokeWidth={1.5} />
+          </button>
+          <span
+            className="input-model"
+            style={{
+              fontSize: 11,
+              color: "rgba(255,255,255,0.40)",
+              letterSpacing: "0.03em",
+              whiteSpace: "nowrap",
+            }}
+          >
+            WARP🔹CMD · {formatModelSlug(MODELS.cmd)}
+          </span>
+        </div>
+
+        {/* Right: send button */}
         <button
           type="button"
           onClick={send}
@@ -116,25 +159,15 @@ export default function ChatInput({
           aria-label="Send directive"
           className="input-send"
         >
-          {/* Inline ArrowUp — same visual as lucide-react ArrowUp at
-              size=16, strokeWidth=2. Inline SVG keeps Phase 1.5d's
-              "no new packages beyond geist" constraint. */}
-          <svg
-            width={16}
-            height={16}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-          >
-            <line x1="12" y1="19" x2="12" y2="5" />
-            <polyline points="5 12 12 5 19 12" />
-          </svg>
+          <ArrowUp size={16} strokeWidth={2} />
         </button>
       </div>
+
+      <TemplateSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        onCompose={handleCompose}
+      />
     </div>
   );
 }
