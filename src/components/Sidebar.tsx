@@ -7,6 +7,8 @@ type Props = {
   sessions: Session[];
   activeId: string | null;
   loading: boolean;
+  error: string | null;
+  creating: boolean;
   onNewDirective: () => void;
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
@@ -17,6 +19,8 @@ export default function Sidebar({
   sessions,
   activeId,
   loading,
+  error,
+  creating,
   onNewDirective,
   onSelect,
   onDelete,
@@ -43,15 +47,35 @@ export default function Sidebar({
         <button
           type="button"
           onClick={onNewDirective}
+          disabled={creating}
           className="w-full flex items-center gap-2 px-3 py-2.5 rounded-md
             bg-warp-blue/10 hover:bg-warp-blue/20 active:bg-warp-blue/30
+            disabled:opacity-50 disabled:cursor-not-allowed
             border-hair border-warp-blue/40 text-warp-blue
             text-sm transition-colors"
         >
           <span className="text-base leading-none">+</span>
-          <span>New directive</span>
+          <span>{creating ? "Creating…" : "New directive"}</span>
         </button>
       </div>
+
+      {error && (
+        <div className="mx-3 mb-2 px-3 py-2 rounded-md border-hair border-warp-amber/50 bg-warp-amber/10">
+          <div className="text-[10px] uppercase tracking-[0.18em] text-warp-amber/90 mb-1">
+            Backend error
+          </div>
+          <div className="text-[11px] text-white/80 leading-relaxed break-words">
+            {error}
+          </div>
+          {/(table|schema|relation).*(sessions|messages)/i.test(error) && (
+            <div className="mt-2 text-[11px] text-white/55 leading-relaxed">
+              Run the SQL in{" "}
+              <span className="text-warp-blue">supabase.sql</span> in your
+              Supabase project, then reload.
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="px-3 pt-2 pb-1">
         <div className="text-[10px] uppercase tracking-[0.18em] text-white/35">
@@ -64,8 +88,15 @@ export default function Sidebar({
           <div className="px-3 py-6 text-xs text-white/35">Loading…</div>
         ) : sessions.length === 0 ? (
           <div className="px-3 py-6 text-xs text-white/35 leading-relaxed">
-            No sessions yet. Tap{" "}
-            <span className="text-warp-blue">+ New directive</span> to start.
+            {error
+              ? "No sessions to show — see the message above."
+              : (
+                <>
+                  No sessions yet. Tap{" "}
+                  <span className="text-warp-blue">+ New directive</span> to
+                  start.
+                </>
+              )}
           </div>
         ) : (
           <ul className="flex flex-col gap-0.5">

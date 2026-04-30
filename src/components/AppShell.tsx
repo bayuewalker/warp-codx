@@ -11,18 +11,35 @@ export default function AppShell() {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [loadingSessions, setLoadingSessions] = useState(true);
+  const [sessionsError, setSessionsError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
   const refreshSessions = useCallback(async (selectFirst = false) => {
-    const res = await fetch("/api/sessions", { cache: "no-store" });
-    if (!res.ok) return;
-    const json = (await res.json()) as { sessions: Session[] };
-    setSessions(json.sessions);
-    setLoadingSessions(false);
-    if (selectFirst && json.sessions.length > 0) {
-      setActiveId((cur) => cur ?? json.sessions[0].id);
-    }
-    if (json.sessions.length === 0) {
-      setActiveId(null);
+    try {
+      const res = await fetch("/api/sessions", { cache: "no-store" });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}) as { error?: string });
+        const msg =
+          (errJson && (errJson as { error?: string }).error) ||
+          `Failed to load sessions (${res.status})`;
+        setSessionsError(msg);
+        return;
+      }
+      const json = (await res.json()) as { sessions: Session[] };
+      setSessions(json.sessions);
+      setSessionsError(null);
+      if (selectFirst && json.sessions.length > 0) {
+        setActiveId((cur) => cur ?? json.sessions[0].id);
+      }
+      if (json.sessions.length === 0) {
+        setActiveId(null);
+      }
+    } catch (err) {
+      setSessionsError(
+        err instanceof Error ? err.message : "Network error loading sessions",
+      );
+    } finally {
+      setLoadingSessions(false);
     }
   }, []);
 
@@ -31,17 +48,35 @@ export default function AppShell() {
   }, [refreshSessions]);
 
   const handleNewDirective = useCallback(async () => {
-    const res = await fetch("/api/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({}),
-    });
-    if (!res.ok) return;
-    const json = (await res.json()) as { session: Session };
-    setSessions((prev) => [json.session, ...prev]);
-    setActiveId(json.session.id);
-    setDrawerOpen(false);
-  }, []);
+    if (creating) return;
+    setCreating(true);
+    setSessionsError(null);
+    try {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}) as { error?: string });
+        const msg =
+          (errJson && (errJson as { error?: string }).error) ||
+          `Could not create session (${res.status})`;
+        setSessionsError(msg);
+        return;
+      }
+      const json = (await res.json()) as { session: Session };
+      setSessions((prev) => [json.session, ...prev]);
+      setActiveId(json.session.id);
+      setDrawerOpen(false);
+    } catch (err) {
+      setSessionsError(
+        err instanceof Error ? err.message : "Network error creating session",
+      );
+    } finally {
+      setCreating(false);
+    }
+  }, [creating]);
 
   const handleSelect = useCallback((id: string) => {
     setActiveId(id);
@@ -119,6 +154,8 @@ export default function AppShell() {
           sessions={sessions}
           activeId={activeId}
           loading={loadingSessions}
+          error={sessionsError}
+          creating={creating}
           onNewDirective={handleNewDirective}
           onSelect={handleSelect}
           onDelete={handleDelete}
