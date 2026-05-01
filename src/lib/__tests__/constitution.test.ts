@@ -86,6 +86,7 @@ import { fetchRepoFile } from "../github";
 import {
   CACHE_TTL_MS,
   FALLBACK_PROJECT_ROOT,
+  SAFE_DEFAULT_SYSTEM_PROMPT,
   buildSystemPrompt,
   fetchConstitutionFile,
   parseProjectRoot,
@@ -393,6 +394,48 @@ describe("buildSystemPrompt — warnings drive chat_warnings", () => {
     expect(staleWarn).toBeDefined();
     expect(staleWarn).toMatch(/Constitution stale/);
     expect(staleWarn).toMatch(/github_500/);
+  });
+
+  // ── Spec #4 — GitHub fail + no cache → SAFE_DEFAULT_SYSTEM_PROMPT ──
+  //
+  // The chat route at src/app/api/chat/route.ts wraps buildSystemPrompt in
+  // a try/catch and falls back to SAFE_DEFAULT_SYSTEM_PROMPT when the
+  // assembler throws. Two contracts to verify here:
+  //   (a) buildSystemPrompt actually throws when the registry can't be
+  //       resolved AND has no cache (so the route's catch fires).
+  //   (b) SAFE_DEFAULT_SYSTEM_PROMPT is well-formed and self-identifies
+  //       as the degraded-mode prompt — the route's fallback is meaningful.
+  it("spec #4 — buildSystemPrompt throws when PROJECT_REGISTRY.md fails AND has no cache", async () => {
+    mockedFetchRepoFile.mockImplementation(async (path: string) => {
+      if (path === "PROJECT_REGISTRY.md") {
+        throw new Error("github_503: Service unavailable");
+      }
+      return { content: "noop", sha: "x", sizeBytes: 4 };
+    });
+    // No seedCache → fetchConstitutionFile rethrows → buildSystemPrompt
+    // propagates so the chat route can catch and substitute SAFE_DEFAULT.
+    await expect(buildSystemPrompt("hi")).rejects.toThrow(
+      /No cache and GitHub failed for PROJECT_REGISTRY\.md/,
+    );
+  });
+
+  it("spec #4 — SAFE_DEFAULT_SYSTEM_PROMPT is exported, non-empty, and self-identifies as degraded", () => {
+    expect(typeof SAFE_DEFAULT_SYSTEM_PROMPT).toBe("string");
+    expect(SAFE_DEFAULT_SYSTEM_PROMPT.length).toBeGreaterThan(200);
+    // Must announce safe-default mode so Mr. Walker can be told the
+    // operational truth is unavailable.
+    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/SAFE-DEFAULT MODE/);
+    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/hardcoded fallback/);
+    // Must preserve the operator-encoding block (diamond/bullet rules)
+    // so degraded mode still respects the brand-rule contract.
+    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/OPERATOR NAME ENCODING/);
+    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/WARP\u{1F539}CMD/u);
+    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/WARP\u{2022}FORGE/u);
+    // Roster completeness — SENTINEL and ECHO must also be named so a
+    // partial-prompt drift (e.g. only naming FORGE) is caught here, not
+    // by a downstream user noticing the agent forgot a peer.
+    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/WARP\u{2022}SENTINEL/u);
+    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/WARP\u{2022}ECHO/u);
   });
 
   it("Tier-1 file with no cache + GitHub error becomes a placeholder + 'Constitution unavailable' warning", async () => {

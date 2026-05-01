@@ -156,6 +156,20 @@ describe("evaluateMergeGates", () => {
     expect(result.ok).toBe(false);
   });
 
+  it("spec #1 — MINOR tier passes without SENTINEL approval (gate N/A)", () => {
+    // The spec calls out MINOR explicitly: SENTINEL is only required for
+    // MAJOR. MINOR/STANDARD must merge with no live review at all.
+    const body = cleanBody().replace(
+      "Validation Tier: STANDARD",
+      "Validation Tier: MINOR",
+    );
+    const result = evaluateMergeGates(makePR({ body }), []);
+    expect(result.tier).toBe("MINOR");
+    expect(result.gates.sentinelApproved).toBe(true); // N/A → reported true
+    expect(result.ok).toBe(true);
+    expect(result.blockers).toEqual([]);
+  });
+
   it("#5 — MAJOR PR with no SENTINEL approval is blocked", () => {
     const body = cleanBody().replace(
       "Validation Tier: STANDARD",
@@ -200,6 +214,75 @@ describe("evaluateMergeGates", () => {
 
     expect(result.gates.sentinelApproved).toBe(false);
     expect(result.ok).toBe(false);
+  });
+
+  it("spec #5 — every non-APPROVED SENTINEL review state on a MAJOR PR is treated as not approved", () => {
+    // The gate honors ONLY APPROVED state — every other GitHub review
+    // state (CHANGES_REQUESTED, DISMISSED, COMMENTED, PENDING) MUST NOT
+    // count even when the body looks like a SENTINEL verdict. Surfaces
+    // the same blocker as "no review at all" so a future review-state
+    // expansion in GitHub can't silently bypass the gate.
+    const body = cleanBody().replace(
+      "Validation Tier: STANDARD",
+      "Validation Tier: MAJOR",
+    );
+    const nonApprovedStates = [
+      "CHANGES_REQUESTED",
+      "DISMISSED",
+      "COMMENTED",
+      "PENDING",
+    ];
+    for (const state of nonApprovedStates) {
+      const result = evaluateMergeGates(makePR({ body }), [
+        { state, body: "WARP•SENTINEL APPROVED" },
+      ]);
+      expect(
+        result.gates.sentinelApproved,
+        `state=${state} must not pass the gate`,
+      ).toBe(false);
+      expect(result.ok, `state=${state} must block merge`).toBe(false);
+      expect(result.blockers).toContain(
+        "MAJOR tier — SENTINEL approval required",
+      );
+    }
+  });
+
+  it("spec #6 — max-2-SENTINEL-runs is route/audit-layer concern, NOT inside evaluateMergeGates (boundary doc)", () => {
+    // Documenting the boundary the same way #8 documents `mergeable`:
+    // evaluateMergeGates is a pure function over (PR, reviews, opts) —
+    // it does NOT know how many SENTINEL runs have occurred for the
+    // task. Any "max 2 runs" rule lives in the dispatch/audit layer
+    // (e.g. CMD's directive issuer or a future audit trail), not here.
+    // The gates surface MUST therefore not list a "sentinelRunCount"
+    // field, and a clean MAJOR PR with one APPROVED SENTINEL review
+    // passes regardless of any imagined prior-run count.
+    expect(Object.keys(
+      evaluateMergeGates(makePR(), []).gates,
+    )).not.toContain("sentinelRunCount");
+
+    const body = cleanBody().replace(
+      "Validation Tier: STANDARD",
+      "Validation Tier: MAJOR",
+    );
+    const reviews: GhReview[] = [
+      { state: "APPROVED", body: "WARP•SENTINEL APPROVED" },
+    ];
+    const result = evaluateMergeGates(makePR({ body }), reviews);
+    expect(result.ok).toBe(true);
+  });
+
+  it("spec #7 — PR hold is action-route concern, NOT inside evaluateMergeGates (boundary doc)", () => {
+    // The hold lifecycle (status flip + push notification) is owned by
+    // src/app/api/prs/[number]/hold/route.ts and exercised by
+    // src/app/api/prs/[number]/hold/route.test.ts. evaluateMergeGates
+    // is a *pre-merge* evaluator — it has no concept of "held" state and
+    // returns the same verdict regardless. Verified by asserting the
+    // gates surface has no `held` field and a clean PR still passes.
+    expect(Object.keys(
+      evaluateMergeGates(makePR(), []).gates,
+    )).not.toContain("held");
+    const result = evaluateMergeGates(makePR(), []);
+    expect(result.ok).toBe(true);
   });
 
   it("#5d — SENTINEL signature variants (•, ·, -, ., space) all match", () => {
