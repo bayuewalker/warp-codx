@@ -32,6 +32,7 @@ import { createIssue } from "@/lib/github-issues";
 import { getServerSupabase } from "@/lib/supabase";
 import { isAdminAllowed } from "@/lib/adminGate";
 import { sendPushToAll } from "@/lib/push-server";
+import { writeTaskCompleteMessage } from "@/lib/task-complete-write";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -172,6 +173,26 @@ export async function POST(req: Request) {
   }).catch((err) =>
     console.error(
       `[push] issue dispatch escaped: ${
+        err instanceof Error ? err.message : "unknown"
+      }`,
+    ),
+  );
+
+  // Phase 3.5 (option a) — fire-and-forget TASK_COMPLETE marker into
+  // the originating chat session so `TaskCompleteCard` mounts the
+  // moment the row lands (Realtime publication on `public.messages`).
+  // Silent no-op when sessionId is null. Best-effort: failures are
+  // logged inside the helper; the route response is unaffected.
+  void writeTaskCompleteMessage(sessionId, {
+    kind: "issue_created",
+    issue: {
+      number: created.number,
+      title: created.title,
+      url: created.url,
+    },
+  }).catch((err) =>
+    console.error(
+      `[task-complete-write] issue dispatch escaped: ${
         err instanceof Error ? err.message : "unknown"
       }`,
     ),
