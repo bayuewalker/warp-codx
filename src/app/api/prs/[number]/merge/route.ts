@@ -44,6 +44,7 @@ import { isAdminAllowed } from "@/lib/adminGate";
 import { statusFromAdapterError } from "@/lib/route-error";
 import { getServerSupabase } from "@/lib/supabase";
 import { sendPushToAll } from "@/lib/push-server";
+import { writeTaskCompleteMessage } from "@/lib/task-complete-write";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -238,6 +239,25 @@ export async function POST(
   }).catch((err) =>
     console.error(
       `[push] merge dispatch escaped: ${
+        err instanceof Error ? err.message : "unknown"
+      }`,
+    ),
+  );
+
+  // Phase 3.5 (option a) — fire-and-forget TASK_COMPLETE marker into
+  // the originating chat session. See issues/create/route.ts for the
+  // contract; same fail-isolated pattern as `sendPushToAll` above.
+  void writeTaskCompleteMessage(sessionId, {
+    kind: "pr_merged",
+    pr: {
+      number: prNumber,
+      branch: pr.branch,
+      mergeCommit: outcome.sha,
+      url: pr.url,
+    },
+  }).catch((err) =>
+    console.error(
+      `[task-complete-write] merge dispatch escaped: ${
         err instanceof Error ? err.message : "unknown"
       }`,
     ),

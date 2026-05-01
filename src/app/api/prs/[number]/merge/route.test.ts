@@ -58,6 +58,14 @@ vi.mock("@/lib/push-server", () => ({
   sendPushToAll: sendPushToAllMock,
 }));
 
+// Phase 3.5 (option a) — writeTaskCompleteMessage is fire-and-forget
+// and must never affect route behavior. Same isolation pattern as
+// `sendPushToAll` above.
+const writeTaskCompleteMessageMock = vi.fn().mockResolvedValue(undefined);
+vi.mock("@/lib/task-complete-write", () => ({
+  writeTaskCompleteMessage: writeTaskCompleteMessageMock,
+}));
+
 beforeEach(() => {
   getPRDetailMock.mockReset();
   mergePRMock.mockReset();
@@ -83,6 +91,12 @@ beforeEach(() => {
   // "non-blocking" test overrides to never resolve.
   sendPushToAllMock.mockReset();
   sendPushToAllMock.mockResolvedValue(undefined);
+
+  // Same re-apply for the task-complete write helper. Default impl
+  // resolves immediately so the route's `.catch` chain doesn't
+  // throw on `undefined`.
+  writeTaskCompleteMessageMock.mockReset();
+  writeTaskCompleteMessageMock.mockResolvedValue(undefined);
 });
 
 afterEach(() => {

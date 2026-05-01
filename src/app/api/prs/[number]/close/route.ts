@@ -27,6 +27,7 @@ import { isAdminAllowed } from "@/lib/adminGate";
 import { statusFromAdapterError } from "@/lib/route-error";
 import { getServerSupabase } from "@/lib/supabase";
 import { sendPushToAll } from "@/lib/push-server";
+import { writeTaskCompleteMessage } from "@/lib/task-complete-write";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -154,6 +155,19 @@ export async function POST(
   }).catch((err) =>
     console.error(
       `[push] close dispatch escaped: ${
+        err instanceof Error ? err.message : "unknown"
+      }`,
+    ),
+  );
+
+  // Phase 3.5 (option a) — fire-and-forget TASK_COMPLETE marker.
+  // See issues/create/route.ts for the contract.
+  void writeTaskCompleteMessage(sessionId, {
+    kind: "pr_closed",
+    pr: { number: prNumber, reason, url: pr.url },
+  }).catch((err) =>
+    console.error(
+      `[task-complete-write] close dispatch escaped: ${
         err instanceof Error ? err.message : "unknown"
       }`,
     ),

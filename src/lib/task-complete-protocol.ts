@@ -4,16 +4,29 @@
  *
  * Architecturally identical to the Phase 3b ISSUE_DRAFT_PROTOCOL and
  * Phase 3c PR_ACTION_PROTOCOL: a static prompt fragment appended to
- * whatever `buildSystemPrompt()` returns. The chat route itself does
- * NOT inspect the assistant turn for completion events — that lives
- * in the model layer because the underlying actions (issue creation,
- * PR merge/close, constitution refresh) happen in dedicated routes
- * (`/api/issues/create`, `/api/prs/[number]/merge`, `…/close`,
- * `/api/constitution/refresh`) or in client-side cards, and there is
- * no signal channel back into the chat stream. The model emits the
- * marker when it has reason to believe a task just completed
- * (e.g., the user reports the IssueCard returned issue #N, or the
- * post-merge sync acknowledgement arrives).
+ * whatever `buildSystemPrompt()` returns.
+ *
+ * Two emission paths now exist (Phase 3.5 option a):
+ *
+ *   1. ROUTE-SIDE — `src/lib/task-complete-write.ts`. The action
+ *      routes (`/api/issues/create`, `/api/prs/[number]/{merge,
+ *      close,hold}`, `/api/constitution/refresh` when called with
+ *      `sessionId`) now fire-and-forget a synthetic assistant
+ *      message containing the marker after their GitHub call
+ *      succeeds. This is the AUTHORITATIVE path for those five
+ *      kinds — the operator sees the card the moment the row lands
+ *      via Realtime, no LLM round-trip required.
+ *
+ *   2. LLM-SIDE — this protocol. Used as the FALLBACK for `generic`
+ *      (the route never auto-emits generic markers because there is
+ *      no server-side signal for "the operator finished an ad-hoc
+ *      thing") and for any of the five structured kinds when the
+ *      success was reported via means other than the cards (e.g.
+ *      "I just merged that on GitHub directly").
+ *
+ * The protocol body (the `DUPLICATE-CARD AVOIDANCE` block below)
+ * tells CMD when to stay silent so the operator never sees two cards
+ * for the same event.
  *
  * The extractor in `src/lib/task-complete-extract.ts` is permissive
  * about stripping (so a malformed marker never leaks) but strict about
@@ -64,6 +77,32 @@ Recognised kinds and their payload shape:
     {"kind":"generic","summary":"one or two short sentences"}
     Use as a fallback when the task that just completed does not
     map to one of the structured kinds above.
+
+DUPLICATE-CARD AVOIDANCE (Phase 3.5 option a)
+The chat infrastructure now emits these markers SERVER-SIDE for the
+following kinds when the operator triggers them via the IssueCard /
+PRCard / Settings cards:
+  - issue_created            (POST /api/issues/create)
+  - pr_merged                (POST /api/prs/[number]/merge)
+  - pr_closed                (POST /api/prs/[number]/close)
+  - pr_held                  (POST /api/prs/[number]/hold)
+  - constitution_refreshed   (POST /api/constitution/refresh, when
+                              the request body includes a sessionId)
+You will see the resulting "task complete" assistant turn already
+in the conversation history. DO NOT emit a duplicate marker for the
+same event — the operator already has the card.
+
+You may still emit one of the five kinds yourself when:
+  (a) The success was reported via means OTHER than the cards
+      (e.g. "I just merged that on GitHub directly", or a refresh
+      ran from a different tab and the card never fired).
+  (b) The kind is \`generic\` — that one is never auto-emitted
+      server-side because there is no signal channel for ad-hoc
+      tasks.
+
+If unsure whether the route already emitted the card, prefer to
+stay silent. A missing card is recoverable (the operator can ask);
+duplicate cards are visual noise.
 
 Hard rules:
 - Exactly ONE marker per assistant turn. Multiple markers will break
