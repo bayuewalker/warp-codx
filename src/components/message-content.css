@@ -1,21 +1,29 @@
 /* ─────────────────────────────────────────────────────────────────
    Message prose — assistant + user. The bubble container is gone,
    so these styles cover both turns. User turns get bumped weight
-   and a slightly larger size; assistant prose keeps standard 14.5px.
+   and a slightly larger size; assistant prose keeps the comfortable
+   document-style 15px body.
+
+   Phase 3.1 typography refresh: softer inline code (no border, glass
+   tint, anywhere-wrap so long paths don't form bricks), calmer lists
+   with breathing room and dim ordered markers, slightly larger body
+   with Inter feature-settings for clearer 4/9/l forms.
    ───────────────────────────────────────────────────────────────── */
 .message-content {
   font-family: var(--font-sans), system-ui, sans-serif;
-  font-size: 14.5px;
-  line-height: 1.6;
+  font-size: 15px;
+  line-height: 1.65;
   color: var(--warp-text);
   word-wrap: break-word;
   overflow-wrap: anywhere;
+  font-feature-settings: "cv11", "ss01";
+  text-rendering: optimizeLegibility;
 }
 
 .message-content > *:first-child { margin-top: 0; }
 .message-content > *:last-child  { margin-bottom: 0; }
 
-.message-content p { margin: 0 0 8px; }
+.message-content p { margin: 0 0 10px; }
 .message-content strong { font-weight: 600; color: var(--warp-text); }
 .message-content em { font-style: italic; }
 
@@ -23,32 +31,64 @@
 .message-content h2,
 .message-content h3 {
   font-weight: 600;
-  margin: 0.8em 0 0.4em;
+  margin: 1.1em 0 0.5em;
   line-height: 1.3;
 }
-.message-content h1 { font-size: 1.15em; }
-.message-content h2 { font-size: 1.08em; }
-.message-content h3 { font-size: 1.0em; }
+.message-content h1 { font-size: 1.18em; }
+.message-content h2 {
+  font-size: 1.10em;
+  letter-spacing: -0.005em;
+}
+.message-content h3 {
+  font-size: 1.0em;
+  letter-spacing: -0.005em;
+}
 
+/* Lists — generous breathing room, ordered markers feel calm.
+   Padding-left holds continuation lines under the text rather than
+   under the marker. */
 .message-content ul,
 .message-content ol {
-  margin: 0.5em 0;
-  padding-left: 1.4em;
+  margin: 0.7em 0;
+  padding-left: 1.6em;
 }
 .message-content ul { list-style: disc; }
-.message-content ol { list-style: decimal; }
-.message-content li { margin: 0.2em 0; }
+.message-content ol {
+  list-style: decimal;
+  font-variant-numeric: tabular-nums;
+}
+.message-content li { margin: 0.45em 0; }
+.message-content ol > li::marker {
+  color: var(--warp-text-dim);
+  font-weight: 500;
+}
+
+/* Continuation paragraphs inside a list item — small gap, not a full
+   paragraph break, so the item still reads as one thought. */
+.message-content li > p:not(:first-child) { margin-top: 0.35em; }
+.message-content li > p:last-child { margin-bottom: 0; }
+
+/* Nested lists tighten back so two-deep lists don't balloon. */
+.message-content li > ul,
+.message-content li > ol {
+  margin: 0.3em 0;
+}
+.message-content li > ul > li,
+.message-content li > ol > li {
+  margin: 0.3em 0;
+}
 
 .message-content a {
   color: var(--warp-blue);
   text-decoration: underline;
-  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
 }
 
 .message-content blockquote {
-  border-left: 2px solid var(--border-medium);
-  padding-left: 0.9em;
-  margin: 0.6em 0;
+  border-left: 2px solid color-mix(in srgb, var(--warp-blue) 25%, transparent);
+  padding-left: 1em;
+  margin: 0.8em 0;
   color: var(--warp-text-dim);
 }
 
@@ -72,36 +112,54 @@
   font-weight: 600;
 }
 
-/* Inline code */
-.md-inline-code {
+/* Inline code — calm glass tint, no border, generous horizontal
+   padding, and wrap-anywhere so a long path inside a list item never
+   pushes the bubble past its container.
+
+   Scoped under .message-content so the helper class never bleeds
+   outside the prose layer, and so highlight.js's bundled selectors
+   (e.g. `code.hljs`) cannot out-specify our overrides inside the
+   custom code card. */
+.message-content .md-inline-code {
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.9em;
-  background: var(--warp-bg-2);
-  padding: 0.1em 0.4em;
-  border-radius: 3px;
-  border: 1px solid var(--border-faint);
+  font-size: 0.88em;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--warp-text);
+  padding: 0.25em 0.45em;
+  border-radius: 4px;
+  border: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-feature-settings: "ss01", "calt";
 }
 
-/* Generic fenced code block */
-.md-code-block {
+/* Generic fenced code block — own card, confident padding, soft
+   border so the block reads as a unit, not a heavy frame. */
+.message-content .md-code-block {
   background: var(--warp-bg);
-  border: 1px solid var(--border-faint);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
-  padding: 0.7em 0.9em;
-  margin: 0.6em 0;
+  padding: 0.85em 1em;
+  margin: 0.7em 0;
   overflow-x: auto;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.85em;
-  line-height: 1.5;
+  font-size: 0.88em;
+  line-height: 1.55;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
-.md-code-block code {
+/* Inner <code> — flatten any background/padding the highlight.js
+   theme tries to add. The `code.hljs` form below specifically beats
+   `pre code.hljs` from github-dark.css. */
+.message-content .md-code-block code,
+.message-content .md-code-block code.hljs {
   background: transparent;
   padding: 0;
   border: none;
+  font-feature-settings: "ss01", "calt";
 }
 
 /* Directive block — operational dispatch card */
-.directive-block {
+.message-content .directive-block {
   position: relative;
   background: var(--warp-blue-soft);
   border: 1px solid rgba(91, 164, 255, 0.20);
@@ -111,7 +169,7 @@
   font-family: var(--font-mono), ui-monospace, monospace;
 }
 
-.directive-label {
+.message-content .directive-label {
   position: absolute;
   top: 0.5em;
   right: 0.7em;
@@ -122,7 +180,7 @@
   text-transform: uppercase;
 }
 
-.directive-pre {
+.message-content .directive-pre {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -131,7 +189,8 @@
   color: var(--warp-text-dim);
 }
 
-.directive-pre code {
+.message-content .directive-pre code,
+.message-content .directive-pre code.hljs {
   background: transparent;
   padding: 0;
   border: none;
@@ -141,8 +200,8 @@
 /* User-turn override — left-aligned, plain text, weight 500, slightly
    larger than assistant prose. Matches v2 mockup .msg-user-text. */
 .message-content--user {
-  font-size: 15px;
-  line-height: 1.55;
+  font-size: 15.5px;
+  line-height: 1.6;
   color: var(--warp-text);
   font-weight: 500;
 }

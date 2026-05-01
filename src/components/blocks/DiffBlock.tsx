@@ -1,10 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import type { DiffLine, DiffPayload } from "@/lib/types";
+import CollapsibleBlock from "./CollapsibleBlock";
 
 type Props = {
   payload: DiffPayload;
 };
+
+const DIFF_COLLAPSE_THRESHOLD = 8;
 
 export default function DiffBlock({ payload }: Props) {
   const added =
@@ -12,24 +16,41 @@ export default function DiffBlock({ payload }: Props) {
   const removed =
     payload.removed ?? payload.lines.filter((l) => l.type === "rem").length;
 
+  const [expanded, setExpanded] = useState(
+    added + removed <= DIFF_COLLAPSE_THRESHOLD,
+  );
+
+  const header = (
+    <>
+      <span className="diff-icon" aria-hidden="true">
+        ‹›
+      </span>
+      <span className="diff-path">{payload.path}</span>
+    </>
+  );
+
+  const pill = (
+    <span className="diff-stats">
+      <span className="add">+{added}</span>
+      <span className="rem">−{removed}</span>
+    </span>
+  );
+
   return (
-    <div className="diff-block">
-      <div className="diff-header">
-        <span className="diff-icon" aria-hidden="true">
-          ‹›
-        </span>
-        <span className="diff-path">{payload.path}</span>
-        <span className="diff-stats">
-          <span className="add">+{added}</span>
-          <span className="rem">-{removed}</span>
-        </span>
-      </div>
+    <CollapsibleBlock
+      className="diff-block"
+      headerClassName="block-summary diff-header"
+      header={header}
+      pill={pill}
+      expanded={expanded}
+      onToggle={() => setExpanded((v) => !v)}
+    >
       <div className="diff-content">
         {payload.lines.map((line, i) => (
           <DiffRow key={i} line={line} />
         ))}
       </div>
-    </div>
+    </CollapsibleBlock>
   );
 }
 

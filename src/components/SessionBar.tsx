@@ -15,6 +15,12 @@ export interface SessionBarProps {
   onTap?: () => void;
 }
 
+/**
+ * Session bar — appears below the app header when a session is active.
+ *
+ * Single full-width tap target that opens the session switcher /
+ * drawer. (Pre-Phase-3a layout.)
+ */
 export default function SessionBar({
   taskTitle,
   progressPercent,

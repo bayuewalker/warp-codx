@@ -1,0 +1,113 @@
+BRANCH: WARP/collapsible-tasks
+VALIDATION TIER: STANDARD
+AGENT: WARP•FORGE
+
+OBJECTIVE
+Implement Feature 2 (Collapsible Background Tasks) and Feature 3
+(TaskCompleteCard) from Phase 3.5 spec. Feature 1 (thinking
+animation) was already shipped in Phase 3.5 partial — DO NOT
+re-implement or touch it.
+
+---
+
+FEATURE 2 — COLLAPSIBLE BACKGROUND TASKS
+
+When a CMD response contains 2 or more rich blocks (ActionCard,
+DiffBlock, TodoBlock, PRCard, IssueCard, StatusTable), collapse
+them into an expandable row. Prose text is ALWAYS visible — never
+collapsed.
+
+Collapsed state (default):
+  [🔹 WARP•CMD]  Working — 3 actions  [▾ Show]
+
+Expanded state:
+  [🔹 WARP•CMD]  Working — 3 actions  [▴ Hide]
+  │
+  ├─ ✓ Fetched constitution (AGENTS.md, COMMANDER.md)
+  ├─ ✓ Resolved PROJECT_ROOT → projects/polymarket/polyquantbot
+  └─ ✓ Built system prompt (42KB)
+  │
+  [prose response continues here...]
+
+Rules:
+- Single rich block → no collapse, show directly
+- 2+ rich blocks → collapse by default
+- "Show" / "Hide" labels (English only)
+- State: per-message useState, no persistence
+- Smooth height transition: 200ms ease
+- Prose always rendered outside the collapsible section
+
+---
+
+FEATURE 3 — TASK COMPLETE CARD
+
+Detect marker <!-- TASK_COMPLETE: {json} --> in CMD response.
+Strip marker from prose before rendering.
+Render TaskCompleteCard component using the JSON payload.
+
+Card variants:
+- ISSUE_CREATED: title "Issue #N created", body = issue title +
+  GitHub link, actions: [OPEN IN GITHUB ↗] [NEW DIRECTIVE]
+- PR_MERGED: title "PR #N merged", body = branch + merge commit,
+  subtitle "Post-merge sync required",
+  actions: [OPEN IN GITHUB ↗] [POST-MERGE SYNC ▶]
+- PR_CLOSED: title "PR #N closed", body = reason summary,
+  actions: [OPEN IN GITHUB ↗]
+- PR_HELD: title "PR #N held", body = hold reason,
+  actions: [VIEW PR ↗]
+- CONSTITUTION_REFRESHED: title "Constitution refreshed",
+  body = N files updated + last sync time, no actions
+- GENERIC_DONE: title "Task complete", body = CMD summary 1-2 lines,
+  actions: [NEW DIRECTIVE]
+
+Visual:
+- bg-elev-1, border-soft, rounded-md
+- Left border: teal (var(--warp-teal)) for success variants
+- Left border: amber for PR_HELD
+- Left border: red for blocked/error
+- Title font-weight 600
+- Same button style as existing IssueCard/PRCard
+
+Also update src/app/api/chat/route.ts to append the
+<!-- TASK_COMPLETE: {json} --> marker after successful:
+- Issue creation
+- PR merge / close / hold
+- Constitution refresh
+
+---
+
+FILES TO CREATE
+- src/components/CollapsibleSection.tsx
+- src/components/TaskCompleteCard.tsx
+
+FILES TO MODIFY
+- src/components/ChatArea.tsx
+  → wrap rich blocks in CollapsibleSection
+  → render TaskCompleteCard from marker detection
+- src/components/MessageContent.tsx
+  → strip TASK_COMPLETE marker before rendering prose
+- src/app/api/chat/route.ts
+  → append TASK_COMPLETE marker on relevant completions
+
+---
+
+HARD CONSTRAINTS
+- DO NOT add npm dependencies
+- DO NOT change colors, fonts, or design tokens
+- DO NOT touch ThinkingIndicator (already shipped)
+- DO NOT touch constitution fetch, issue creation, or PR gate logic
+- DO NOT collapse single rich block responses
+- DO NOT collapse prose — only rich blocks
+
+DONE CRITERIA
+1. CMD response with 2+ rich blocks → collapsed by default,
+   "Show" tap expands, "Hide" collapses
+2. CMD response with 1 rich block or prose only → no collapse
+3. "merge pr #843" → TaskCompleteCard renders with PR_MERGED variant
+4. "create issue X" → TaskCompleteCard renders with ISSUE_CREATED variant
+5. No regression — Phase 3a/3b/3c/3.5/4 all intact
+
+Output when done:
+Done -- WARP/collapsible-tasks complete.
+PR: WARP/collapsible-tasks
+Validation Tier: STANDARD

@@ -1,0 +1,388 @@
+# PHASE 4 — Push Notifications
+
+> **Spec version:** 1.0
+> **Date:** 2026-05-01
+> **Branch target:** `WARP/push-notifications`
+> **Validation tier:** STANDARD
+> **Dispatch to:** Replit Agent
+
+---
+
+## OBJECTIVE
+
+Let WARP CodX send push notifications to Mr. Walker's phone
+even when the browser tab is closed. Notifications fire on
+key operational events: PR merged/closed/held, issue created,
+constitution refreshed, and agent job completions.
+
+**Success metric:** Mr. Walker merges a PR via WARP CodX chat
+→ 5 seconds later, HP receives push notification:
+"✅ PR #843 merged — WARP/pr-flow-test"
+
+---
+
+## VAPID KEYS (already set in Replit Secrets)
+
+- `VAPID_PUBLIC_KEY` — already set ✅
+- `VAPID_PRIVATE_KEY` — already set ✅
+- `VAPID_EMAIL` — already set ✅
+
+DO NOT generate new keys. Use existing Secrets.
+
+---
+
+## ARCHITECTURE
+
+### Flow
+
+```
+User subscribes (browser asks permission)
+       ↓
+Browser generates PushSubscription object
+       ↓
+POST /api/push/subscribe → save to Supabase push_subscriptions
+       ↓
+Event occurs (PR merged, issue created, etc.)
+       ↓
+Server calls web-push.sendNotification(subscription, payload)
+       ↓
+Service worker receives push event → shows notification
+       ↓
+User taps notification → deep link to relevant session
+```
+
+### Components
+
+```
+Client-side:
+- public/sw.js          — service worker (push + click handler)
+- src/lib/push-client.ts — subscribe/unsubscribe helpers
+- src/components/PushNotificationToggle.tsx — UI toggle in settings
+
+Server-side:
+- src/app/api/push/subscribe/route.ts   — POST save subscription
+- src/app/api/push/unsubscribe/route.ts — POST remove subscription
+- src/lib/push-server.ts — sendPushNotification() helper
+```
+
+---
+
+## DATABASE
+
+```sql
+create table if not exists public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  user_agent text,
+  created_at timestamptz not null default now(),
+  last_used_at timestamptz
+);
+
+alter table public.push_subscriptions disable row level security;
+
+create index if not exists idx_push_subs_endpoint
+  on public.push_subscriptions (endpoint);
+```
+
+---
+
+## SERVICE WORKER (public/sw.js)
+
+```javascript
+// Push event handler
+self.addEventListener('push', (event) => {
+  const data = event.data?.json() ?? {}
+  const { title, body, icon, url, tag } = data
+
+  event.waitUntil(
+    self.registration.showNotification(title ?? 'WARP CodX', {
+      body: body ?? '',
+      icon: icon ?? '/icon-192.png',
+      badge: '/badge-72.png',
+      tag: tag ?? 'warp-default',
+      data: { url: url ?? '/' },
+      requireInteraction: false,
+      silent: false,
+    })
+  )
+})
+
+// Notification click — deep link
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const url = event.notification.data?.url ?? '/'
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            return client.focus()
+          }
+        }
+        return clients.openWindow(url)
+      })
+  )
+})
+```
+
+---
+
+## NOTIFICATION PAYLOADS
+
+### PR merged
+```json
+{
+  "title": "✅ PR merged",
+  "body": "WARP/pr-flow-test → main",
+  "tag": "pr-843",
+  "url": "https://github.com/bayuewalker/walkermind-os/pull/843"
+}
+```
+
+### PR closed
+```json
+{
+  "title": "❌ PR closed",
+  "body": "WARP/pr-flow-test — test fixture cleanup",
+  "tag": "pr-843",
+  "url": "https://github.com/bayuewalker/walkermind-os/pull/843"
+}
+```
+
+### PR held
+```json
+{
+  "title": "⏸ PR held",
+  "body": "WARP/pr-flow-test — waiting for SENTINEL",
+  "tag": "pr-843",
+  "url": "https://github.com/bayuewalker/walkermind-os/pull/843"
+}
+```
+
+### Issue created
+```json
+{
+  "title": "🔖 Issue created",
+  "body": "#127 — Add wallet validation guard",
+  "tag": "issue-127",
+  "url": "https://github.com/bayuewalker/walkermind-os/issues/127"
+}
+```
+
+### Constitution refreshed
+```json
+{
+  "title": "🔄 Constitution refreshed",
+  "body": "4 files updated · walkermind-os",
+  "tag": "constitution-refresh",
+  "url": null
+}
+```
+
+---
+
+## SERVER-SIDE PUSH HELPER
+
+```typescript
+// src/lib/push-server.ts
+import webpush from 'web-push'
+import { createClient } from '@supabase/supabase-js'
+
+webpush.setVapidDetails(
+  process.env.VAPID_EMAIL!,
+  process.env.VAPID_PUBLIC_KEY!,
+  process.env.VAPID_PRIVATE_KEY!
+)
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_KEY!
+)
+
+export async function sendPushToAll(payload: {
+  title: string
+  body: string
+  tag?: string
+  url?: string | null
+}) {
+  const { data: subs } = await supabase
+    .from('push_subscriptions')
+    .select('endpoint, p256dh, auth')
+
+  if (!subs?.length) return
+
+  const results = await Promise.allSettled(
+    subs.map((sub) =>
+      webpush.sendNotification(
+        {
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.p256dh, auth: sub.auth },
+        },
+        JSON.stringify(payload)
+      )
+    )
+  )
+
+  // Clean up expired subscriptions (410 Gone)
+  const expired = subs.filter((_, i) => {
+    const r = results[i]
+    return r.status === 'rejected' &&
+      (r.reason?.statusCode === 410 || r.reason?.statusCode === 404)
+  })
+
+  if (expired.length > 0) {
+    await supabase
+      .from('push_subscriptions')
+      .delete()
+      .in('endpoint', expired.map((s) => s.endpoint))
+  }
+}
+```
+
+---
+
+## TRIGGER POINTS
+
+Add `sendPushToAll()` call after each successful action:
+
+### PR merge (src/app/api/prs/[number]/merge/route.ts)
+```typescript
+await sendPushToAll({
+  title: '✅ PR merged',
+  body: `${pr.head.ref} → main`,
+  tag: `pr-${prNumber}`,
+  url: pr.html_url,
+})
+```
+
+### PR close (src/app/api/prs/[number]/close/route.ts)
+```typescript
+await sendPushToAll({
+  title: '❌ PR closed',
+  body: `${pr.head.ref} — ${reason.slice(0, 60)}`,
+  tag: `pr-${prNumber}`,
+  url: pr.html_url,
+})
+```
+
+### Issue create (src/app/api/issues/create/route.ts)
+```typescript
+await sendPushToAll({
+  title: '🔖 Issue created',
+  body: `#${issue.number} — ${title.slice(0, 60)}`,
+  tag: `issue-${issue.number}`,
+  url: issue.html_url,
+})
+```
+
+### Constitution refresh (src/app/api/constitution/refresh/route.ts)
+```typescript
+await sendPushToAll({
+  title: '🔄 Constitution refreshed',
+  body: `${refreshed} files updated · walkermind-os`,
+  tag: 'constitution-refresh',
+  url: null,
+})
+```
+
+---
+
+## UI — PUSH NOTIFICATION TOGGLE
+
+Add to ConstitutionSettings.tsx (or Settings modal):
+
+```
+NOTIFICATIONS
+
+Push notifications: [OFF / ON toggle]
+
+When ON:
+  ✅ PR merged / closed / held
+  ✅ Issue created
+  ✅ Constitution refreshed
+
+[TEST NOTIFICATION]  — sends a test push immediately
+```
+
+**Toggle behavior:**
+- OFF → ON: call `Notification.requestPermission()` → if granted, subscribe via `/api/push/subscribe`
+- ON → OFF: call `/api/push/unsubscribe` → remove from DB
+
+**TEST NOTIFICATION button:** calls `/api/push/test` → sends:
+```json
+{
+  "title": "🧪 Test notification",
+  "body": "WARP CodX push notifications are working",
+  "tag": "test"
+}
+```
+
+---
+
+## SUBSCRIBE ENDPOINT
+
+```typescript
+// src/app/api/push/subscribe/route.ts
+export async function POST(req: Request) {
+  const { subscription } = await req.json()
+  // subscription = { endpoint, keys: { p256dh, auth } }
+
+  await supabase.from('push_subscriptions').upsert({
+    endpoint: subscription.endpoint,
+    p256dh: subscription.keys.p256dh,
+    auth: subscription.keys.auth,
+    user_agent: req.headers.get('user-agent') ?? '',
+    last_used_at: new Date().toISOString(),
+  }, { onConflict: 'endpoint' })
+
+  return Response.json({ subscribed: true })
+}
+```
+
+---
+
+## DONE CRITERIA (6 items)
+
+1. ✅ Browser asks for notification permission when toggle turned ON
+2. ✅ Subscription saved to push_subscriptions table
+3. ✅ "Test notification" button → notification appears on HP
+4. ✅ merge pr #N via chat → push notification appears within 5s
+5. ✅ create issue via chat → push notification appears within 5s
+6. ✅ No regression — Phase 3a/3b/3c/3.5 all intact
+
+---
+
+## NPM DEPENDENCY
+
+Phase 4 requires one new npm package:
+
+```bash
+npm install web-push
+npm install --save-dev @types/web-push
+```
+
+This is the ONLY new dependency allowed for Phase 4.
+
+---
+
+## HARD CONSTRAINTS
+
+- Use ONLY existing VAPID Secrets (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_EMAIL)
+- DO NOT generate new VAPID keys
+- Service worker at public/sw.js (Next.js serves public/ statically)
+- DO NOT change visual design except adding the toggle in Settings
+- Handle expired subscriptions gracefully (delete on 410/404)
+- Push is fire-and-forget — never block the main action (merge/close/issue) if push fails
+- VAPID_PRIVATE_KEY never exposed to client-side code
+
+---
+
+## VALIDATION TIER: STANDARD
+
+Pure additive feature. No changes to gate logic, constitution fetch,
+or existing API routes except appending push call after success.
+No capital/risk impact.
+
+→ WARP🔹CMD review sufficient. No SENTINEL required.

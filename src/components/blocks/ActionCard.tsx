@@ -2,18 +2,13 @@
 
 import { useState } from "react";
 import type { ActionPayload } from "@/lib/types";
+import CollapsibleBlock from "./CollapsibleBlock";
 
 type Props = {
   payload: ActionPayload;
 };
 
 export default function ActionCard({ payload }: Props) {
-  const [open, setOpen] = useState(payload.defaultOpen ?? true);
-
-  // Render the summary with the optional path swapped in as a styled
-  // mono span. The agent can either embed `{path}` inside the summary
-  // string (for inline placement) or pass a bare summary + a separate
-  // path that we'll render after the summary text.
   const summaryNodes = renderWithPath(payload.summary, payload.path);
   const detailNodes = payload.detail
     ? renderWithPath(payload.detail, payload.path)
@@ -26,41 +21,63 @@ export default function ActionCard({ payload }: Props) {
         : JSON.stringify(payload.output)
       : null;
 
+  const hasBody = Boolean(detailNodes || payload.path || outputString !== null);
+  const outputIsMultiline =
+    outputString !== null && outputString.includes("\n");
+
+  // Heuristic: collapse only when the body would actually take meaningful
+  // vertical space — i.e. multi-line output. Single-line / no-body actions
+  // open by default.
+  const defaultExpanded =
+    payload.defaultOpen ?? (hasBody ? !outputIsMultiline : true);
+
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  const header = (
+    <>
+      <span className="action-icon" aria-hidden="true">
+        ‹›
+      </span>
+      <span className="action-summary-text">{summaryNodes}</span>
+    </>
+  );
+
+  if (!hasBody) {
+    // Nothing to collapse — render a static (non-button) header card.
+    return (
+      <div className="action-card">
+        <div className="block-summary block-summary--static">{header}</div>
+      </div>
+    );
+  }
+
   return (
-    <div className="action-card">
-      <button
-        type="button"
-        className="action-card-summary"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <span className={`action-chev${open ? " open" : ""}`}>›</span>
-        <span className="action-summary-text">{summaryNodes}</span>
-      </button>
-      {open && (
-        <div className="action-card-body">
-          <div className="action-detail-card">
-            {(detailNodes || payload.path) && (
-              <div className="action-detail-header">
-                <span className="action-detail-icon" aria-hidden="true">
-                  ‹›
-                </span>
-                <span className="action-detail-text">
-                  {detailNodes ?? (
-                    <>
-                      <span className="path-mono">{payload.path}</span>
-                    </>
-                  )}
-                </span>
-              </div>
-            )}
-            {outputString !== null && (
-              <div className="action-output">{outputString}</div>
-            )}
-          </div>
+    <CollapsibleBlock
+      className="action-card"
+      header={header}
+      expanded={expanded}
+      onToggle={() => setExpanded((v) => !v)}
+    >
+      <div className="action-card-body">
+        <div className="action-detail-card">
+          {(detailNodes || payload.path) && (
+            <div className="action-detail-header">
+              <span className="action-detail-icon" aria-hidden="true">
+                ‹›
+              </span>
+              <span className="action-detail-text">
+                {detailNodes ?? (
+                  <span className="path-mono">{payload.path}</span>
+                )}
+              </span>
+            </div>
+          )}
+          {outputString !== null && (
+            <div className="action-output">{outputString}</div>
+          )}
         </div>
-      )}
-    </div>
+      </div>
+    </CollapsibleBlock>
   );
 }
 
