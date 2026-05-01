@@ -4,7 +4,101 @@
    fenced code blocks. Styles mirror the v2 mockup.
    ───────────────────────────────────────────────────────────────── */
 
-/* ───────────── Collapsible action card ───────────── */
+/* ───────────── Shared collapsible header ─────────────
+   Every rich block wraps its header in a `.block-summary` button so
+   the whole row is one tap target. A trailing `.block-pill` (count)
+   and `.block-toggle` ("Show full" / "Show less" + chevron) sit on
+   the right. Per-block files layer on icons and content via a
+   second class (e.g. `.diff-header`, `.todo-block-header`). */
+.block-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font-family: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: background 0.1s;
+  min-height: 44px;
+}
+.block-summary:hover { background: var(--warp-bg-2); }
+.block-summary:focus-visible {
+  outline: 2px solid var(--warp-teal);
+  outline-offset: -2px;
+}
+.block-summary--static {
+  cursor: default;
+  min-height: 0;
+}
+.block-summary--static:hover { background: transparent; }
+
+.block-pill {
+  flex-shrink: 0;
+  margin-left: auto;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--warp-text-dim);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.block-toggle {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--warp-text-mute);
+}
+.block-pill + .block-toggle { margin-left: 8px; }
+.block-summary:hover .block-toggle { color: var(--warp-teal); }
+.block-toggle-label {
+  font-family: var(--font-sans), system-ui, sans-serif;
+  letter-spacing: 0.02em;
+}
+.block-chev {
+  display: inline-block;
+  width: 12px;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1;
+  transition: transform 0.2s;
+}
+.block-chev.open { transform: rotate(180deg); }
+
+/* Footer toggle for partial-collapse blocks (Todo / Status). */
+.block-footer-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border-faint);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--warp-text-mute);
+  min-height: 36px;
+  transition: color 0.1s, background 0.1s;
+}
+.block-footer-toggle:hover {
+  background: var(--warp-bg-2);
+  color: var(--warp-teal);
+}
+.block-footer-toggle:focus-visible {
+  outline: 2px solid var(--warp-teal);
+  outline-offset: -2px;
+}
+
+/* ───────────── Action card ───────────── */
 .action-card {
   background: var(--warp-bg-1);
   border: 1px solid var(--border-faint);
@@ -12,31 +106,12 @@
   overflow: hidden;
   margin: 0.4em 0;
 }
-.action-card-summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  width: 100%;
-  text-align: left;
-  font-family: inherit;
-  color: inherit;
-  transition: background 0.1s;
-}
-.action-card-summary:hover { background: var(--warp-bg-2); }
-.action-chev {
+.action-icon {
   color: var(--warp-text-mute);
-  font-size: 11px;
-  transition: transform 0.2s;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 13px;
   flex-shrink: 0;
-  display: inline-block;
-  width: 12px;
-  text-align: center;
 }
-.action-chev.open { transform: rotate(90deg); }
 .action-summary-text {
   flex: 1;
   font-size: 13px;
@@ -94,7 +169,7 @@
   color: var(--warp-text-dim);
   border-top: 1px solid var(--border-faint);
   overflow-x: auto;
-  white-space: nowrap;
+  white-space: pre;
 }
 
 /* ───────────── Diff viewer ───────────── */
@@ -105,13 +180,7 @@
   overflow: hidden;
   margin: 0.4em 0;
 }
-.diff-header {
-  display: flex;
-  align-items: center;
-  padding: 10px 12px;
-  gap: 8px;
-  border-bottom: 1px solid var(--border-faint);
-}
+.diff-block .block-body { border-top: 1px solid var(--border-faint); }
 .diff-icon {
   color: var(--warp-text-mute);
   font-family: var(--font-mono), ui-monospace, monospace;
@@ -192,13 +261,7 @@
   overflow: hidden;
   margin: 0.4em 0;
 }
-.todo-block-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--border-faint);
-}
+.todo-block .block-body { border-top: 1px solid var(--border-faint); }
 .todo-tag {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 10px;
@@ -208,6 +271,7 @@
   background: var(--warp-bg-3);
   padding: 3px 8px;
   border-radius: 4px;
+  flex-shrink: 0;
 }
 .todo-progress-text {
   font-family: var(--font-mono), ui-monospace, monospace;
@@ -309,6 +373,24 @@
   overflow: hidden;
   font-size: 13px;
   margin: 0.4em 0;
+}
+.status-table .block-body { border-top: 1px solid var(--border-faint); }
+.status-tag {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  color: var(--warp-text-dim);
+  background: var(--warp-bg-3);
+  padding: 3px 8px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.status-count {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--warp-text-dim);
+  font-variant-numeric: tabular-nums;
 }
 .status-row {
   display: grid;

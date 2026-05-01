@@ -6,7 +6,11 @@ import type { Message, Session, TodosPayload } from "@/lib/types";
 import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
 import SessionBar from "./SessionBar";
+import WarningBanner from "./WarningBanner";
+import ThinkingIndicator from "./ThinkingIndicator";
 import { cn } from "@/lib/cn";
+import { adminFetch } from "@/lib/admin-fetch";
+import { summarizeRefresh, type RefreshBody } from "@/lib/refresh-summary";
 
 type Props = {
   sessionId: string | null;
@@ -132,6 +136,15 @@ export default function ChatArea({
     scrollToBottom();
   }, [messages.length, streamingText, scrollToBottom]);
 
+  // See `handleSend` below. The listener is attached once and reads
+  // through a ref so we don't re-bind on every state change.
+  const newDirectiveCtxRef = useRef<{
+    sessionId: string | null;
+    streaming: boolean;
+    handleSend: (text: string) => Promise<void>;
+    onNewDirective: () => void;
+  } | null>(null);
+
   const handleSend = useCallback(
     async (text: string) => {
       if (!sessionId || !text.trim() || streaming) return;
@@ -211,11 +224,17 @@ export default function ChatArea({
           /* ignore */
         }
         try {
-          const r = await fetch("/api/sessions", { cache: "no-store" });
+          // Task #37 — fetch only the active session, not the full
+          // (now paginated) sessions list. The sidebar's `updated_at`
+          // for this row is what we need to refresh; the rest of the
+          // list is unchanged.
+          const r = await fetch(
+            `/api/sessions/${encodeURIComponent(sessionId)}`,
+            { cache: "no-store" },
+          );
           if (r.ok) {
-            const json = (await r.json()) as { sessions: Session[] };
-            const updated = json.sessions.find((s) => s.id === sessionId);
-            if (updated) onSessionUpdated(updated);
+            const json = (await r.json()) as { session: Session };
+            if (json.session) onSessionUpdated(json.session);
           }
         } catch {
           /* ignore */
@@ -223,6 +242,102 @@ export default function ChatArea({
       }
     },
     [sessionId, streaming, scrollToBottom, onSessionUpdated],
+  );
+
+  // Phase 3.5 — TaskCompleteCard buttons dispatch a window-level
+  // `warp:new-directive` event so the leaf card never has to know
+  // about ChatArea props. With a `prefill` we send it as a chat
+  // message in the current session (e.g. POST-MERGE SYNC ▶); without
+  // a prefill we open a brand-new directive via the parent callback
+  // (e.g. NEW DIRECTIVE on the issue-created card). The latest
+  // closure values are kept fresh in `newDirectiveCtxRef` so the
+  // listener can be attached only once.
+  newDirectiveCtxRef.current = {
+    sessionId,
+    streaming,
+    handleSend,
+    onNewDirective,
+  };
+  useEffect(() => {
+    function onNewDirectiveEvent(e: Event) {
+      const ctx = newDirectiveCtxRef.current;
+      if (!ctx) return;
+      const detail = (e as CustomEvent<{ prefill?: string }>).detail;
+      const prefill = detail?.prefill?.trim();
+      if (prefill && ctx.sessionId && !ctx.streaming) {
+        void ctx.handleSend(prefill);
+      } else {
+        ctx.onNewDirective();
+      }
+    }
+    window.addEventListener("warp:new-directive", onNewDirectiveEvent);
+    return () =>
+      window.removeEventListener("warp:new-directive", onNewDirectiveEvent);
+  }, []);
+
+  /**
+   * Slash-command intercept invoked by ChatInput before onSend.
+   *
+   * Recognised commands:
+   *   /refresh constitution   → POST /api/constitution/refresh
+   *
+   * Returns true when the command was handled (input swallowed) and
+   * false to let the input fall through to a normal chat send.
+   */
+  const handleSlashCommand = useCallback(
+    async (raw: string): Promise<boolean> => {
+      const cmd = raw.trim().toLowerCase().replace(/\s+/g, " ");
+      if (cmd !== "/refresh constitution") return false;
+
+      // Optimistic transcript echo so the operator can see the
+      // command was received. Use a synthetic system bubble — never
+      // sent to the chat API.
+      const tempId = `temp-cmd-${Date.now()}`;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: tempId,
+          session_id: sessionId ?? "",
+          role: "system",
+          content: "[WARP🔹CMD] /refresh constitution → fetching from GitHub…",
+          created_at: new Date().toISOString(),
+        },
+      ]);
+      setTimeout(scrollToBottom, 0);
+
+      try {
+        const res = await adminFetch("/api/constitution/refresh", {
+          method: "POST",
+        });
+        const json = (await res
+          .json()
+          .catch(() => null)) as RefreshBody | null;
+        const summary = summarizeRefresh(res, json);
+        const bubble = summary.ok
+          ? `[WARP🔹CMD] ✓ ${summary.message}`
+          : `[WARP•SENTINEL] ✗ Refresh failed: ${summary.message}`;
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === tempId ? { ...m, content: bubble } : m,
+          ),
+        );
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "unknown error";
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === tempId
+              ? {
+                  ...m,
+                  content: `[WARP•SENTINEL] ✗ Refresh failed: ${msg}`,
+                }
+              : m,
+          ),
+        );
+      }
+      setTimeout(scrollToBottom, 0);
+      return true;
+    },
+    [sessionId, scrollToBottom],
   );
 
   // Derive a 0–100 progress percentage from the last assistant message's
@@ -334,6 +449,12 @@ export default function ChatArea({
         onTap={onOpenDrawer}
       />
 
+      {/* Phase 3a — realtime warning banner from chat_warnings. Shows
+          fallback / cache-miss notices issued by the chat route when
+          the GitHub fetch fails. Sits ABOVE the messages list so it
+          never displaces the input. */}
+      <WarningBanner sessionId={sessionId} />
+
       {/* Messages */}
       <div
         ref={scrollRef}
@@ -349,25 +470,29 @@ export default function ChatArea({
           <ul className="flex flex-col gap-[22px] max-w-3xl mx-auto w-full">
             {messages.map((m) => (
               <li key={m.id}>
-                <MessageBubble message={m} />
+                <MessageBubble message={m} sessionId={sessionId} />
               </li>
             ))}
             {streaming && (
               <li>
-                <MessageBubble
-                  message={{
-                    id: "streaming",
-                    session_id: sessionId,
-                    role: "assistant",
-                    content: streamingText,
-                    created_at: new Date().toISOString(),
-                  }}
-                  streaming
-                />
-                {streamingText.length === 0 && (
-                  <div className="mt-1 text-[11px] text-white/45 warp-pulse">
-                    WARP🔹CMD is thinking…
-                  </div>
+                {streamingText.length === 0 ? (
+                  // Phase 3.5 — three-dot thinking indicator shown
+                  // immediately on submit. Disappears the moment the
+                  // first streamed chunk arrives (no transition: the
+                  // ternary swaps the node out instantly).
+                  <ThinkingIndicator />
+                ) : (
+                  <MessageBubble
+                    message={{
+                      id: "streaming",
+                      session_id: sessionId,
+                      role: "assistant",
+                      content: streamingText,
+                      created_at: new Date().toISOString(),
+                    }}
+                    streaming
+                    sessionId={sessionId}
+                  />
                 )}
               </li>
             )}
@@ -389,6 +514,7 @@ export default function ChatArea({
                   : "Describe your task or type / for commands"
             }
             onSend={handleSend}
+            onSlashCommand={handleSlashCommand}
           />
         </div>
       </div>

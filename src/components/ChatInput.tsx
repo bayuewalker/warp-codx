@@ -12,6 +12,13 @@ type Props = {
   ledHealth?: LedHealth;
   placeholder?: string;
   onSend: (text: string) => void;
+  /**
+   * Optional slash-command interceptor. Invoked before `onSend` for
+   * any input starting with "/". Return `true` to indicate the
+   * command was handled (input is cleared and `onSend` is skipped);
+   * return `false` to fall through to the normal chat path.
+   */
+  onSlashCommand?: (raw: string) => Promise<boolean> | boolean;
 };
 
 const MAX_HEIGHT_PX = 144;
@@ -23,6 +30,7 @@ export default function ChatInput({
   ledHealth = "online",
   placeholder = "Describe your task or type / for commands",
   onSend,
+  onSlashCommand,
 }: Props) {
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -35,10 +43,7 @@ export default function ChatInput({
     ta.style.height = Math.min(ta.scrollHeight, MAX_HEIGHT_PX) + "px";
   }, [value]);
 
-  const send = () => {
-    const t = value.trim();
-    if (!t || disabled || isStreaming) return;
-    onSend(t);
+  const resetField = () => {
     setValue("");
     requestAnimationFrame(() => {
       const ta = taRef.current;
@@ -46,18 +51,38 @@ export default function ChatInput({
     });
   };
 
+  const send = async () => {
+    const t = value.trim();
+    if (!t || disabled || isStreaming) return;
+
+    // Slash-command branch. Delegate to the parent (ChatArea owns the
+    // admin-authenticated refresh path and the in-transcript echo).
+    // If the parent indicates the command was handled, swallow the
+    // input; otherwise fall through to the normal chat dispatch.
+    if (t.startsWith("/") && onSlashCommand) {
+      const handled = await onSlashCommand(t);
+      if (handled) {
+        resetField();
+        return;
+      }
+    }
+
+    onSend(t);
+    resetField();
+  };
+
   const handleSendOrStop = () => {
     if (isStreaming) {
       onStopStream?.();
     } else {
-      send();
+      void send();
     }
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault();
-      send();
+      void send();
     }
   };
 

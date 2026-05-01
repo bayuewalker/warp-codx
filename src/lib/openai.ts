@@ -43,6 +43,16 @@ const FORGE_NAME = `WARP${'\u{2022}'}FORGE`;
 const SENTINEL_NAME = `WARP${'\u{2022}'}SENTINEL`;
 const ECHO_NAME = `WARP${'\u{2022}'}ECHO`;
 
+/**
+ * Hardcoded last-resort prompt used by /api/chat ONLY when both the
+ * GitHub fetch and the Supabase cache are unavailable (Phase 3a:
+ * Constitution Auto-Fetch fallback chain). Preserves the Task #6
+ * operator-encoding block so the diamond/bullet behavior survives
+ * even in safe-default mode.
+ *
+ * The runtime constitution from buildSystemPrompt() supersedes this
+ * on every request when GitHub + cache are healthy.
+ */
 export const WARP_CMD_SYSTEM_PROMPT = `OPERATOR NAME ENCODING — STRICT:
 When you reference yourself or other operators in chat output, use these exact strings character-for-character:
 

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import PushServiceWorkerRegistrar from "@/components/PushServiceWorkerRegistrar";
 
 // Map Inter → --font-sans and JetBrains Mono → --font-mono so every
 // component CSS rule referencing var(--font-sans)/var(--font-mono) lights up
@@ -62,6 +63,7 @@ export default function RootLayout({
     >
       <body>
         {children}
+        <PushServiceWorkerRegistrar />
         <script dangerouslySetInnerHTML={{ __html: kbScript }} />
       </body>
     </html>
