@@ -515,6 +515,8 @@ export default function ChatArea({
             }
             onSend={handleSend}
             onSlashCommand={handleSlashCommand}
+            onShortcutSend={handleSend}
+            onNewDirective={onNewDirective}
           />
         </div>
       </div>
