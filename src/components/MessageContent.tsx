@@ -349,8 +349,10 @@ function nodeText(node: ReactNode): string {
  * first column reads as filenames or short identifiers (e.g.
  * `PROJECT_STATE.md`, `src/lib/foo.ts`, `WORKTODO`). Heuristic:
  *   - non-empty body
- *   - every left-cell text matches a filename / identifier shape
- *     (no spaces, ≤ 64 chars, contains a dot OR is ALL_CAPS / snake)
+ *   - every left-cell text is ≤ 64 chars, has no whitespace, contains
+ *     a dot or slash (real filename / path evidence), and matches
+ *     `[\w./-]+` so plain ALL_CAPS identifiers (API_VERSION,
+ *     PR_NUMBER) stay in the Pattern A definition list.
  * If the table is empty we fall back to the plain key/value layout.
  */
 function looksLikeStatusTable(rows: ReactNode[][]): boolean {
@@ -360,9 +362,12 @@ function looksLikeStatusTable(rows: ReactNode[][]): boolean {
     if (!text) return false;
     if (text.length > 64) return false;
     if (/\s/.test(text)) return false;
-    const hasDot = text.includes(".");
-    const isIdentifier = /^[A-Z0-9_./-]+$/.test(text);
-    if (!hasDot && !isIdentifier) return false;
+    // Require concrete file/path evidence — a `.` or a `/`. Plain
+    // ALL_CAPS identifiers (API_VERSION, RUN_MODE, PR_NUMBER) stay
+    // in the Pattern A definition list; only paths and filenames
+    // (PROJECT_STATE.md, src/lib/foo.ts) are promoted to Pattern B.
+    if (!/[./]/.test(text)) return false;
+    if (!/^[\w./-]+$/.test(text)) return false;
   }
   return true;
 }
@@ -379,7 +384,7 @@ function detectStatusBadge(
   if (/\b(ERROR|FAILED|FAIL)\b/.test(upper)) {
     return { kind: "red", label: "ERROR" };
   }
-  if (/\b(PENDING)\b/.test(upper) || /NOT READ/i.test(text)) {
+  if (/\bPENDING\b/.test(upper) || /\bNOT READ\b/i.test(text)) {
     return { kind: "muted", label: "PENDING" };
   }
   if (/\b(COMPLETE|DONE)\b/.test(upper)) {
