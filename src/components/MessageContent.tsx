@@ -285,6 +285,17 @@ export default function MessageContent({
               </a>
             );
           },
+          table({ children }) {
+            // WARP/ui-fix-r2 — wrap the native <table> so wide
+            // CMD-emitted tables (e.g. status reports) scroll
+            // horizontally on narrow viewports instead of forcing
+            // the bubble past the chat column.
+            return (
+              <div className="md-table-wrap">
+                <table>{children}</table>
+              </div>
+            );
+          },
         }}
       >
         {proseOnly}

@@ -11,7 +11,7 @@
    ───────────────────────────────────────────────────────────────── */
 .message-content {
   font-family: var(--font-sans), system-ui, sans-serif;
-  font-size: 15px;
+  font-size: 13px;
   line-height: 1.65;
   color: var(--warp-text);
   word-wrap: break-word;
@@ -92,20 +92,34 @@
   color: var(--warp-text-dim);
 }
 
-/* Tables — must scroll horizontally on mobile */
-.message-content table {
-  display: block;
+/* Tables — wrapped in `.md-table-wrap` (added by MessageContent.tsx)
+   for horizontal scroll on mobile without losing native table layout
+   semantics. The wrapper handles overflow; the table itself stays as
+   a real `display: table` so column widths size to content. */
+.message-content .md-table-wrap {
   overflow-x: auto;
-  border-collapse: collapse;
+  -webkit-overflow-scrolling: touch;
   margin: 0.6em 0;
-  font-size: 0.92em;
+  /* Hint to mobile browsers that horizontal pan is the intended
+     interaction inside this region. */
+  touch-action: pan-x pan-y;
+}
+.message-content .md-table-wrap > table {
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 12px;
   font-family: var(--font-mono), ui-monospace, monospace;
+  /* Width hint: shrink to content, but never narrower than the
+     wrapper, so short tables still fill the row. */
+  width: max-content;
+  min-width: 100%;
 }
 .message-content th,
 .message-content td {
   padding: 0.3em 0.6em;
   border: 1px solid var(--border-soft);
   text-align: left;
+  white-space: nowrap;
 }
 .message-content th {
   background: var(--warp-bg-2);
