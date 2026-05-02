@@ -236,15 +236,34 @@ export async function POST(req: Request) {
           model: MODELS.cmd,
           stream: true,
           temperature: 0.6,
+          max_tokens: 8192,
           messages,
         });
 
+        let finishReason: string | null | undefined = null;
         for await (const part of completion) {
           const delta = part.choices?.[0]?.delta?.content ?? "";
           if (delta) {
             assembled += delta;
             controller.enqueue(encoder.encode(delta));
           }
+          const fr = part.choices?.[0]?.finish_reason;
+          if (fr) finishReason = fr;
+        }
+
+        console.log(
+          `[chat] stream ended sessionId=${sessionId} finish_reason=${finishReason ?? "null"} assembled_length=${assembled.length}`,
+        );
+
+        // Surface OpenRouter/Anthropic max-token truncation to the user
+        // so they know to type "continue" to get the rest of the reply.
+        // Persisted to Supabase as part of the assistant message so the
+        // saved transcript matches what was streamed.
+        if (finishReason === "length") {
+          const truncationNotice =
+            "\n\n⚠️ Response truncated — reply with 'continue' to get the rest.";
+          controller.enqueue(encoder.encode(truncationNotice));
+          assembled += truncationNotice;
         }
 
         // Persist the assistant's final message.
