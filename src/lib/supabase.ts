@@ -3,6 +3,49 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+/**
+ * Task #2 — Authenticated server client.
+ *
+ * Returns a Supabase client that uses the **anon key** plus the
+ * caller's bearer token, so all queries run as the signed-in user
+ * and RLS policies apply. Use this from API route handlers in
+ * preference to `getServerSupabase()` (service-role) once Task #2
+ * is fully shipped — the service-role client should only be used
+ * for narrow server-only writes that genuinely need to bypass RLS.
+ *
+ * Pass the raw `Authorization` header value from the incoming
+ * Request (e.g. `req.headers.get("authorization")`). Returns `null`
+ * if no token is present so the caller can respond with 401.
+ *
+ * The same `noStoreFetch` workaround used by `getServerSupabase()`
+ * is applied here — Next.js 14 caches `fetch` GETs from route
+ * handlers and would otherwise serve stale Supabase reads.
+ */
+export function getRequestSupabase(
+  authHeader: string | null | undefined,
+): SupabaseClient | null {
+  if (!authHeader) return null;
+  const token = authHeader.startsWith("Bearer ")
+    ? authHeader.slice("Bearer ".length).trim()
+    : authHeader.trim();
+  if (!token) return null;
+
+  const noStoreFetch: typeof fetch = (input, init) =>
+    fetch(input, { ...init, cache: "no-store" });
+
+  return createClient(
+    assertEnv("NEXT_PUBLIC_SUPABASE_URL", SUPABASE_URL),
+    assertEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", SUPABASE_ANON_KEY),
+    {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: {
+        fetch: noStoreFetch,
+        headers: { Authorization: `Bearer ${token}` },
+      },
+    },
+  );
+}
+
 function assertEnv(name: string, value: string | undefined): string {
   if (!value) {
     throw new Error(
