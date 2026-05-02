@@ -1,6 +1,12 @@
 "use client";
 
-import { Fragment, type ReactNode } from "react";
+import {
+  Children,
+  Fragment,
+  isValidElement,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -286,15 +292,13 @@ export default function MessageContent({
             );
           },
           table({ children }) {
-            // WARP/ui-fix-r2 — wrap the native <table> so wide
-            // CMD-emitted tables (e.g. status reports) scroll
-            // horizontally on narrow viewports instead of forcing
-            // the bubble past the chat column.
-            return (
-              <div className="md-table-wrap">
-                <table>{children}</table>
-              </div>
-            );
+            // WARP/ui-fix-r3 — render markdown tables as a vertical
+            // definition list (2-col → key/value pairs) or stacked
+            // cards (3+ col), never as a horizontally scrolling
+            // <table>. Mobile (375px) operators were losing the
+            // right edge on every status report; vertical reflow
+            // wraps freely and removes the need for swipe-to-scroll.
+            return <MarkdownTable>{children}</MarkdownTable>;
           },
         }}
       >
@@ -320,4 +324,95 @@ function parseJson<T>(src: string): T | null {
   } catch {
     return null;
   }
+}
+
+/**
+ * WARP/ui-fix-r3 — vertical-flow renderer for GFM markdown tables.
+ *
+ * react-markdown hands us the rendered children of `<table>` —
+ * a `<thead>` containing one `<tr>` of `<th>` cells, and a
+ * `<tbody>` of `<tr>` rows of `<td>` cells. We walk that tree
+ * once to pull out:
+ *   - `headers` — the label for each column (preserves inline
+ *     react nodes like <code>, links, pills)
+ *   - `rows` — each row's cells, in column order
+ *
+ * Then we pick a layout based on column count:
+ *   - 2 columns → CSS-grid key/value list (left key bold, right
+ *     value wraps freely). The header row renders once at the top
+ *     in the same grid so "Field | Value" lines up with the data.
+ *   - 3+ columns OR 0/1 columns → stacked cards, one card per
+ *     row, each cell labelled with its column header above the
+ *     value.
+ *
+ * No horizontal overflow in either layout — the grid / card
+ * containers are 100% width and let long values wrap.
+ */
+function MarkdownTable({ children }: { children?: ReactNode }) {
+  const headers: ReactNode[] = [];
+  const rows: ReactNode[][] = [];
+
+  Children.forEach(children, (section) => {
+    if (!isValidElement(section)) return;
+    const el = section as ReactElement<{ children?: ReactNode }>;
+    const isThead = el.type === "thead";
+    const isTbody = el.type === "tbody";
+    if (!isThead && !isTbody) return;
+
+    Children.forEach(el.props.children, (tr) => {
+      if (!isValidElement(tr) || tr.type !== "tr") return;
+      const trEl = tr as ReactElement<{ children?: ReactNode }>;
+      const cells: ReactNode[] = [];
+      Children.forEach(trEl.props.children, (cell) => {
+        if (!isValidElement(cell)) return;
+        const cellEl = cell as ReactElement<{ children?: ReactNode }>;
+        if (cell.type !== "th" && cell.type !== "td") return;
+        cells.push(cellEl.props.children);
+      });
+      if (isThead) {
+        // GFM tables always have exactly one header row; use the
+        // first one we see and ignore any stragglers.
+        if (headers.length === 0) headers.push(...cells);
+      } else {
+        rows.push(cells);
+      }
+    });
+  });
+
+  // 2-column key/value layout. Render header once at the top in
+  // the same grid so the label row aligns with every data row.
+  if (headers.length === 2) {
+    return (
+      <dl className="md-table-kv">
+        <div className="md-table-kv-row md-table-kv-row--header">
+          <dt className="md-table-kv-key">{headers[0]}</dt>
+          <dd className="md-table-kv-val">{headers[1]}</dd>
+        </div>
+        {rows.map((row, i) => (
+          <div className="md-table-kv-row" key={i}>
+            <dt className="md-table-kv-key">{row[0]}</dt>
+            <dd className="md-table-kv-val">{row[1] ?? ""}</dd>
+          </div>
+        ))}
+      </dl>
+    );
+  }
+
+  // 3+ column (or 0/1 — same fallback) stacked-cards layout.
+  return (
+    <div className="md-table-cards">
+      {rows.map((row, i) => (
+        <div className="md-table-card" key={i}>
+          {row.map((cell, j) => (
+            <div className="md-table-card-row" key={j}>
+              {headers[j] !== undefined ? (
+                <div className="md-table-card-label">{headers[j]}</div>
+              ) : null}
+              <div className="md-table-card-value">{cell}</div>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
 }

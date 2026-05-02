@@ -92,38 +92,123 @@
   color: var(--warp-text-dim);
 }
 
-/* Tables — wrapped in `.md-table-wrap` (added by MessageContent.tsx)
-   for horizontal scroll on mobile without losing native table layout
-   semantics. The wrapper handles overflow; the table itself stays as
-   a real `display: table` so column widths size to content. */
-.message-content .md-table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+/* Tables — WARP/ui-fix-r3 renders markdown tables vertically so
+   they never overflow the chat bubble on mobile. There are two
+   layouts, both produced by `MarkdownTable` in MessageContent.tsx:
+     • `.md-table-kv`     — 2-column tables become a CSS-grid
+                            definition list (bold key, wrapping
+                            value). Header row sits at the top in
+                            the same grid so "Field / Value" lines
+                            up with data rows.
+     • `.md-table-cards`  — 3+ column tables become a stack of
+                            cards, one per data row, each cell
+                            labelled with its column header above
+                            the value.
+   Both layouts are 100%-wide and never trigger horizontal scroll.
+   The container itself is also 100% wide so long values wrap
+   freely instead of forcing the bubble past the chat column. */
+
+.message-content .md-table-kv {
+  display: grid;
+  /* Two-column grid: key column hugs its content but never grows
+     past ~40% of the row, value column takes the rest. minmax(0,…)
+     on the value column lets long URLs / paths wrap instead of
+     forcing horizontal overflow. */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+  width: 100%;
   margin: 0.6em 0;
-  /* Hint to mobile browsers that horizontal pan is the intended
-     interaction inside this region. */
-  touch-action: pan-x pan-y;
-}
-.message-content .md-table-wrap > table {
-  border-collapse: collapse;
-  margin: 0;
   font-size: 12px;
   font-family: var(--font-mono), ui-monospace, monospace;
-  /* Width hint: shrink to content, but never narrower than the
-     wrapper, so short tables still fill the row. */
-  width: max-content;
-  min-width: 100%;
-}
-.message-content th,
-.message-content td {
-  padding: 0.3em 0.6em;
   border: 1px solid var(--border-soft);
-  text-align: left;
-  white-space: nowrap;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
-.message-content th {
+
+/* `display: contents` on the row wrapper lets the dt/dd participate
+   directly in the parent grid while still grouping semantically. */
+.message-content .md-table-kv-row {
+  display: contents;
+}
+
+.message-content .md-table-kv-key,
+.message-content .md-table-kv-val {
+  padding: 0.55em 0.7em;
+  border-top: 1px solid var(--border-soft);
+  margin: 0;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  color: var(--warp-text);
+}
+
+.message-content .md-table-kv-key {
+  font-weight: 600;
+}
+
+/* First row sits flush against the rounded container — drop the
+   top border so the corner radius reads cleanly. */
+.message-content .md-table-kv-row:first-child .md-table-kv-key,
+.message-content .md-table-kv-row:first-child .md-table-kv-val {
+  border-top: none;
+}
+
+/* Header row gets a subtle tint so it reads as the column legend
+   rather than a data row. */
+.message-content .md-table-kv-row--header .md-table-kv-key,
+.message-content .md-table-kv-row--header .md-table-kv-val {
   background: var(--warp-bg-2);
   font-weight: 600;
+  color: var(--warp-text);
+}
+
+/* 3+ column stacked-cards layout. Each row of the source table
+   becomes its own bordered card; each cell becomes a label-above-
+   value pair so wide tables (status reports, audit logs) read
+   cleanly on a 375px viewport without horizontal scroll. */
+.message-content .md-table-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45em;
+  width: 100%;
+  margin: 0.6em 0;
+  font-size: 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+
+.message-content .md-table-card {
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 0.55em 0.75em;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+}
+
+.message-content .md-table-card-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15em;
+  min-width: 0;
+}
+
+.message-content .md-table-card-row + .md-table-card-row {
+  border-top: 1px solid var(--border-soft);
+  padding-top: 0.4em;
+}
+
+.message-content .md-table-card-label {
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--warp-text-dim);
+}
+
+.message-content .md-table-card-value {
+  color: var(--warp-text);
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 /* Inline code — calm glass tint, no border, generous horizontal
