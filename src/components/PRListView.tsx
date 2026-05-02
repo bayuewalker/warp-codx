@@ -20,6 +20,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { prsFetch } from "@/lib/prs-fetch";
 import { ADMIN_TOKEN_EVENT } from "@/lib/admin-token";
 import { getBrowserSupabase } from "@/lib/supabase";
+import EmptyState from "./EmptyState";
 
 type ListedPR = {
   number: number;
@@ -181,11 +182,17 @@ export default function PRListView({ onBack }: Props) {
             </div>
           </div>
         ) : prs.length === 0 ? (
-          <div className="px-4 py-3 text-xs text-white/35 leading-relaxed">
-            No open WARP/* PRs. Type{" "}
-            <span className="text-warp-blue">&ldquo;cek pr&rdquo;</span> in
-            chat to refresh.
-          </div>
+          <EmptyState
+            icon="⌥"
+            title="No open pull requests"
+            subtitle={
+              <>
+                When WARP/* branches open PRs, they&apos;ll show here. Type{" "}
+                <span className="text-warp-blue">&ldquo;cek pr&rdquo;</span>{" "}
+                in chat to refresh from GitHub.
+              </>
+            }
+          />
         ) : (
           <ul className="flex flex-col">
             {prs.map((pr) => (

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import SessionRow from "./SessionRow";
 import IssuesView from "./IssuesView";
 import PRListView from "./PRListView";
+import EmptyState from "./EmptyState";
 import type { Session } from "@/lib/types";
 
 type Props = {
@@ -222,17 +223,18 @@ export default function Sidebar({
         ) : loading ? (
           <div className="px-4 py-3 text-xs text-white/35">Loading…</div>
         ) : sessions.length === 0 ? (
-          <div className="px-4 py-3 text-xs text-white/35 leading-relaxed">
-            {error
-              ? "No sessions to show — see the message above."
-              : (
-                <>
-                  No sessions yet. Tap{" "}
-                  <span className="text-warp-blue">+ New Directive</span> to
-                  start.
-                </>
-              )}
-          </div>
+          error ? (
+            <div className="px-4 py-3 text-xs text-white/35 leading-relaxed">
+              No sessions to show — see the message above.
+            </div>
+          ) : (
+            <EmptyState
+              icon="◇"
+              title="No sessions yet"
+              subtitle="Start a new directive to dispatch your first task to WARP🔹CMD."
+              action={{ label: "+ New directive", onClick: onNewDirective }}
+            />
+          )
         ) : (
           <>
             <ul className="flex flex-col gap-0.5">

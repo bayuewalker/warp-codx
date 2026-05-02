@@ -20,6 +20,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { issuesFetch } from "@/lib/issues-fetch";
 import { ADMIN_TOKEN_EVENT } from "@/lib/admin-token";
+import EmptyState from "./EmptyState";
 
 type Issue = {
   number: number;
@@ -146,13 +147,19 @@ export default function IssuesView({ onBack }: Props) {
             </div>
           </div>
         ) : issues.length === 0 ? (
-          <div className="px-4 py-3 text-xs text-white/35 leading-relaxed">
-            No issues yet. Type{" "}
-            <span className="text-warp-blue">
-              &ldquo;buat issue untuk …&rdquo;
-            </span>{" "}
-            in chat to dispatch one.
-          </div>
+          <EmptyState
+            icon="🔖"
+            title="No issues yet"
+            subtitle={
+              <>
+                Dispatch a forge-task by typing{" "}
+                <span className="text-warp-blue">
+                  &ldquo;buat issue untuk …&rdquo;
+                </span>{" "}
+                in chat.
+              </>
+            }
+          />
         ) : (
           <ul className="flex flex-col">
             {issues.map((it) => (

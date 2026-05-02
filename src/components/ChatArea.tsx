@@ -8,6 +8,7 @@ import ChatInput from "./ChatInput";
 import SessionBar from "./SessionBar";
 import WarningBanner from "./WarningBanner";
 import ThinkingIndicator from "./ThinkingIndicator";
+import EmptyStateView from "./EmptyState";
 import { cn } from "@/lib/cn";
 import { adminFetch } from "@/lib/admin-fetch";
 import { summarizeRefresh, type RefreshBody } from "@/lib/refresh-summary";
@@ -461,13 +462,31 @@ export default function ChatArea({
         className="flex-1 min-h-0 overflow-y-auto warp-scroll px-4 md:px-6 pt-4 pb-3"
       >
         {!sessionId ? (
-          <EmptyState onNewDirective={onNewDirective} />
+          <EmptyStateView
+            eyebrow="WARP CodX"
+            title="Command interface for WalkerMind OS"
+            subtitle={
+              <>
+                Direct WARP🔹CMD. Dispatch tasks to FORGE, SENTINEL, and ECHO.
+                Branches use{" "}
+                <span className="text-warp-blue">
+                  WARP/&#123;feature-slug&#125;
+                </span>
+                .
+              </>
+            }
+            action={{ label: "+ New directive", onClick: onNewDirective }}
+          />
         ) : loading ? (
           <div className="text-xs text-warp-text-mute px-1">Loading messages…</div>
         ) : messages.length === 0 && !streaming ? (
-          <EmptyConversation />
+          <EmptyStateView
+            icon="◆"
+            title="Awaiting directive"
+            subtitle="Anything you send is routed through WARP🔹CMD, which decides whether FORGE, SENTINEL, or ECHO takes the task."
+          />
         ) : (
-          <ul className="flex flex-col gap-[22px] max-w-3xl mx-auto w-full">
+          <ul className="flex flex-col gap-5 max-w-3xl mx-auto w-full">
             {messages.map((m) => (
               <li key={m.id}>
                 <MessageBubble message={m} sessionId={sessionId} />
@@ -547,41 +566,3 @@ function extractTodoProgress(messages: Message[]): number | undefined {
   return undefined;
 }
 
-function EmptyState({ onNewDirective }: { onNewDirective: () => void }) {
-  return (
-    <div className="h-full flex items-center justify-center text-center px-6">
-      <div className="max-w-sm">
-        <div className="text-warp-blue text-sm tracking-wide">WARP CodX</div>
-        <h1 className="mt-2 text-white/90 text-lg leading-snug">
-          Command interface for WalkerMind&nbsp;OS
-        </h1>
-        <p className="mt-3 text-[12px] text-white/50 leading-relaxed">
-          Direct WARP🔹CMD. Dispatch tasks to FORGE, SENTINEL, and ECHO.
-          Branches use{" "}
-          <span className="text-warp-blue">WARP/&#123;feature-slug&#125;</span>.
-        </p>
-        <button
-          type="button"
-          onClick={onNewDirective}
-          className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-md
-            bg-warp-blue/10 hover:bg-warp-blue/20 active:bg-warp-blue/30
-            border-hair border-warp-blue/40 text-warp-blue text-sm"
-        >
-          <span>+</span>
-          <span>New directive</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-function EmptyConversation() {
-  return (
-    <div className="h-full flex items-center justify-center text-center px-6">
-      <div className="max-w-sm text-[12px] text-white/45 leading-relaxed">
-        Awaiting directive. Anything you send is routed through WARP🔹CMD,
-        which decides whether FORGE, SENTINEL, or ECHO takes the task.
-      </div>
-    </div>
-  );
-}
