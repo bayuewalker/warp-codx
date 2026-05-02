@@ -45,7 +45,7 @@ export default function MessageBubble({
       <div
         className={cn(
           isUser
-            ? "max-w-[75%] bg-warp-blue/15 px-[14px] py-[10px] rounded-[16px] rounded-br-[4px]"
+            ? "max-w-[75%] bg-warp-blue/15 border border-warp-blue/25 px-[14px] py-[10px] rounded-[16px] rounded-br-[4px] text-right"
             : "w-full",
         )}
       >
