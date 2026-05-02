@@ -42,7 +42,13 @@ export default function MessageBubble({
         streaming && "warp-cursor",
       )}
     >
-      <div className={isUser ? "max-w-[75%]" : "w-full"}>
+      <div
+        className={cn(
+          isUser
+            ? "max-w-[75%] bg-warp-blue/15 px-[14px] py-[10px] rounded-[16px] rounded-br-[4px]"
+            : "w-full",
+        )}
+      >
         {hasContent ? (
           <MessageContent
             content={message.content}

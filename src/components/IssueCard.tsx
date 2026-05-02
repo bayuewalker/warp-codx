@@ -78,7 +78,7 @@ export default function IssueCard({ data, sessionId }: Props) {
           </div>
           <span className="agent-pill forge">WARP•FORGE</span>
         </div>
-        <div className="px-4 py-3 flex flex-col gap-2">
+        <div className="px-4 py-4 flex flex-col gap-3">
           <div className="text-[13px] text-white/90 leading-snug">
             {state.title}
           </div>
@@ -90,7 +90,7 @@ export default function IssueCard({ data, sessionId }: Props) {
               href={state.issueUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/85 hover:text-white hover:bg-white/5 transition-colors"
+              className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/85 hover:text-white hover:bg-white/5 transition-colors"
             >
               <span>Open in GitHub</span>
               <span aria-hidden="true">↗</span>
@@ -164,7 +164,7 @@ export default function IssueCard({ data, sessionId }: Props) {
         <span className="agent-pill forge">WARP•FORGE</span>
       </div>
 
-      <div className="px-4 py-3 flex flex-col gap-2.5">
+      <div className="px-4 py-4 flex flex-col gap-3">
         {/* Title */}
         <FieldRow label="Title">
           {isEditing ? (
@@ -210,13 +210,13 @@ export default function IssueCard({ data, sessionId }: Props) {
         {/* Tier */}
         <FieldRow label="Tier">
           {isEditing ? (
-            <div className="flex gap-1">
+            <div className="flex gap-2">
               {TIERS.map((t) => (
                 <button
                   key={t}
                   type="button"
                   onClick={() => setDraft({ ...draft, validationTier: t })}
-                  className={`px-2 py-0.5 text-[10px] uppercase tracking-[0.14em] rounded border transition-colors ${
+                  className={`px-3 min-h-[40px] text-[11px] uppercase tracking-[0.14em] rounded border transition-colors ${
                     draft.validationTier === t
                       ? "border-warp-teal/60 text-warp-teal bg-warp-teal-bg"
                       : "border-hair text-white/55 hover:text-white/85"
@@ -261,7 +261,7 @@ export default function IssueCard({ data, sessionId }: Props) {
                 type="button"
                 onClick={() => setState({ kind: "draft" })}
                 disabled={isCreating}
-                className="px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
+                className="px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
               >
                 Done
               </button>
@@ -272,7 +272,7 @@ export default function IssueCard({ data, sessionId }: Props) {
                 type="button"
                 onClick={() => setState({ kind: "editing" })}
                 disabled={isCreating}
-                className="px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
+                className="px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
               >
                 Edit
               </button>
@@ -280,7 +280,7 @@ export default function IssueCard({ data, sessionId }: Props) {
                 type="button"
                 onClick={() => setDiscarded(true)}
                 disabled={isCreating}
-                className="px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/55 hover:text-warp-amber hover:border-warp-amber/40 transition-colors disabled:opacity-40"
+                className="px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/55 hover:text-warp-amber hover:border-warp-amber/40 transition-colors disabled:opacity-40"
               >
                 Discard
               </button>
@@ -289,7 +289,7 @@ export default function IssueCard({ data, sessionId }: Props) {
                 type="button"
                 onClick={handleCreate}
                 disabled={isCreating || draft.title.trim().length === 0}
-                className="px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-warp-teal/50 bg-warp-teal-bg text-warp-teal hover:bg-warp-teal/15 transition-colors disabled:opacity-40"
+                className="px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-warp-teal/50 bg-warp-teal-bg text-warp-teal hover:bg-warp-teal/15 transition-colors disabled:opacity-40"
               >
                 {isCreating ? "Creating…" : "Create issue ▶"}
               </button>

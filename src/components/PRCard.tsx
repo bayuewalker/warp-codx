@@ -358,7 +358,7 @@ export default function PRCard({
   if (state.kind === "error") {
     return (
       <CardShell prNumber={prNumber} embedded={embedded}>
-        <div className="px-4 py-3 flex flex-col gap-2">
+        <div className="px-4 py-4 flex flex-col gap-3">
           <div className="text-[11px] uppercase tracking-[0.18em] text-warp-amber/90">
             PR action failed
           </div>
@@ -369,7 +369,7 @@ export default function PRCard({
             <button
               type="button"
               onClick={() => void load()}
-              className="px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-white hover:bg-white/5 transition-colors"
+              className="px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-white hover:bg-white/5 transition-colors"
             >
               Retry
             </button>
@@ -384,12 +384,12 @@ export default function PRCard({
       <CardShell prNumber={prNumber} accent="teal" embedded={embedded}>
         {!embedded && (
           <Header
-            icon="✅"
-            label={`PR #${state.data.pr.number} MERGED`}
-            accent="teal"
+            prNumber={state.data.pr.number}
+            status="MERGED"
+            statusAccent="teal"
           />
         )}
-        <div className="px-4 py-3 flex flex-col gap-2">
+        <div className="px-4 py-4 flex flex-col gap-3">
           <div className="text-[13px] text-white/90 leading-snug">
             {state.data.pr.title}
           </div>
@@ -415,12 +415,12 @@ export default function PRCard({
       <CardShell prNumber={prNumber} accent="red" embedded={embedded}>
         {!embedded && (
           <Header
-            icon="❌"
-            label={`PR #${state.data.pr.number} CLOSED`}
-            accent="red"
+            prNumber={state.data.pr.number}
+            status="CLOSED"
+            statusAccent="amber"
           />
         )}
-        <div className="px-4 py-3 flex flex-col gap-2">
+        <div className="px-4 py-4 flex flex-col gap-3">
           <div className="text-[13px] text-white/90 leading-snug">
             {state.data.pr.title}
           </div>
@@ -437,18 +437,20 @@ export default function PRCard({
   }
 
   if (state.kind === "held") {
-    const heldLabel = state.manual
-      ? `PR #${state.data.pr.number} HELD · MANUAL`
-      : `PR #${state.data.pr.number} HELD`;
+    const heldStatus = state.manual ? "HELD · MANUAL" : "HELD";
     const subLabel = state.manual
       ? "Manual hold — operator-tapped"
       : "Pre-merge gate blocked";
     return (
       <CardShell prNumber={prNumber} accent="amber" embedded={embedded}>
         {!embedded && (
-          <Header icon="⏸" label={heldLabel} accent="amber" />
+          <Header
+            prNumber={state.data.pr.number}
+            status={heldStatus}
+            statusAccent="amber"
+          />
         )}
-        <div className="px-4 py-3 flex flex-col gap-2">
+        <div className="px-4 py-4 flex flex-col gap-3">
           <div className="text-[13px] text-white/90 leading-snug">
             {state.data.pr.title}
           </div>
@@ -464,7 +466,7 @@ export default function PRCard({
             <button
               type="button"
               onClick={() => void load()}
-              className="px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-white hover:bg-white/5 transition-colors"
+              className="px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-white hover:bg-white/5 transition-colors"
             >
               Refresh
             </button>
@@ -502,12 +504,12 @@ export default function PRCard({
     <CardShell prNumber={pr.number} embedded={embedded}>
       {!embedded && (
         <Header
-          icon="🔀"
-          label={`PR #${pr.number} · ${stateLabel(pr.state)}`}
-          accent={accentForState(pr.state)}
+          prNumber={pr.number}
+          status={stateLabel(pr.state)}
+          statusAccent={accentForState(pr.state)}
         />
       )}
-      <div className="px-4 py-3 flex flex-col gap-2">
+      <div className="px-4 py-4 flex flex-col gap-3">
         {!embedded && (
           <div className="text-[13px] text-white/90 leading-snug">
             {pr.title}
@@ -526,7 +528,7 @@ export default function PRCard({
                   primary: "merge",
                 })
               }
-              className="px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/75 hover:text-white hover:bg-white/5 transition-colors"
+              className="px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/75 hover:text-white hover:bg-white/5 transition-colors"
             >
               View details ›
             </button>
@@ -667,7 +669,7 @@ export default function PRCard({
                       setState({ kind: "expanded", data, primary: "close" })
                     }
                     disabled={!!submittingOp}
-                    className="px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
+                    className="px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
                   >
                     Cancel
                   </button>
@@ -677,7 +679,7 @@ export default function PRCard({
                     disabled={
                       !!submittingOp || closeReason.trim().length === 0
                     }
-                    className="px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-warp-amber/50 bg-warp-amber/10 text-warp-amber hover:bg-warp-amber/20 transition-colors disabled:opacity-40"
+                    className="px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-warp-amber/50 bg-warp-amber/10 text-warp-amber hover:bg-warp-amber/20 transition-colors disabled:opacity-40"
                   >
                     {submittingOp === "close"
                       ? "Closing…"
@@ -692,7 +694,7 @@ export default function PRCard({
                       setState({ kind: "expanded", data, primary: "hold" })
                     }
                     disabled={!!submittingOp}
-                    className="px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
+                    className="px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
                   >
                     Cancel
                   </button>
@@ -702,7 +704,7 @@ export default function PRCard({
                     disabled={
                       !!submittingOp || holdReason.trim().length === 0
                     }
-                    className="px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-warp-amber/50 bg-warp-amber/10 text-warp-amber hover:bg-warp-amber/20 transition-colors disabled:opacity-40"
+                    className="px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-warp-amber/50 bg-warp-amber/10 text-warp-amber hover:bg-warp-amber/20 transition-colors disabled:opacity-40"
                   >
                     {submittingOp === "hold"
                       ? "Holding…"
@@ -717,12 +719,12 @@ export default function PRCard({
                       primary action. Colors and hover states are
                       preserved verbatim from the original single-row
                       cluster — only the wrapper structure changed. */}
-                  <div className="w-full flex items-stretch gap-1.5">
+                  <div className="w-full flex items-stretch gap-2">
                     <button
                       type="button"
                       onClick={() => void load()}
                       disabled={!!submittingOp}
-                      className="flex-1 basis-0 min-w-0 px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/55 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
+                      className="flex-1 basis-0 min-w-0 px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/55 hover:text-white hover:bg-white/5 transition-colors disabled:opacity-40"
                     >
                       Refresh
                     </button>
@@ -732,7 +734,7 @@ export default function PRCard({
                         setState({ kind: "confirmingClose", data })
                       }
                       disabled={!!submittingOp || pr.state !== "open"}
-                      className="flex-1 basis-0 min-w-0 px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-warp-amber hover:border-warp-amber/40 transition-colors disabled:opacity-40"
+                      className="flex-1 basis-0 min-w-0 px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-warp-amber hover:border-warp-amber/40 transition-colors disabled:opacity-40"
                     >
                       Close ×
                     </button>
@@ -743,7 +745,7 @@ export default function PRCard({
                       }
                       disabled={!!submittingOp || pr.state !== "open"}
                       title="Manual hold — posts a comment, leaves PR open on GitHub"
-                      className="flex-1 basis-0 min-w-0 px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-warp-amber hover:border-warp-amber/40 transition-colors disabled:opacity-40"
+                      className="flex-1 basis-0 min-w-0 px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/65 hover:text-warp-amber hover:border-warp-amber/40 transition-colors disabled:opacity-40"
                     >
                       Hold ⏸
                     </button>
@@ -759,7 +761,7 @@ export default function PRCard({
                         ? "Squash-merge with canonical commit title"
                         : "Gate blocked — see blockers above"
                     }
-                    className="w-full px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-warp-teal/50 bg-warp-teal-bg text-warp-teal hover:bg-warp-teal/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                    className="w-full px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-warp-teal/50 bg-warp-teal-bg text-warp-teal hover:bg-warp-teal/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {submittingOp === "merge" ? "Merging…" : "Merge ✓"}
                   </button>
@@ -823,31 +825,38 @@ function CardShell({
 }
 
 function Header({
-  icon,
-  label,
-  accent,
+  prNumber,
+  status,
+  statusAccent,
 }: {
-  icon: string;
-  label: string;
-  accent: "purple" | "teal" | "red" | "amber" | "blue";
+  prNumber: number;
+  status: string;
+  statusAccent: "purple" | "teal" | "red" | "amber" | "blue";
 }) {
-  const color =
-    accent === "teal"
-      ? "text-warp-teal"
-      : accent === "red"
-        ? "text-warp-amber"
-        : accent === "amber"
-          ? "text-warp-amber"
-          : accent === "blue"
-            ? "text-warp-blue"
-            : "text-white/65";
+  // Status pill colors. Mirrors the left-border accent so the card
+  // reads as a single coherent visual unit at a glance: teal=merged,
+  // amber=closed/held, blue=open, red=hard-error, purple=loading.
+  const pillCls =
+    statusAccent === "teal"
+      ? "border-warp-teal/40 bg-warp-teal/15 text-warp-teal"
+      : statusAccent === "amber"
+        ? "border-warp-amber/40 bg-warp-amber/15 text-warp-amber"
+        : statusAccent === "red"
+          ? "border-warp-red/50 bg-warp-red/15 text-warp-red"
+          : statusAccent === "blue"
+            ? "border-warp-blue/40 bg-warp-blue/15 text-warp-blue"
+            : "border-warp-purple/40 bg-warp-purple/15 text-warp-purple";
   return (
     <div className="flex items-center justify-between px-4 py-2.5 border-b border-hair">
-      <div
-        className={`flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] ${color}`}
-      >
-        <span aria-hidden="true">{icon}</span>
-        <span>{label}</span>
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="font-mono text-[12px] tracking-[0.06em] text-white/85">
+          PR #{prNumber}
+        </span>
+        <span
+          className={`px-2 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-[0.14em] ${pillCls}`}
+        >
+          {status}
+        </span>
       </div>
       <span className="agent-pill cmd">WARP•CMD</span>
     </div>
@@ -948,7 +957,7 @@ function ExternalLink({ href, label }: { href: string; label: string }) {
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/85 hover:text-white hover:bg-white/5 transition-colors"
+      className="inline-flex items-center gap-1.5 px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-hair text-white/85 hover:text-white hover:bg-white/5 transition-colors"
     >
       <span>{label}</span>
       <span aria-hidden="true">↗</span>
