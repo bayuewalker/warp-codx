@@ -39,6 +39,15 @@ Not specified.
 - **Error Handling and Audit Trails**: Comprehensive error handling for API interactions, including specific HTTP status code mappings for GitHub API errors. Audit tables (`public.issues_created`, `public.pr_actions`) track key actions.
 - **Portability**: The application is designed as a vanilla Next.js 14 app with no Replit-specific code, ensuring deployability to various Node.js hosting environments.
 
+### Task #2 — Auth + RLS prep (in progress)
+The full plan locks the chat tables (`sessions`, `messages`, `chat_warnings`, `session_constitution_state`) so each row is only visible/writable by its owner via Supabase Auth + row-level security. The mobile workspace UI is currently hiding the task-approval button, so the safe non-auth pieces have been landed directly:
+
+- **Wipe** — `sessions`, `messages`, `chat_warnings`, `session_constitution_state` were emptied in the dev Supabase project (38 sessions / 114 messages / 4 warnings → 0). The operator authorized this; no migration of historical rows.
+- **Migration SQL** — `db/migrations/0001-auth-rls.sql` adds a NOT NULL `user_id uuid references auth.users` column to `sessions`, re-enables RLS on the four chat tables, and installs `auth.uid()`-keyed policies. It is **not yet applied** — apply it from the Supabase SQL editor only after Supabase Auth is enabled and the app-side auth wiring ships, otherwise the running app's anon-key Realtime subscriptions will silently start returning zero rows.
+- **Per-request client** — `getRequestSupabase(authHeader)` in `src/lib/supabase.ts` is the new helper that binds queries to the caller's bearer token so RLS applies. Additive only; existing routes still use `getServerSupabase()` and behavior is unchanged.
+
+Still deferred (the auth-dependent half): sign-in UI (email magic-link), 401 gating in `/api/{sessions,messages,chat}` routes, browser Realtime client switched to authenticated mode, sign-out control, and the cross-user isolation tests. Those will land once the operator can approve task agents from this workspace.
+
 ## External Dependencies
 
 - **Supabase**: Used for database operations, real-time functionalities, and caching.
