@@ -6,3 +6,15 @@ id = "Uq-WLJYRqsMQofLpCQZvp"
 uri = "file://docs/reports/sentinel/phase-3a-constitution-fetch.md"
 type = "text"
 title = "WARP•SENTINEL Audit — Phase 3a (APPROVED, 91/100)"
+
+[[outputs]]
+id = "QXMKAv5H1sLK5IJO1ldge"
+uri = "file://reports/WARP-ui-polish-summary.md"
+type = "text"
+title = "WARP/ui-polish — Work Summary Report"
+
+[[outputs]]
+id = "KRsIKQRIBaDQpEYaB2WRv"
+uri = "file://reports/WARP-handoff.txt"
+type = "text"
+title = "WARP CodX — Agent Handoff (copy-ready)"

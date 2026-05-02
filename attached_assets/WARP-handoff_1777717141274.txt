@@ -1,0 +1,132 @@
+================================================================================
+  AGENT HANDOFF — WARP CodX UI Polish session
+  Generated: 2 May 2026
+================================================================================
+
+PROJECT CONTEXT
+--------------------------------------------------------------------------------
+  Repo            : bayuewalker/warp-codx
+  Stack           : Next.js 14.2.35, Supabase, port 5000
+  Local identity  : WARP•FORGE
+  Owner           : bayuewalker
+  Workflow        : "Start application" -> npm run dev (binds 0.0.0.0:5000)
+
+  Token           : GITHUB_PAT_TOKEN (length 93) is in env.
+                    - WORKS for: blob / tree / commit / ref / PR REST endpoints
+                    - 403 on  : Actions / check-runs / check-suites /
+                                combined-status. Agent CANNOT poll CI directly.
+                                Rely on `mergeable_state` from the PR endpoint.
+
+  Other secrets   : NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_SUPABASE_URL,
+                    OPENAI_API_KEY, OPENROUTER_API_KEY, SUPABASE_SERVICE_KEY.
+                    Never echo or write to disk.
+
+  Screenshot tool : Workspace has NO registered artifact, so `app_preview`
+                    refuses (`artifact_dir_name` required). For visual checks,
+                    use the workspace preview pane or `external_url` against
+                    $REPLIT_DEV_DOMAIN.
+
+
+BRANCH / PR STATE (as of handoff)
+--------------------------------------------------------------------------------
+  PR  | Branch                | Status                              | Head SHA
+  ----+-----------------------+-------------------------------------+----------
+  #5  | WARP/ui-polish        | MERGED                              | 4e9ddbb5
+      | Mobile-first UI polish, EmptyState, 40px taps                |
+  ----+-----------------------+-------------------------------------+----------
+  #8  | WARP/input-shortcuts  | MERGED                              | 6754cb95
+      | File-upload + Quick Commands sheet                           |
+  ----+-----------------------+-------------------------------------+----------
+  #7  | WARP/ui-fix-r3        | OPEN, mergeable=true, unstable (CI) | 2c6640a4
+      | vertical-flow markdown tables for mobile chat                |
+      | Just rebased onto current main (6754cb95)                    |
+
+  origin/main HEAD : 6754cb95040149cd5023ad83ee1eaf85c2429026
+
+
+WHAT THE LAST AGENT JUST DID
+--------------------------------------------------------------------------------
+  PR #7 was reported as "HOLD — merge conflict (dirty)". Diagnosis:
+
+  - PR #7's two files (src/components/MessageContent.tsx,
+    src/components/message-content.css) are BYTE-IDENTICAL between PR #7's
+    old base (5657912f) and current main (6754cb95).
+  - PRs #5 and #8 never touched them.
+  - So no real content merge was needed — purely a stale-base topology issue.
+
+  Resolution:
+    1. Fetched PR #7's two-file blob set.
+    2. Built a fresh tree using `base_tree = main_tree` + the two blobs as
+       overrides.
+    3. Created commit 2c6640a4 with parent = 6754cb95.
+    4. PATCH /git/refs/heads/WARP/ui-fix-r3 with { sha, force: true }.
+
+  PR #7 immediately reported `mergeable: true`.
+
+
+PENDING ITEMS
+--------------------------------------------------------------------------------
+  1. PR #7 CI
+       - mergeable_state: unstable -> checks still running.
+       - Token can't poll Actions; either re-check `mergeable_state` via the
+         PR endpoint, or have the user confirm CI is green and merge.
+
+  2. Optional follow-ups from PR #5 architect review (low priority):
+       a. 375px overflow QA pass on PRCard Header status pill +
+          EmptyState subtitles.
+       b. Add a UI test asserting Sidebar empty-state action triggers
+          onNewDirective.
+       c. Optional PRCard closed-state accent harmonization
+          (left border vs status pill colour).
+
+  3. CANNOT create new follow-up tasks this session
+       - `proposeFollowUpTasks` was already used (ref #37, "Sidebar sessions
+         limit (10 + show more)"). Use `markFollowUpTaskObsolete` for stale
+         ones; new follow-ups must wait for next session.
+
+
+WORKING TREE STATE
+--------------------------------------------------------------------------------
+  Local main HEAD  : 50b40853 (just a checkpoint commit on top of merged
+                     work; safe).
+  Untracked        : - two unrelated screenshot JPGs in attached_assets/
+                     - reports/WARP-ui-polish-summary.md (handoff report)
+                     - /tmp/*.mjs helper scripts
+  ChatArea.tsx     : local-merged version (polish + input-shortcuts both
+                     applied) — matches what is on main after PR #5 + #8.
+  Last validation  : npx tsc --noEmit  -> clean
+                     npx vitest run    -> 295 / 295 green
+
+
+REUSABLE SCRIPTS IN /tmp
+--------------------------------------------------------------------------------
+  /tmp/inspect_pr7.mjs   Fetch a PR's metadata + changed files, dump to
+                         /tmp/pr7_state.json.
+  /tmp/fetch_3way.mjs    Pull base/head/main copies of a file set for diffing.
+  /tmp/rebase_pr7.mjs    REST-only rebase: base_tree + per-file blob overrides
+                         -> new commit -> PATCH refs/heads/<branch> force.
+  /tmp/verify_pr7.mjs    Poll `mergeable` after a force-push (GitHub computes
+                         it lazily — first call kicks the job).
+  /tmp/push_uipolish.mjs Earlier push template (WARP/ui-polish, base 3bdd7f5).
+  /tmp/push_r4.mjs       Earlier push template (WARP/input-shortcuts).
+
+
+CRITICAL CONSTRAINTS
+--------------------------------------------------------------------------------
+  - No new npm dependencies, no new design tokens, no logic changes in any
+    UI-polish style work.
+  - 40px minimum touch targets on action buttons.
+  - Untouched surfaces: chat route, constitution fetch, PR gates, push
+    notifications, ThinkingIndicator, CollapsibleSection, TaskCompleteCard,
+    MessageContent (now changed by PR #7 — only scoped exception, mobile
+    table flow only).
+  - REST-only push pattern (blob -> tree -> commit -> ref). Local git push
+    is NOT configured.
+  - Force-update an existing branch via:
+      PATCH /git/refs/heads/<branch>  with body { sha, force: true }
+  - For rebases where main hasn't touched the conflict files: just put PR's
+    blobs onto main's base_tree and re-parent — works with no 3-way merge.
+
+
+END OF HANDOFF
+================================================================================
