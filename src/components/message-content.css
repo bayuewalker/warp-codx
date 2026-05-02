@@ -110,15 +110,14 @@
 
 .message-content .md-table-kv {
   display: grid;
-  /* Two-column grid: key column hugs its content but never grows
-     past ~40% of the row, value column takes the rest. minmax(0,…)
-     on the value column lets long URLs / paths wrap instead of
-     forcing horizontal overflow. */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.8fr);
+  /* Pattern A — definition list. Key column is a fixed 38% of the
+     row width (per design-ref/table-design-ref.html), value column
+     takes the rest. minmax(0,…) on the value column lets long URLs
+     / paths wrap instead of forcing horizontal overflow. */
+  grid-template-columns: 38% minmax(0, 1fr);
   width: 100%;
   margin: 0.6em 0;
   font-size: 12px;
-  font-family: var(--font-mono), ui-monospace, monospace;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
   overflow: hidden;
@@ -132,17 +131,21 @@
 
 .message-content .md-table-kv-key,
 .message-content .md-table-kv-val {
-  padding: 0.55em 0.7em;
+  padding: 0.6em 0.85em;
   border-top: 1px solid var(--border-soft);
   margin: 0;
   min-width: 0;
   word-wrap: break-word;
   overflow-wrap: anywhere;
-  color: var(--warp-text);
 }
 
 .message-content .md-table-kv-key {
   font-weight: 600;
+  color: var(--warp-text-dim);
+}
+
+.message-content .md-table-kv-val {
+  color: var(--warp-text);
 }
 
 /* First row sits flush against the rounded container — drop the
@@ -159,6 +162,94 @@
   background: var(--warp-bg-2);
   font-weight: 600;
   color: var(--warp-text);
+}
+
+/* Pattern B — status table. Same vertical-flow contract as the
+   key/value layout, but the left column reads as a filename or
+   short identifier and gets the WARP-blue mono treatment from the
+   design reference. The right column wraps freely and may carry
+   a status badge (COMPLETE / PENDING / ERROR). Detection lives in
+   `looksLikeStatusTable` in MessageContent.tsx. */
+.message-content .md-table-status {
+  display: grid;
+  /* Fixed 44% file column + flexible signal column, per spec. */
+  grid-template-columns: 44% minmax(0, 1fr);
+  width: 100%;
+  margin: 0.6em 0;
+  font-size: 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.message-content .md-table-status-row {
+  display: contents;
+}
+
+.message-content .md-table-status-key,
+.message-content .md-table-status-val {
+  padding: 0.6em 0.85em;
+  border-top: 1px solid var(--border-soft);
+  margin: 0;
+  min-width: 0;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.message-content .md-table-status-key {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  color: var(--warp-blue);
+  word-break: break-all;
+}
+
+.message-content .md-table-status-val {
+  color: var(--warp-text-dim);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.message-content .md-table-status-row:first-child .md-table-status-key,
+.message-content .md-table-status-row:first-child .md-table-status-val {
+  border-top: none;
+}
+
+.message-content .md-table-status-row--header .md-table-status-key,
+.message-content .md-table-status-row--header .md-table-status-val {
+  background: var(--warp-bg-2);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--warp-text-mute);
+  font-weight: 600;
+}
+
+/* Inline status badge — matches Pattern B in the design reference.
+   Padding / radius kept tight so the badge sits next to the wrapped
+   signal text without breaking baseline. */
+.message-content .md-table-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+.message-content .md-table-badge--green {
+  background: var(--warp-teal-bg);
+  color: var(--warp-teal);
+}
+.message-content .md-table-badge--muted {
+  background: var(--warp-bg-3);
+  color: var(--warp-text-mute);
+}
+.message-content .md-table-badge--red {
+  background: var(--warp-red-bg);
+  color: var(--warp-red);
 }
 
 /* 3+ column stacked-cards layout. Each row of the source table
@@ -241,6 +332,7 @@
   padding: 0.85em 1em;
   margin: 0.7em 0;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 0.88em;
   line-height: 1.55;

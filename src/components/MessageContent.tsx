@@ -327,6 +327,73 @@ function parseJson<T>(src: string): T | null {
 }
 
 /**
+ * Flatten a ReactNode tree into a plain string. We only need rough
+ * text content for filename / badge-keyword detection, so we walk
+ * children recursively and concatenate any string leaves. Non-string
+ * leaves (icons, formatting wrappers without text, etc.) are skipped.
+ */
+function nodeText(node: ReactNode): string {
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(nodeText).join("");
+  if (isValidElement(node)) {
+    const el = node as ReactElement<{ children?: ReactNode }>;
+    return nodeText(el.props.children);
+  }
+  return "";
+}
+
+/**
+ * Pattern B detection — a 2-col table is a "status table" when its
+ * first column reads as filenames or short identifiers (e.g.
+ * `PROJECT_STATE.md`, `src/lib/foo.ts`, `WORKTODO`). Heuristic:
+ *   - non-empty body
+ *   - every left-cell text is ≤ 64 chars, has no whitespace, contains
+ *     a dot or slash (real filename / path evidence), and matches
+ *     `[\w./-]+` so plain ALL_CAPS identifiers (API_VERSION,
+ *     PR_NUMBER) stay in the Pattern A definition list.
+ * If the table is empty we fall back to the plain key/value layout.
+ */
+function looksLikeStatusTable(rows: ReactNode[][]): boolean {
+  if (rows.length === 0) return false;
+  for (const row of rows) {
+    const text = nodeText(row[0]).trim();
+    if (!text) return false;
+    if (text.length > 64) return false;
+    if (/\s/.test(text)) return false;
+    // Require concrete file/path evidence — a `.` or a `/`. Plain
+    // ALL_CAPS identifiers (API_VERSION, RUN_MODE, PR_NUMBER) stay
+    // in the Pattern A definition list; only paths and filenames
+    // (PROJECT_STATE.md, src/lib/foo.ts) are promoted to Pattern B.
+    if (!/[./]/.test(text)) return false;
+    if (!/^[\w./-]+$/.test(text)) return false;
+  }
+  return true;
+}
+
+/**
+ * Pattern B badge mapping — keyword scan over the right-cell text.
+ * Order matters: ERROR / FAILED win over PENDING win over COMPLETE
+ * so a row like "complete but pending re-check" reads as pending.
+ */
+function detectStatusBadge(
+  text: string,
+): { kind: "red" | "muted" | "green"; label: string } | null {
+  const upper = text.toUpperCase();
+  if (/\b(ERROR|FAILED|FAIL)\b/.test(upper)) {
+    return { kind: "red", label: "ERROR" };
+  }
+  if (/\bPENDING\b/.test(upper) || /\bNOT READ\b/i.test(text)) {
+    return { kind: "muted", label: "PENDING" };
+  }
+  if (/\b(COMPLETE|DONE)\b/.test(upper)) {
+    return { kind: "green", label: "COMPLETE" };
+  }
+  return null;
+}
+
+/**
  * WARP/ui-fix-r3 — vertical-flow renderer for GFM markdown tables.
  *
  * react-markdown hands us the rendered children of `<table>` —
@@ -379,9 +446,41 @@ function MarkdownTable({ children }: { children?: ReactNode }) {
     });
   });
 
-  // 2-column key/value layout. Render header once at the top in
-  // the same grid so the label row aligns with every data row.
+  // 2-column layouts. Two flavors:
+  //   • Pattern B (status table) — first column looks like a filename
+  //     or short identifier (e.g. PROJECT_STATE.md, src/foo.ts). Render
+  //     the key in mono + warp-blue at a fixed 44% width and append a
+  //     status badge to the value when keywords (COMPLETE / PENDING /
+  //     ERROR) appear in the cell text.
+  //   • Pattern A (definition list) — anything else. 38% fixed key
+  //     column in semibold dim text, value wraps freely.
   if (headers.length === 2) {
+    if (looksLikeStatusTable(rows)) {
+      return (
+        <dl className="md-table-status">
+          <div className="md-table-status-row md-table-status-row--header">
+            <dt className="md-table-status-key">{headers[0]}</dt>
+            <dd className="md-table-status-val">{headers[1]}</dd>
+          </div>
+          {rows.map((row, i) => {
+            const badge = detectStatusBadge(nodeText(row[1]));
+            return (
+              <div className="md-table-status-row" key={i}>
+                <dt className="md-table-status-key">{row[0]}</dt>
+                <dd className="md-table-status-val">
+                  {row[1] ?? ""}
+                  {badge && (
+                    <span className={`md-table-badge md-table-badge--${badge.kind}`}>
+                      {badge.label}
+                    </span>
+                  )}
+                </dd>
+              </div>
+            );
+          })}
+        </dl>
+      );
+    }
     return (
       <dl className="md-table-kv">
         <div className="md-table-kv-row md-table-kv-row--header">
