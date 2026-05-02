@@ -211,10 +211,12 @@
   font-family: inherit;
 }
 
-/* User-turn override — left-aligned, plain text, weight 500, slightly
-   larger than assistant prose. Matches v2 mockup .msg-user-text. */
+/* User-turn override — left-aligned, plain text, weight 500, kept
+   half a step above the assistant base for emphasis. Mirrors the
+   13 → 13.5 ratio after the WARP/ui-fix-r2 base reduction (was
+   15 → 15.5 before). */
 .message-content--user {
-  font-size: 15.5px;
+  font-size: 13.5px;
   line-height: 1.6;
   color: var(--warp-text);
   font-weight: 500;
