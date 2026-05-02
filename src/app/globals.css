@@ -1447,3 +1447,161 @@ textarea, input {
   color: var(--warp-text-mute);
   line-height: 1.35;
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   ACTIVITY PANEL — shown above the input while CMD is streaming.
+   Collapsed by default; tap Show/Hide to reveal individual action
+   rows. Dismisses automatically 1.5 s after streaming ends.
+   ───────────────────────────────────────────────────────────────── */
+.activity-panel {
+  background: var(--warp-bg-1);
+  border-top: 1px solid var(--border-soft);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  /* Prevent panel from growing beyond a comfortable height on small
+     viewports — the body section scrolls internally if needed. */
+  max-width: 100%;
+  overflow: hidden;
+}
+
+/* ── Header row ── */
+.ap-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  min-height: 40px;
+}
+
+.ap-header-icon {
+  font-size: 13px;
+  color: var(--warp-text-dim);
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.ap-header-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  color: var(--warp-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Show / Hide toggle button ── */
+.ap-toggle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  color: var(--warp-blue);
+  background: var(--warp-blue-soft);
+  border: 1px solid rgba(91, 164, 255, 0.20);
+  border-radius: 4px;
+  padding: 3px 8px;
+  min-height: 26px;
+  cursor: pointer;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+.ap-toggle:hover {
+  background: var(--warp-blue-bg);
+}
+.ap-toggle:focus-visible {
+  outline: 2px solid rgba(91, 164, 255, 0.55);
+  outline-offset: 2px;
+}
+
+.ap-toggle-chevron {
+  display: inline-block;
+  font-size: 9px;
+  line-height: 1;
+  transition: transform 0.2s ease;
+}
+.ap-toggle-chevron--up {
+  transform: rotate(180deg);
+}
+
+/* ── Expandable body — height-transition using max-height ── */
+.ap-body {
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  /* Collapse: fast opacity, then height */
+  transition: max-height 0.2s ease-out, opacity 0.12s ease;
+}
+.ap-body--open {
+  /* 40px per row × up to ~8 rows + padding; enough for all realistic
+     action lists on a 375 px viewport without a scrollbar. */
+  max-height: 360px;
+  opacity: 1;
+  overflow-y: auto;
+  /* Expand: height first, then fade in */
+  transition: max-height 0.2s ease-in, opacity 0.15s ease 0.04s;
+  border-top: 1px solid var(--border-soft);
+}
+
+/* ── Action rows ── */
+.ap-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border-faint);
+  min-height: 36px;
+}
+.ap-row:last-child {
+  border-bottom: none;
+}
+
+.ap-row-icon {
+  flex-shrink: 0;
+  font-size: 11px;
+  width: 14px;
+  text-align: center;
+  line-height: 1;
+}
+
+.ap-row-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ap-row-meta {
+  flex-shrink: 0;
+  font-size: 10.5px;
+  text-align: right;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Row state variants ── */
+.ap-row--done .ap-row-icon  { color: var(--warp-teal); }
+.ap-row--done .ap-row-label { color: var(--warp-text-dim); }
+.ap-row--done .ap-row-meta  { color: var(--warp-text-muted); }
+
+.ap-row--active .ap-row-icon {
+  color: var(--warp-blue);
+  animation: apDotPulse 1.2s ease-in-out infinite;
+}
+.ap-row--active .ap-row-label { color: var(--warp-text); }
+.ap-row--active .ap-row-meta  { color: var(--warp-text-dim); }
+
+.ap-row--pending .ap-row-icon  { color: var(--warp-text-muted); }
+.ap-row--pending .ap-row-label { color: var(--warp-text-muted); }
+.ap-row--pending .ap-row-meta  { color: var(--warp-text-muted); }
+
+@keyframes apDotPulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
