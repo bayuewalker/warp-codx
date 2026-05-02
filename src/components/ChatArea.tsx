@@ -9,9 +9,11 @@ import SessionBar from "./SessionBar";
 import WarningBanner from "./WarningBanner";
 import ThinkingIndicator from "./ThinkingIndicator";
 import EmptyStateView from "./EmptyState";
+import ActivityPanel from "./ActivityPanel";
 import { cn } from "@/lib/cn";
 import { adminFetch } from "@/lib/admin-fetch";
 import { summarizeRefresh, type RefreshBody } from "@/lib/refresh-summary";
+import { useActivityPanel } from "@/hooks/useActivityPanel";
 
 type Props = {
   sessionId: string | null;
@@ -349,6 +351,13 @@ export default function ChatArea({
     [messages],
   );
 
+  // Activity panel — shows task progress above the input while CMD streams.
+  const {
+    items: activityItems,
+    elapsedSeconds: activityElapsed,
+    visible: activityVisible,
+  } = useActivityPanel({ streaming, streamingText });
+
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Status strip — 26px sticky band with NET / RT / RUN / AGT LEDs.
@@ -518,6 +527,18 @@ export default function ChatArea({
           </ul>
         )}
       </div>
+
+      {/* Activity panel — mounts above the input while CMD streams,
+          dismisses 1.5 s after streaming ends. Visibility is driven
+          by `useActivityPanel`; no animation needed on unmount because
+          the 1.5-s delay gives the user time to see the final state. */}
+      {activityVisible && (
+        <ActivityPanel
+          items={activityItems}
+          elapsedSeconds={activityElapsed}
+          streaming={streaming}
+        />
+      )}
 
       {/* Input */}
       <div className="bg-warp-bg kb-inset">
