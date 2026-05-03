@@ -179,8 +179,17 @@ export default function ChatArea({
       setStreamingText("");
       setTimeout(scrollToBottom, 0);
 
+      // Abort any previously in-flight stream before starting a new one.
+      // Guards against a race where a prior finally() is still running
+      // its refresh fetches and could clobber the new stream's state.
+      abortControllerRef.current?.abort();
+
       const controller = new AbortController();
       abortControllerRef.current = controller;
+
+      // Held so we can cancel() the body lock in finally, preventing
+      // the browser from continuing to feed data after abort.
+      let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
 
       try {
         const res = await authFetch("/api/chat", {
@@ -200,7 +209,7 @@ export default function ChatArea({
           return;
         }
 
-        const reader = res.body.getReader();
+        reader = res.body.getReader();
         const decoder = new TextDecoder();
         let acc = "";
         for (;;) {
@@ -223,8 +232,21 @@ export default function ChatArea({
           setStreamingText(`[WARP•SENTINEL] ${message}`);
         }
       } finally {
+        // Release the body reader lock so the browser stops feeding
+        // data from any buffered response chunks.
+        if (reader) {
+          try { reader.cancel(); } catch { /* ignore */ }
+        }
         abortControllerRef.current = null;
         setStreaming(false);
+
+        // Skip the post-stream state refresh when aborted. The refresh
+        // fetches below run without a signal and are async — if they
+        // completed after the user started a new send, setMessages() /
+        // setStreamingText("") would clobber the new stream's state,
+        // making it appear the old stream had "resumed".
+        if (controller.signal.aborted) return;
+
         try {
           const r = await authFetch(
             `/api/messages?sessionId=${encodeURIComponent(sessionId)}`,
