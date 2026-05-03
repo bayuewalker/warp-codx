@@ -7,11 +7,11 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
-import "highlight.js/styles/github-dark.css";
 import "./message-content.css";
+import "./message-syntax.css";
 import "./blocks/blocks.css";
 import ActionCard from "./blocks/ActionCard";
 import DiffBlock from "./blocks/DiffBlock";
@@ -29,6 +29,10 @@ import {
   extractRichBlocks,
   type RichBlockSpec,
 } from "@/lib/rich-blocks-extract";
+import {
+  extractAgentReplies,
+  type AgentName as AgentReplyName,
+} from "@/lib/agent-reply-extract";
 import type {
   ActionPayload,
   DiffPayload,
@@ -147,13 +151,40 @@ export default function MessageContent({
 }: MessageContentProps) {
   const roleClass = role === "user" ? "user" : "assistant";
 
-  // Run all four extractors against assistant messages. They are
-  // orthogonal: ISSUE_DRAFT vs PR_ACTION vs TASK_COMPLETE vs the
-  // fenced rich blocks. CMD may emit at most one of each per turn.
+  // Task #3 — pull operator-agent reply segments out FIRST. The
+  // chat route streams agent stub responses wrapped in
+  // <!--AGENT_REPLY:name-->...<!--/AGENT_REPLY-->. We render each
+  // agent block inline with its own badge so the conversation reads
+  // as: CMD prose → [FORGE reply] → CMD follow-up. The downstream
+  // marker extractors (issue / PR / task / rich blocks) only ever
+  // appear in CMD prose, so we re-stitch the prose pieces with
+  // placeholders, run those extractors once on the combined text,
+  // then split back on the placeholders for ordered rendering.
   const isAssistant = role === "assistant";
+  const agentSegments = isAssistant
+    ? extractAgentReplies(content)
+    : [{ kind: "prose" as const, text: content }];
+
+  const PROSE_PLACEHOLDER = (i: number) => `\u0001AGENT_SLOT_${i}\u0001`;
+  const proseSlots: { kind: "prose" | "agent"; agentBody?: string; agentName?: AgentReplyName }[] = [];
+  let combinedProse = "";
+  agentSegments.forEach((seg, i) => {
+    if (seg.kind === "prose") {
+      combinedProse += seg.text;
+      proseSlots.push({ kind: "prose" });
+    } else {
+      combinedProse += `\n\n${PROSE_PLACEHOLDER(i)}\n\n`;
+      proseSlots.push({
+        kind: "agent",
+        agentBody: seg.body,
+        agentName: seg.name,
+      });
+    }
+  });
+
   const issueExtract = isAssistant
-    ? extractIssueDraft(content)
-    : { cleaned: content, draft: null };
+    ? extractIssueDraft(combinedProse)
+    : { cleaned: combinedProse, draft: null };
   const prExtract = isAssistant
     ? extractPRAction(issueExtract.cleaned)
     : { cleaned: issueExtract.cleaned, action: null };
@@ -165,6 +196,40 @@ export default function MessageContent({
     : { proseOnly: taskExtract.cleaned, blocks: [] };
 
   const proseOnly = richExtract.proseOnly;
+
+  // Split the cleaned prose back on the placeholder markers so we
+  // can interleave prose chunks with agent-reply badge cards.
+  const SLOT_RE = /\u0001AGENT_SLOT_(\d+)\u0001/g;
+  type RenderSeg =
+    | { kind: "prose"; text: string }
+    | { kind: "agent"; name: AgentReplyName; body: string };
+  const renderSegs: RenderSeg[] = [];
+  if (agentSegments.some((s) => s.kind === "agent")) {
+    let last = 0;
+    let m: RegExpExecArray | null;
+    SLOT_RE.lastIndex = 0;
+    while ((m = SLOT_RE.exec(proseOnly)) !== null) {
+      const before = proseOnly.slice(last, m.index);
+      if (before.trim().length > 0) {
+        renderSegs.push({ kind: "prose", text: before });
+      }
+      const slot = proseSlots[Number(m[1])];
+      if (slot && slot.kind === "agent" && slot.agentName && slot.agentBody !== undefined) {
+        renderSegs.push({
+          kind: "agent",
+          name: slot.agentName,
+          body: slot.agentBody,
+        });
+      }
+      last = m.index + m[0].length;
+    }
+    const tail = proseOnly.slice(last);
+    if (tail.trim().length > 0) {
+      renderSegs.push({ kind: "prose", text: tail });
+    }
+  } else {
+    renderSegs.push({ kind: "prose", text: proseOnly });
+  }
   const draft = issueExtract.draft;
   const prAction = prExtract.action;
   const taskComplete = taskExtract.payload;
@@ -198,20 +263,50 @@ export default function MessageContent({
 
   const shouldCollapse = clusterNodes.length >= 2;
 
-  return (
-    <div className={`message-content message-content--${roleClass}`}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeHighlight]}
-        components={{
+  const mdComponents: Components = {
           pre({ children }) {
             return <>{children}</>;
           },
           p({ children }) {
             return <p>{withInlinePills(children)}</p>;
           },
-          li({ children }) {
-            return <li>{withInlinePills(children)}</li>;
+          li({ children, className, ...props }) {
+            // GFM task list — remark-gfm injects an input[type=checkbox]
+            // as the first child of each task-list item. Replace it with
+            // ☐ / ☑ so we control the visual on mobile (no native
+            // disabled widget, consistent colour vs var(--warp-teal)).
+            const arr = Children.toArray(children);
+            const first = arr[0];
+            if (
+              isValidElement(first) &&
+              first.type === "input" &&
+              (first.props as { type?: string }).type === "checkbox"
+            ) {
+              const checked = Boolean(
+                (first.props as { checked?: boolean }).checked,
+              );
+              return (
+                <li
+                  className={`md-task-item${className ? ` ${className}` : ""}`}
+                  {...props}
+                >
+                  <span
+                    className={`md-task-check ${checked ? "md-task-check--done" : "md-task-check--todo"}`}
+                    aria-hidden="true"
+                  >
+                    {checked ? "\u2611" : "\u2610"}
+                  </span>
+                  <span className="md-task-text">
+                    {withInlinePills(arr.slice(1) as ReactNode)}
+                  </span>
+                </li>
+              );
+            }
+            return (
+              <li className={className} {...props}>
+                {withInlinePills(children)}
+              </li>
+            );
           },
           strong({ children }) {
             return (
@@ -300,10 +395,45 @@ export default function MessageContent({
             // wraps freely and removes the need for swipe-to-scroll.
             return <MarkdownTable>{children}</MarkdownTable>;
           },
-        }}
-      >
-        {proseOnly}
-      </ReactMarkdown>
+        };
+
+  const AGENT_LABELS: Record<AgentReplyName, string> = {
+    forge: "WARP\u2022FORGE",
+    sentinel: "WARP\u2022SENTINEL",
+    echo: "WARP\u2022ECHO",
+  };
+
+  return (
+    <div className={`message-content message-content--${roleClass}`}>
+      {renderSegs.map((seg, i) =>
+        seg.kind === "prose" ? (
+          <ReactMarkdown
+            key={`p${i}`}
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeHighlight]}
+            components={mdComponents}
+          >
+            {seg.text}
+          </ReactMarkdown>
+        ) : (
+          <div key={`a${i}`} className={`agent-reply agent-reply--${seg.name}`}>
+            <div className="agent-reply-header">
+              <span className={`agent-pill ${seg.name}`}>
+                {AGENT_LABELS[seg.name]}
+              </span>
+            </div>
+            <div className="agent-reply-body">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeHighlight]}
+                components={mdComponents}
+              >
+                {seg.body}
+              </ReactMarkdown>
+            </div>
+          </div>
+        ),
+      )}
       {shouldCollapse ? (
         <CollapsibleSection count={clusterNodes.length}>
           {clusterNodes.map((node, i) => (
