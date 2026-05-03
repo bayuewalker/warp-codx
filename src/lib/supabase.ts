@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { getDevBypassUser, isAuthBypassActive } from "./dev-bypass";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -6,44 +7,69 @@ const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 /**
  * Task #2 — Authenticated server client.
  *
- * Returns a Supabase client that uses the **anon key** plus the
- * caller's bearer token, so all queries run as the signed-in user
- * and RLS policies apply. Use this from API route handlers in
- * preference to `getServerSupabase()` (service-role) once Task #2
- * is fully shipped — the service-role client should only be used
- * for narrow server-only writes that genuinely need to bypass RLS.
+ * Returns a Supabase client that uses the anon key plus the caller's
+ * bearer token, so all queries run as the signed-in user and RLS
+ * policies apply. Returns `null` if no token is present so the caller
+ * can respond with 401.
  *
- * Pass the raw `Authorization` header value from the incoming
- * Request (e.g. `req.headers.get("authorization")`). Returns `null`
- * if no token is present so the caller can respond with 401.
- *
- * The same `noStoreFetch` workaround used by `getServerSupabase()`
- * is applied here — Next.js 14 caches `fetch` GETs from route
- * handlers and would otherwise serve stale Supabase reads.
+ * Under the dev bypass (NEXT_PUBLIC_SKIP_AUTH=true, NODE_ENV !== production),
+ * falls back to the service-role client so unauthenticated API requests
+ * succeed without a bearer token. Real bearer tokens always win.
  */
 export function getRequestSupabase(
   authHeader: string | null | undefined,
 ): SupabaseClient | null {
-  if (!authHeader) return null;
-  const token = authHeader.startsWith("Bearer ")
-    ? authHeader.slice("Bearer ".length).trim()
-    : authHeader.trim();
-  if (!token) return null;
+  if (authHeader) {
+    const token = authHeader.startsWith("Bearer ")
+      ? authHeader.slice("Bearer ".length).trim()
+      : authHeader.trim();
+    if (token) {
+      const noStoreFetch: typeof fetch = (input, init) =>
+        fetch(input, { ...init, cache: "no-store" });
+      return createClient(
+        assertEnv("NEXT_PUBLIC_SUPABASE_URL", SUPABASE_URL),
+        assertEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", SUPABASE_ANON_KEY),
+        {
+          auth: { persistSession: false, autoRefreshToken: false },
+          global: {
+            fetch: noStoreFetch,
+            headers: { Authorization: `Bearer ${token}` },
+          },
+        },
+      );
+    }
+  }
 
-  const noStoreFetch: typeof fetch = (input, init) =>
-    fetch(input, { ...init, cache: "no-store" });
+  // Dev-only bypass — fall back to service-role when no bearer token
+  // is present and the bypass is active. RLS is intentionally bypassed
+  // (the database is single-tenant in dev). Hard-gated on NODE_ENV !==
+  // "production" inside isAuthBypassActive(). MUST be off in prod.
+  if (isAuthBypassActive()) {
+    return getServerSupabase();
+  }
+  return null;
+}
 
-  return createClient(
-    assertEnv("NEXT_PUBLIC_SUPABASE_URL", SUPABASE_URL),
-    assertEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", SUPABASE_ANON_KEY),
-    {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: {
-        fetch: noStoreFetch,
-        headers: { Authorization: `Bearer ${token}` },
-      },
-    },
-  );
+/**
+ * Resolve the caller's identity from an Authorization header.
+ * Returns null if no valid session and bypass is not active.
+ */
+export async function getRequestUser(
+  authHeader: string | null | undefined,
+): Promise<{ id: string; email: string | null } | null> {
+  if (authHeader) {
+    const client = getRequestSupabase(authHeader);
+    if (client) {
+      const { data } = await client.auth.getUser();
+      if (data?.user) {
+        return { id: data.user.id, email: data.user.email ?? null };
+      }
+    }
+  }
+  if (isAuthBypassActive()) {
+    return getDevBypassUser();
+  }
+  return null;
 }
 
 function assertEnv(name: string, value: string | undefined): string {
@@ -58,7 +84,6 @@ function assertEnv(name: string, value: string | undefined): string {
 
 /**
  * Browser-safe Supabase client using the anon key.
- * Use this on the client for read queries and Realtime subscriptions only.
  */
 let _browserClient: SupabaseClient | null = null;
 export function getBrowserSupabase(): SupabaseClient {
@@ -77,12 +102,6 @@ export function getBrowserSupabase(): SupabaseClient {
 /**
  * Server-only Supabase client using the service-role key.
  * Bypasses RLS. Never import this from a client component.
- *
- * Next.js 14 patches the global `fetch` and aggressively caches GET requests
- * from route handlers — including the requests Supabase makes internally.
- * This causes stale reads (you insert a row in one request, then read it back
- * in the next request and see the cached empty result). We force `no-store`
- * on every Supabase HTTP call to opt out of the Next.js Data Cache.
  */
 export function getServerSupabase(): SupabaseClient {
   const noStoreFetch: typeof fetch = (input, init) =>

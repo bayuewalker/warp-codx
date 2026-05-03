@@ -14,19 +14,10 @@ type Props = {
   error: string | null;
   creating: boolean;
   /**
-   * Task #37 — server-driven pagination. The parent fetches the first
-   * page of sessions on mount (10 by default) and exposes a callback
-   * that asks the server for the next page when the user taps
-   * "Show more". `hasMoreSessions` tells us whether to render the
-   * affordance; `loadingMoreSessions` keeps the button from being
-   * tapped twice while a fetch is in flight.
+   * Task #37 — server-driven pagination.
    */
   hasMoreSessions: boolean;
   loadingMoreSessions: boolean;
-  /** Size of the next batch the server will return — used as the "N"
-   *  in the "Show N more ▾" label so the affordance reads the same
-   *  way it did before pagination. The server may return fewer if
-   *  fewer remain, but this is the upper bound. */
   loadMoreBatchSize: number;
   onLoadMoreSessions: () => void;
   onNewDirective: () => void;
@@ -35,13 +26,17 @@ type Props = {
   onCloseDrawer: () => void;
   /** Phase 3a — opens the constitution settings drawer. */
   onOpenConstitutionSettings?: () => void;
+  /** Dev bypass / auth — identity label shown in the sidebar footer. */
+  userEmail?: string | null;
+  /** Label for the sign-out/sign-in button (default: "Sign out"). */
+  signOutLabel?: string;
+  /** Handler for the sign-out/sign-in footer button. */
+  onSignOut?: () => void;
 };
 
 /**
  * Drawer view mode — Phase 3b adds an `issues` mode that swaps the
- * sessions list for the IssuesView in place. The "+ New Directive"
- * button stays mounted in both modes since dispatching a directive
- * is the natural way to create more issues.
+ * sessions list for the IssuesView in place.
  */
 type ViewMode = "sessions" | "issues" | "prs";
 
@@ -60,25 +55,15 @@ export default function Sidebar({
   onDelete,
   onCloseDrawer,
   onOpenConstitutionSettings,
+  userEmail,
+  signOutLabel = "Sign out",
+  onSignOut,
 }: Props) {
   const [view, setView] = useState<ViewMode>("sessions");
 
   /**
    * Task #40 — auto-load older sessions when the user scrolls to the
-   * bottom of the sidebar. An invisible sentinel is rendered just
-   * below the last `SessionRow`; an `IntersectionObserver` watches it
-   * and fires `onLoadMoreSessions` as soon as it scrolls into view.
-   *
-   * The "Show more" button below the sentinel stays mounted as a
-   * keyboard-accessible fallback (for screen readers and users on
-   * assistive tech where IntersectionObserver might not behave
-   * predictably) and doubles as the visible loading indicator.
-   *
-   * The in-flight guard from Task #37 lives on the parent's
-   * `loadMoreSessions`, so even if the observer briefly re-fires
-   * while a fetch is pending, the parent will short-circuit. We also
-   * skip wiring the observer up while `loadingMoreSessions` is true
-   * so the callback isn't queued repeatedly during a slow fetch.
+   * bottom of the sidebar.
    */
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -89,12 +74,6 @@ export default function Sidebar({
     if (loadingMoreSessions) return;
     if (typeof IntersectionObserver === "undefined") return;
 
-    // Pin the observer to the drawer's scroll container so the
-    // "in view" decision is made relative to the actual scrolling
-    // surface, not the page viewport. This matches the spec
-    // ("inside the drawer's scroll container") and keeps behavior
-    // deterministic across layouts where the sidebar isn't anchored
-    // to the viewport edge.
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -251,12 +230,6 @@ export default function Sidebar({
             </ul>
             {hasMoreSessions && (
               <>
-                {/* Task #40 — invisible IntersectionObserver target.
-                    Auto-fires `onLoadMoreSessions` when it scrolls into
-                    view so the user doesn't have to tap the button on
-                    long histories. `aria-hidden` keeps it out of the
-                    a11y tree; the button below remains the keyboard
-                    affordance. */}
                 <div
                   ref={sentinelRef}
                   data-testid="sessions-load-more-sentinel"
@@ -279,13 +252,6 @@ export default function Sidebar({
                 </button>
               </>
             )}
-            {/* Task #41 — once the sidebar has paginated all the way to
-                the oldest session, swap the silent end-of-list for a
-                muted line so the user knows there's nothing more to
-                load. Suppressed when there are zero sessions (the
-                empty-state copy above already covers that) and while
-                an initial load is still in flight (handled by the
-                outer `loading` branch). */}
             {!hasMoreSessions && (
               <div
                 data-testid="sessions-end-of-history"
@@ -298,14 +264,12 @@ export default function Sidebar({
         )}
       </div>
 
-      {/* Phase 3a — sidebar footer with the constitution settings
-          affordance. Kept compact (single line) and only mounted when
-          a handler is provided so older callers aren't disturbed. */}
-      {onOpenConstitutionSettings && (
-        <div
-          className="px-3 py-2"
-          style={{ borderTop: "1px solid var(--border-faint)" }}
-        >
+      {/* Sidebar footer — constitution settings + user identity */}
+      <div
+        className="px-3 py-2 flex flex-col gap-1"
+        style={{ borderTop: "1px solid var(--border-faint)" }}
+      >
+        {onOpenConstitutionSettings && (
           <button
             type="button"
             className="cset-trigger"
@@ -326,8 +290,29 @@ export default function Sidebar({
             </svg>
             CONSTITUTION
           </button>
-        </div>
-      )}
+        )}
+
+        {onSignOut && (
+          <div className="px-0 flex items-center justify-between gap-2">
+            <span
+              className="text-[10px] uppercase tracking-[0.18em] text-white/45 truncate"
+              title={userEmail ?? undefined}
+              suppressHydrationWarning
+            >
+              {userEmail ?? "Signed in"}
+            </span>
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="text-[10px] uppercase tracking-[0.18em]
+                text-white/45 hover:text-white/80 transition-colors
+                shrink-0"
+            >
+              {signOutLabel}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -373,26 +358,14 @@ function NavIcon({ name }: { name: IconName }) {
   switch (name) {
     case "home":
       return (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          aria-hidden="true"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
           <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
           <polyline points="9 22 9 12 15 12 15 22" />
         </svg>
       );
     case "grid":
       return (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          aria-hidden="true"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
           <rect x="3" y="3" width="7" height="7" />
           <rect x="14" y="3" width="7" height="7" />
           <rect x="3" y="14" width="7" height="7" />
@@ -401,40 +374,20 @@ function NavIcon({ name }: { name: IconName }) {
       );
     case "bookmark":
       return (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          aria-hidden="true"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />
         </svg>
       );
     case "pr":
       return (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          aria-hidden="true"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
           <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
         </svg>
       );
     case "clock":
     default:
       return (
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          aria-hidden="true"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
           <circle cx="12" cy="12" r="10" />
           <polyline points="12 6 12 12 16 14" />
         </svg>
