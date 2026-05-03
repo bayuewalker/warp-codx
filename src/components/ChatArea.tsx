@@ -12,6 +12,7 @@ import EmptyStateView from "./EmptyState";
 import ActivityPanel from "./ActivityPanel";
 import { cn } from "@/lib/cn";
 import { adminFetch } from "@/lib/admin-fetch";
+import { authFetch } from "@/lib/api-fetch";
 import { summarizeRefresh, type RefreshBody } from "@/lib/refresh-summary";
 import { useActivityPanel } from "@/hooks/useActivityPanel";
 
@@ -36,6 +37,9 @@ export default function ChatArea({
   const [streamingText, setStreamingText] = useState("");
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const seenIds = useRef<Set<string>>(new Set());
+  // Holds the AbortController for the in-flight /api/chat stream so
+  // the stop button can cancel it mid-stream without any extra state.
+  const abortControllerRef = useRef<AbortController | null>(null);
   // Queue of optimistic user messages we still expect Realtime to confirm.
   const pendingUserOptimistic = useRef<
     Array<{ tempId: string; content: string }>
@@ -61,7 +65,7 @@ export default function ChatArea({
 
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/messages?sessionId=${encodeURIComponent(sessionId)}`, {
+    authFetch(`/api/messages?sessionId=${encodeURIComponent(sessionId)}`, {
       cache: "no-store",
     })
       .then((r) => r.json())
@@ -175,11 +179,15 @@ export default function ChatArea({
       setStreamingText("");
       setTimeout(scrollToBottom, 0);
 
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       try {
-        const res = await fetch("/api/chat", {
+        const res = await authFetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sessionId, content: trimmed }),
+          signal: controller.signal,
         });
 
         if (!res.ok || !res.body) {
@@ -206,12 +214,19 @@ export default function ChatArea({
         acc += decoder.decode();
         setStreamingText(acc);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Stream failed";
-        setStreamingText(`[WARP•SENTINEL] ${message}`);
+        // AbortError is expected when the user taps Stop — do not
+        // surface it as an error message; just let finally() clean up.
+        if (err instanceof Error && err.name === "AbortError") {
+          // intentionally silent
+        } else {
+          const message = err instanceof Error ? err.message : "Stream failed";
+          setStreamingText(`[WARP•SENTINEL] ${message}`);
+        }
       } finally {
+        abortControllerRef.current = null;
         setStreaming(false);
         try {
-          const r = await fetch(
+          const r = await authFetch(
             `/api/messages?sessionId=${encodeURIComponent(sessionId)}`,
             { cache: "no-store" },
           );
@@ -231,7 +246,7 @@ export default function ChatArea({
           // (now paginated) sessions list. The sidebar's `updated_at`
           // for this row is what we need to refresh; the rest of the
           // list is unchanged.
-          const r = await fetch(
+          const r = await authFetch(
             `/api/sessions/${encodeURIComponent(sessionId)}`,
             { cache: "no-store" },
           );
@@ -246,6 +261,11 @@ export default function ChatArea({
     },
     [sessionId, streaming, scrollToBottom, onSessionUpdated],
   );
+
+  // Abort the in-flight stream when the operator taps the stop (■) button.
+  const handleStopStream = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
 
   // Phase 3.5 — TaskCompleteCard buttons dispatch a window-level
   // `warp:new-directive` event so the leaf card never has to know
@@ -546,6 +566,7 @@ export default function ChatArea({
           <ChatInput
             disabled={!sessionId}
             isStreaming={streaming}
+            onStopStream={handleStopStream}
             placeholder={
               !sessionId
                 ? "Start a new directive to begin…"
