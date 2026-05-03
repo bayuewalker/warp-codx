@@ -46,6 +46,10 @@ export default function AppShell() {
   // first client render (hydration) are byte-identical regardless of
   // whether NEXT_PUBLIC_SKIP_AUTH was inlined at compile time or not.
   // The bypass identity is applied in a useEffect after hydration.
+  // `mounted` starts false on both server and client so the initial
+  // render (SSR + hydration) always produces the same empty shell.
+  // Auth-driven text only appears after the first client-side paint.
+  const [mounted, setMounted] = useState(false);
   const [auth, setAuth] = useState<AuthState>({ kind: "checking" });
   const [sessions, setSessions] = useState<Session[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -60,6 +64,10 @@ export default function AppShell() {
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   /**
    * Auth listener — wires up the Supabase session on mount and
@@ -293,6 +301,22 @@ export default function AppShell() {
     });
   }, []);
 
+
+  // Before mount: identical empty shell on server and client — no text nodes.
+  // After mount: show auth-driven state or full app.
+  if (!mounted || auth.kind !== "ready") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-warp-bg text-white">
+        <div className="text-xs uppercase tracking-[0.32em] text-white/45">
+          {mounted
+            ? auth.kind === "checking"
+              ? "Checking session…"
+              : "Redirecting…"
+            : null}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex warp-h-screen w-screen overflow-hidden bg-warp-bg text-white">
       {/* Mobile drawer overlay */}
