@@ -1,0 +1,321 @@
+/* ─────────────────────────────────────────────────────────────────
+   WARP/UI-PATTERN-DISPATCH — section component styles.
+   All tokens map to the app's existing CSS vars (--warp-*).
+   Design reference: warp-codx-table-design-ref.html (Patterns A/B/F).
+   ───────────────────────────────────────────────────────────────── */
+
+/* ── Card base ─────────────────────────────────────────────── */
+.card {
+  background: var(--warp-bg-1);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin: 0.5em 0;
+}
+.cardTeal  { border-left: 2px solid var(--warp-teal); }
+.cardBlue  { border-left: 2px solid var(--warp-blue); }
+.cardAmber { border-left: 2px solid var(--warp-amber); }
+
+/* ── Card header ────────────────────────────────────────────── */
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.cardHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.cardIcon { font-size: 14px; flex-shrink: 0; }
+.cardTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warp-text);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agentBadge {
+  font-size: 10px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  color: var(--warp-text-mute);
+  border: 1px solid var(--border-medium);
+  padding: 1px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+/* ── Pattern A — Definition Table ──────────────────────────── */
+.tblHeader {
+  display: flex;
+  padding: 8px 16px;
+  background: var(--warp-bg-2);
+  border-bottom: 1px solid var(--border-soft);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--warp-text-mute);
+  text-transform: uppercase;
+}
+.tblHeader span:first-child { flex: 0 0 38%; }
+.tblHeader span:last-child  { flex: 1; }
+
+.defRow {
+  display: flex;
+  align-items: flex-start;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  gap: 12px;
+}
+.defRow:last-child { border-bottom: none; }
+
+.defKey {
+  flex: 0 0 38%;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warp-text-dim);
+  padding-top: 1px;
+  word-break: break-word;
+  min-width: 0;
+}
+.defVal {
+  flex: 1;
+  font-size: 12px;
+  color: var(--warp-text);
+  word-break: break-word;
+  min-width: 0;
+  line-height: 1.55;
+}
+.defVal code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--warp-blue);
+}
+
+/* ── Pattern B — Status Table ───────────────────────────────── */
+.statusHeader {
+  display: flex;
+  padding: 8px 16px;
+  background: var(--warp-bg-2);
+  border-bottom: 1px solid var(--border-soft);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--warp-text-mute);
+  text-transform: uppercase;
+}
+.statusHeader span:first-child { flex: 0 0 44%; }
+.statusHeader span:last-child  { flex: 1; }
+
+.statusRow {
+  display: flex;
+  align-items: flex-start;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border-soft);
+  gap: 10px;
+}
+.statusRow:last-child { border-bottom: none; }
+
+.statusFile {
+  flex: 0 0 44%;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--warp-blue);
+  word-break: break-all;
+  min-width: 0;
+}
+.statusSignal {
+  flex: 1;
+  font-size: 11px;
+  color: var(--warp-text-dim);
+  word-break: break-word;
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
+}
+
+/* Status badges */
+.badgeGreen {
+  display: inline-block;
+  font-size: 10px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  background: var(--warp-teal-bg);
+  color: var(--warp-teal);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.badgeMuted {
+  display: inline-block;
+  font-size: 10px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--warp-text-mute);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.badgeRed {
+  display: inline-block;
+  font-size: 10px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 600;
+  background: var(--warp-red-bg);
+  color: var(--warp-red);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Pattern F — TODOS Block ────────────────────────────────── */
+.todosHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.todosPill {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--warp-text-mute);
+  letter-spacing: 0.08em;
+  background: var(--warp-bg-2);
+  padding: 3px 7px;
+  border-radius: 3px;
+  border: 1px solid var(--border-soft);
+  text-transform: uppercase;
+}
+.todosPillDone {
+  color: var(--warp-teal);
+  background: var(--warp-teal-bg);
+  border-color: rgba(61, 223, 168, 0.25);
+}
+.todosCount {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warp-text-dim);
+}
+.todosCountDone { color: var(--warp-teal); }
+
+.todosList { padding: 4px 0; }
+
+.todosItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.todosItem:last-child { border-bottom: none; }
+.todosItemActive {
+  background: rgba(91, 164, 255, 0.05);
+}
+
+/* 20 × 20 circle */
+.todosCircle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.todosCirclePending {
+  border: 2px solid var(--border-medium);
+}
+.todosCircleActive {
+  background: var(--warp-blue);
+}
+.todosCircleDone {
+  background: var(--warp-teal);
+  font-size: 11px;
+  color: var(--warp-bg);
+  font-weight: 700;
+}
+
+/* White dot inside active circle */
+.todosActiveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: white;
+}
+
+.todosText {
+  flex: 1;
+  font-size: 12px;
+  line-height: 1.5;
+  min-width: 0;
+  word-break: break-word;
+  color: var(--warp-text);
+}
+.todosTextPending { color: var(--warp-text-mute); }
+.todosTextDone    { color: var(--warp-text-dim); }
+
+/* ── File-tree pre block ────────────────────────────────────── */
+.fileTree {
+  background: var(--warp-bg-1);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  margin: 0.5em 0;
+  overflow: hidden;
+}
+.fileTreeHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.fileTreeTitle {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warp-text);
+  font-family: var(--font-mono), ui-monospace, monospace;
+}
+.fileTreeBadge {
+  font-size: 10px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  color: var(--warp-text-mute);
+  border: 1px solid var(--border-medium);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+.fileTreePre {
+  margin: 0;
+  padding: 12px 14px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--warp-text-dim);
+  white-space: pre;
+}
+.fileTreePre::-webkit-scrollbar { height: 3px; }
+.fileTreePre::-webkit-scrollbar-track { background: transparent; }
+.fileTreePre::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+}

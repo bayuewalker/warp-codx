@@ -39,6 +39,11 @@ import type {
   StatusPayload,
   TodosPayload,
 } from "@/lib/types";
+import { splitIntoSections } from "@/lib/section-parser";
+import DefTable from "./sections/DefTable";
+import SectionsStatusTable from "./sections/StatusTable";
+import TodosBlock from "./sections/TodosBlock";
+import sectionStyles from "./sections/sections.module.css";
 
 interface MessageContentProps {
   content: string;
@@ -263,6 +268,111 @@ export default function MessageContent({
 
   const shouldCollapse = clusterNodes.length >= 2;
 
+  /**
+   * Render a prose string through the section-level dispatch pipeline.
+   *
+   * Each prose segment is split by H2/H3 headings whose emoji+keyword
+   * pattern matches one of the typed section layouts (DefTable,
+   * SectionsStatusTable, TodosBlock, file-tree <pre>). Sections that
+   * don't match fall through to ReactMarkdown so all existing GFM
+   * rendering (task-list items, inline code, fenced blocks, etc.)
+   * is fully preserved.
+   *
+   * Defined after `mdComponents` so it closes over it.
+   */
+  function renderProseContent(markdown: string, keyPrefix: string): ReactNode {
+    // Guard: only run section splitting for assistant turns.
+    // User/system content goes straight to ReactMarkdown.
+    if (!isAssistant) {
+      return (
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeHighlight]}
+          components={mdComponents}
+        >
+          {markdown}
+        </ReactMarkdown>
+      );
+    }
+
+    const sections = splitIntoSections(markdown);
+    if (sections.length === 0) return null;
+
+    // Single prose section — avoid an extra wrapper element.
+    if (sections.length === 1 && sections[0].kind === "prose") {
+      return (
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeHighlight]}
+          components={mdComponents}
+        >
+          {sections[0].markdown}
+        </ReactMarkdown>
+      );
+    }
+
+    return (
+      <Fragment>
+        {sections.map((sec, i) => {
+          const k = `${keyPrefix}-s${i}`;
+          switch (sec.kind) {
+            case "def-table":
+              return (
+                <DefTable
+                  key={k}
+                  accent={sec.accent}
+                  icon={sec.icon}
+                  title={sec.title}
+                  rows={sec.rows}
+                />
+              );
+            case "status-table":
+              return (
+                <SectionsStatusTable
+                  key={k}
+                  icon={sec.icon}
+                  title={sec.title}
+                  rows={sec.rows}
+                />
+              );
+            case "todos":
+              return (
+                <TodosBlock key={k} items={sec.items} title={sec.title} />
+              );
+            case "file-tree":
+              return (
+                <div key={k} className={sectionStyles.fileTree}>
+                  <div className={sectionStyles.fileTreeHeader}>
+                    <span className={sectionStyles.fileTreeTitle}>
+                      📁 {sec.title || "FILE TREE"}
+                    </span>
+                    <span className={sectionStyles.fileTreeBadge}>
+                      WARP•CMD
+                    </span>
+                  </div>
+                  <pre className={sectionStyles.fileTreePre}>
+                    {sec.content}
+                  </pre>
+                </div>
+              );
+            case "prose":
+            default:
+              return (
+                <ReactMarkdown
+                  key={k}
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeHighlight]}
+                  components={mdComponents}
+                >
+                  {sec.markdown}
+                </ReactMarkdown>
+              );
+          }
+        })}
+      </Fragment>
+    );
+  }
+
   const mdComponents: Components = {
           pre({ children }) {
             return <>{children}</>;
@@ -407,14 +517,9 @@ export default function MessageContent({
     <div className={`message-content message-content--${roleClass}`}>
       {renderSegs.map((seg, i) =>
         seg.kind === "prose" ? (
-          <ReactMarkdown
-            key={`p${i}`}
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeHighlight]}
-            components={mdComponents}
-          >
-            {seg.text}
-          </ReactMarkdown>
+          <Fragment key={`p${i}`}>
+            {renderProseContent(seg.text, `p${i}`)}
+          </Fragment>
         ) : (
           <div key={`a${i}`} className={`agent-reply agent-reply--${seg.name}`}>
             <div className="agent-reply-header">
@@ -423,13 +528,7 @@ export default function MessageContent({
               </span>
             </div>
             <div className="agent-reply-body">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                rehypePlugins={[rehypeHighlight]}
-                components={mdComponents}
-              >
-                {seg.body}
-              </ReactMarkdown>
+              {renderProseContent(seg.body, `a${i}`)}
             </div>
           </div>
         ),
