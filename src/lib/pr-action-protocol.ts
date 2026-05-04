@@ -59,7 +59,49 @@ protocol:
    completed; say "ready to merge — tap MERGE to execute" or "ready
    to hold — tap HOLD to post the pause comment" or similar.
 
-4. POST-MERGE REMINDER — when the action is a merge AND the card
+4. BLOCKER GUIDANCE — when you emit a \`merge:N\` marker AND the PR
+   has pre-merge gate issues (you know this because the user told you,
+   the previous turn showed the HELD card, or the PR description is
+   clearly missing required fields), append the following categorized
+   guidance AFTER the marker. Categorize each blocker into one of two
+   buckets and only render a section if at least one blocker fits it.
+   Write in Bahasa Indonesia. Use this exact format:
+
+   ---
+   PR #N diblokir — X issue harus diselesaikan sebelum merge bisa dilanjutkan.
+
+   **Bisa difix langsung (tanpa FORGE):**
+   _(hanya render jika ada blocker di kategori ini)_
+   - CI belum run → trigger workflow dari GitHub Actions tab atau push empty commit
+   - Validation Tier / Claim Level / Validation Target / Not in Scope missing →
+     edit PR description di GitHub dan tambahkan field yang missing
+
+   **Butuh WARP•FORGE:**
+   _(hanya render jika ada blocker di kategori ini)_
+   - FORGE output missing Report: / State: lines → FORGE harus update PR body
+   - WARP•SENTINEL PR belum merged → selesaikan SENTINEL task dulu, merge SENTINEL PR,
+     lalu retry merge ini
+
+   Setelah fix → ketik: cek pr #N
+   ---
+
+   Blocker categorization rules:
+   SELF_FIX bucket (no FORGE needed):
+     - CI belum run / CI failed / CI pending / CI missing
+     - Validation Tier missing from PR body
+     - Claim Level missing from PR body
+     - Validation Target missing from PR body
+     - Not in Scope missing from PR body
+   FORGE_FIX bucket (FORGE required):
+     - WARP•FORGE output missing Report: line
+     - WARP•FORGE output missing State: line
+     - WARP•SENTINEL — paired WARP•FORGE PR not yet merged
+
+   If ALL blockers are SELF_FIX → omit the "Butuh WARP•FORGE" section entirely.
+   If ALL blockers are FORGE_FIX → omit the "Bisa difix langsung" section entirely.
+   If NO blockers are known (clean PR) → omit the blocker guidance block entirely.
+
+5. POST-MERGE REMINDER — when the action is a merge AND the card
    reports success (the user will tell you, or you will see the
    merged-state card in the next turn), include this exact line as
    plain prose in your acknowledgement:
@@ -82,11 +124,16 @@ Pre-merge gates (informational — server enforces these regardless):
 - PR body must declare all four: \`Validation Tier:\`, \`Claim Level:\`,
   \`Validation Target:\`, \`Not in Scope:\`.
 - Branch must start with \`WARP/\`.
+- PR body must contain WARP•FORGE output lines: \`Report:\` and \`State:\`.
 - If \`Validation Tier: MAJOR\`, an APPROVED review from WARP•SENTINEL
   containing the word APPROVED or CONDITIONAL is required.
+- If this is a WARP•SENTINEL PR, its paired WARP•FORGE PR must already
+  be merged.
+- CI \`test\` job must pass on the head SHA.
 
-If a merge attempt is BLOCKED by gates, the card will render in the
-HELD state with the blocker list. Acknowledge the blockers in your
-next turn ("Gate blocked: <reasons>. Resolve and try again.") rather
-than retrying.
+If a merge attempt is BLOCKED by gates, the MERGE button on the card
+will display "MERGE BLOCKED" in amber and be disabled. Acknowledge the
+blockers using the categorized guidance format above ("Gate blocked:
+<reasons>. Resolve and try again.") and remind the user to type
+\`cek pr #N\` after fixing.
 `;

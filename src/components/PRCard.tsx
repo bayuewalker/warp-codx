@@ -750,21 +750,52 @@ export default function PRCard({
                       Hold ⏸
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => void handleMerge()}
-                    disabled={
-                      !!submittingOp || !gates.ok || pr.state !== "open"
-                    }
-                    title={
-                      gates.ok
-                        ? "Squash-merge with canonical commit title"
-                        : "Gate blocked — see blockers above"
-                    }
-                    className="w-full px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border border-warp-teal/50 bg-warp-teal-bg text-warp-teal hover:bg-warp-teal/15 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {submittingOp === "merge" ? "Merging…" : "Merge ✓"}
-                  </button>
+                  {(() => {
+                    const mergeBlocked =
+                      !gates.ok &&
+                      pr.state === "open" &&
+                      !submittingOp;
+                    const blockerCount = gates.blockers.length;
+                    return (
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          onClick={
+                            mergeBlocked
+                              ? undefined
+                              : () => void handleMerge()
+                          }
+                          disabled={
+                            !!submittingOp ||
+                            !gates.ok ||
+                            pr.state !== "open"
+                          }
+                          title={
+                            gates.ok
+                              ? "Squash-merge with canonical commit title"
+                              : `Gate blocked — ${blockerCount} blocker${blockerCount === 1 ? "" : "s"} must be resolved`
+                          }
+                          className={`w-full px-4 py-2 min-h-[40px] text-[12px] uppercase tracking-[0.14em] rounded-md border transition-colors${
+                            mergeBlocked
+                              ? " border-warp-amber/50 bg-warp-amber/5 text-warp-amber opacity-40 cursor-not-allowed pointer-events-none"
+                              : " border-warp-teal/50 bg-warp-teal-bg text-warp-teal hover:bg-warp-teal/15 disabled:opacity-40 disabled:cursor-not-allowed"
+                          }`}
+                        >
+                          {submittingOp === "merge"
+                            ? "Merging…"
+                            : mergeBlocked
+                              ? "MERGE BLOCKED"
+                              : "Merge ✓"}
+                        </button>
+                        {mergeBlocked && blockerCount > 0 && (
+                          <div className="text-[10px] text-warp-amber/70 text-center leading-tight">
+                            {blockerCount} blocker
+                            {blockerCount === 1 ? "" : "s"} must be resolved
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </>
               )}
             </div>
