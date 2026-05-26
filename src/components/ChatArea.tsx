@@ -213,7 +213,7 @@ export default function ChatArea({
         const decoder = new TextDecoder();
         let acc = "";
         for (;;) {
-          const { value, done } = await reader.read();
+          const { value, done } = await reader!.read();
           if (done) break;
           if (value) {
             acc += decoder.decode(value, { stream: true });

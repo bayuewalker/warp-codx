@@ -34,6 +34,26 @@ import {
   waitFor,
 } from "@testing-library/react";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/",
+  useSearchParams: () => ({ get: vi.fn() }),
+}));
+
+vi.mock("@/lib/supabase", () => ({
+  getBrowserSupabase: () => ({
+    auth: {
+      getSession: vi.fn().mockResolvedValue({
+        data: { session: { user: { id: "test-user", email: "test@example.com" } } },
+      }),
+      onAuthStateChange: vi.fn().mockReturnValue({
+        data: { subscription: { unsubscribe: vi.fn() } },
+      }),
+      signOut: vi.fn().mockResolvedValue({}),
+    },
+  }),
+}));
+
 vi.mock("@/components/ChatArea", () => ({
   default: () => null,
 }));
