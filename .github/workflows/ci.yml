@@ -6,9 +6,6 @@ name: CI
 # Runs on every push to any branch and on every pull request. The
 # `test` job's check name is what `src/lib/pr-gates.ts` consults via
 # `getPRCheckStatus("test", ...)` — KEEP the job key in sync.
-#
-# Uses pnpm (matching the local dev environment) so the frozen
-# pnpm-lock.yaml is the single source of truth for installs.
 
 on:
   push:
@@ -34,22 +31,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "24"
-          cache: "pnpm"
+          cache: "npm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Typecheck (tsc --noEmit)
-        run: pnpm exec tsc --noEmit
+        run: npx tsc --noEmit
 
       - name: Unit tests (vitest)
-        run: pnpm test
+        run: npm test

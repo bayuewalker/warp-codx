@@ -28,7 +28,7 @@ export function getOpenAI(): OpenAI {
     baseURL: "https://openrouter.ai/api/v1",
     defaultHeaders: {
       "HTTP-Referer":
-        process.env.NEXT_PUBLIC_SITE_URL ?? "https://warp-codx.replit.app",
+        process.env.NEXT_PUBLIC_SITE_URL ?? "https://warp-codx.fly.dev",
       "X-Title": "WARP CodX",
     },
   });

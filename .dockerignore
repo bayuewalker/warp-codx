@@ -1,0 +1,11 @@
+node_modules
+.next
+.git
+.env
+.env.local
+.env.*.local
+design-ref
+reports
+test
+*.md
+.github

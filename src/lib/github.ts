@@ -1,15 +1,16 @@
 /**
- * Thin Octokit wrapper for the WalkerMind constitution repo.
+ * Thin Octokit wrapper for the GitHub repo used as the constitution source.
  *
- * Authenticates from the server-only env var GITHUB_PAT_CONSTITUTION (a
- * fine-grained PAT scoped to `contents:read` on `bayuewalker/walkermind-os`).
+ * Repo is configured via GITHUB_REPO_OWNER / GITHUB_REPO_NAME env vars
+ * (defaults: bayuewalker / walkermind-os for backward compatibility).
+ * Auth token: GITHUB_PAT (preferred) or GITHUB_PAT_CONSTITUTION (legacy).
  * The PAT value is NEVER logged, NEVER returned to the browser, and NEVER
  * written into the constitution_fetch_log error_message column.
  */
 import { Octokit } from "@octokit/rest";
 
-const REPO_OWNER = "bayuewalker";
-const REPO_NAME = "walkermind-os";
+const REPO_OWNER = process.env.GITHUB_REPO_OWNER ?? "bayuewalker";
+const REPO_NAME = process.env.GITHUB_REPO_NAME ?? "walkermind-os";
 const REQUEST_TIMEOUT_MS = 10_000;
 
 export const CONSTITUTION_REPO = { owner: REPO_OWNER, name: REPO_NAME } as const;
@@ -18,12 +19,12 @@ let _client: Octokit | null = null;
 
 function getClient(): Octokit {
   if (_client) return _client;
-  const token = process.env.GITHUB_PAT_CONSTITUTION;
+  const token = process.env.GITHUB_PAT ?? process.env.GITHUB_PAT_CONSTITUTION;
   if (!token) {
     throw new Error(
-      "Missing required environment variable: GITHUB_PAT_CONSTITUTION. " +
+      "Missing required environment variable: GITHUB_PAT (or legacy GITHUB_PAT_CONSTITUTION). " +
         "Create a fine-grained PAT with `contents:read` on " +
-        "bayuewalker/walkermind-os and set it in your environment.",
+        `${REPO_OWNER}/${REPO_NAME} and set it in your environment.`,
     );
   }
   _client = new Octokit({

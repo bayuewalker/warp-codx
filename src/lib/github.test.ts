@@ -204,10 +204,11 @@ describe("fetchRepoFile — error normalization", () => {
 describe("fetchRepoFile — environment + response-shape guards", () => {
   it("throws a descriptive error when GITHUB_PAT_CONSTITUTION is missing", async () => {
     delete process.env.GITHUB_PAT_CONSTITUTION;
+    delete process.env.GITHUB_PAT;
 
     const { fetchRepoFile } = await import("./github");
     await expect(fetchRepoFile("AGENTS.md")).rejects.toThrow(
-      /Missing required environment variable: GITHUB_PAT_CONSTITUTION/,
+      /Missing required environment variable: GITHUB_PAT/,
     );
     // And we must not have constructed an Octokit (or made a network call).
     expect(octokitConstructorCalls).toHaveLength(0);
