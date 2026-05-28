@@ -8,6 +8,9 @@ primary_region = 'sin'
 
 [build]
   dockerfile = 'Dockerfile'
+  [build.args]
+    NEXT_PUBLIC_SUPABASE_URL = "https://bsisosinwpslfwciqsvu.supabase.co"
+    NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzaXNvc2lud3BzbGZ3Y2lxc3Z1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODgxMzgsImV4cCI6MjA5MzA2NDEzOH0.rx_c3asHZ6pi4c-8q5Y0oWngNhpEPbp8FCQRYhcrc4M"
 
 [env]
   NODE_ENV = 'production'
