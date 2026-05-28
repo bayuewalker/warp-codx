@@ -145,19 +145,6 @@ export default function Sidebar({
           active={view === "sessions"}
           onClick={() => setView("sessions")}
         />
-        <NavItem
-          icon="bookmark"
-          label="Issues"
-          active={view === "issues"}
-          onClick={() => setView("issues")}
-        />
-        <NavItem
-          icon="pr"
-          label="Pull Requests"
-          active={view === "prs"}
-          onClick={() => setView("prs")}
-        />
-        <NavItem icon="clock" label="Job History" disabled />
       </nav>
 
       {error && (
