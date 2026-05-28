@@ -4,12 +4,15 @@ import { NextResponse } from "next/server";
 // need NEXT_PUBLIC_* vars baked in at Docker build time. fly.io secrets
 // (set via `fly secrets set`) are available here as process.env.
 export async function GET() {
-  // Bracket notation bypasses Next.js/webpack's compile-time replacement of
-  // NEXT_PUBLIC_* vars. Dot notation (process.env.NEXT_PUBLIC_FOO) is inlined
-  // as undefined at build time when the var isn't set via Docker --build-arg.
-  // Bracket notation reads the actual runtime process.env (fly.io secrets).
+  // SUPABASE_URL/SUPABASE_ANON_KEY (no NEXT_PUBLIC_ prefix) are never
+  // webpack-inlined — they always read from fly.io secrets at runtime.
+  // Fall back to bracket-notation NEXT_PUBLIC_ reads for local dev compat.
   return NextResponse.json({
-    supabaseUrl: process.env["NEXT_PUBLIC_SUPABASE_URL"] ?? "",
-    supabaseAnonKey: process.env["NEXT_PUBLIC_SUPABASE_ANON_KEY"] ?? "",
+    supabaseUrl:
+      process.env.SUPABASE_URL ?? process.env["NEXT_PUBLIC_SUPABASE_URL"] ?? "",
+    supabaseAnonKey:
+      process.env.SUPABASE_ANON_KEY ??
+      process.env["NEXT_PUBLIC_SUPABASE_ANON_KEY"] ??
+      "",
   });
 }
