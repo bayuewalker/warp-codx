@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import ChatArea from "./ChatArea";
 import ConstitutionWarningBanner from "./ConstitutionWarningBanner";
 import ConstitutionSettings from "./ConstitutionSettings";
 import type { Session } from "@/lib/types";
 import { cn } from "@/lib/cn";
+import { getBrowserSupabase } from "@/lib/supabase";
 
 /**
  * Task #37 — page size for the sidebar's session list. Mirrors
@@ -30,6 +32,7 @@ type AuthState =
   | { kind: "ready"; userId: string; email: string | null };
 
 export default function AppShell() {
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [auth, setAuth] = useState<AuthState>({ kind: "checking" });
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -48,12 +51,33 @@ export default function AppShell() {
 
   useEffect(() => {
     setMounted(true);
-    setAuth({ kind: "ready", userId: "public", email: null });
+    const sb = getBrowserSupabase();
+    const redirect = () => router.replace("/sign-in");
+    sb.auth.getSession().then(({ data }) => {
+      const user = data.session?.user;
+      if (user) {
+        setAuth({ kind: "ready", userId: user.id, email: user.email ?? null });
+      } else {
+        setAuth({ kind: "guest" });
+        redirect();
+      }
+    });
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setAuth({ kind: "ready", userId: session.user.id, email: session.user.email ?? null });
+      } else {
+        setAuth({ kind: "guest" });
+        redirect();
+      }
+    });
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSignOut = useCallback(async () => {
-    // No-op: auth is disabled, app is publicly accessible.
-  }, []);
+    await getBrowserSupabase().auth.signOut();
+    router.replace("/sign-in");
+  }, [router]);
 
   const refreshSessions = useCallback(async (selectFirst = false) => {
     try {
@@ -224,7 +248,9 @@ export default function AppShell() {
           {mounted
             ? auth.kind === "checking"
               ? "Checking session…"
-              : "Redirecting…"
+              : auth.kind === "guest"
+              ? "Redirecting to sign in…"
+              : null
             : null}
         </div>
       </div>
