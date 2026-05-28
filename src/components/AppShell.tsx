@@ -79,7 +79,8 @@ export default function AppShell() {
         setAuth({ kind: "ready", userId: user.id, email: user.email ?? null });
       } else {
         setAuth({ kind: "guest" });
-        redirect();
+        // Do NOT redirect — guests see the landing page and sign in when they
+        // try to use a feature.
       }
 
       const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
@@ -87,7 +88,6 @@ export default function AppShell() {
           setAuth({ kind: "ready", userId: session.user.id, email: session.user.email ?? null });
         } else {
           setAuth({ kind: "guest" });
-          redirect();
         }
       });
       return () => subscription.unsubscribe();
@@ -107,7 +107,7 @@ export default function AppShell() {
   }, []);
 
   const handleSignOut = useCallback(async () => {
-    await getBrowserSupabase().auth.signOut();
+    try { await getBrowserSupabase().auth.signOut(); } catch { /* ignore */ }
     router.replace("/sign-in");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -192,8 +192,8 @@ export default function AppShell() {
   }, [loadingMoreSessions, hasMoreSessions, sessionsCursor, sessionsCursorId]);
 
   useEffect(() => {
-    refreshSessions(true);
-  }, [refreshSessions]);
+    if (auth.kind !== "checking") refreshSessions(true);
+  }, [auth.kind, refreshSessions]);
 
   const handleNewDirective = useCallback(async () => {
     if (creating) return;
@@ -272,23 +272,17 @@ export default function AppShell() {
   }, []);
 
 
-  // Before mount: identical empty shell on server and client — no text nodes.
-  // After mount: show auth-driven state or full app.
-  if (!mounted || auth.kind !== "ready") {
+  // Before mount or while checking auth: show minimal shell (no hydration mismatch).
+  if (!mounted || auth.kind === "checking") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-warp-bg text-white">
         <div className="text-xs uppercase tracking-[0.32em] text-white/45">
-          {mounted
-            ? auth.kind === "checking"
-              ? "Checking session…"
-              : auth.kind === "guest"
-              ? "Redirecting to sign in…"
-              : null
-            : null}
+          {mounted ? "Checking session…" : null}
         </div>
       </div>
     );
   }
+
   return (
     <div className="flex warp-h-screen w-screen overflow-hidden bg-warp-bg text-white">
       {/* Mobile drawer overlay */}
@@ -332,9 +326,9 @@ export default function AppShell() {
             setDrawerOpen(false);
             setSettingsOpen(true);
           }}
-          userEmail={auth.kind === "ready" ? auth.email : null}
+          userEmail={auth.kind === "ready" ? auth.email : "Guest mode"}
           onSignOut={handleSignOut}
-          signOutLabel="Sign out"
+          signOutLabel={auth.kind === "guest" ? "Sign in" : "Sign out"}
         />
       </aside>
 
@@ -348,6 +342,7 @@ export default function AppShell() {
           onOpenDrawer={() => setDrawerOpen(true)}
           onNewDirective={handleNewDirective}
           onSessionUpdated={handleSessionUpdated}
+          isGuest={auth.kind === "guest"}
         />
       </main>
       <ConstitutionSettings
