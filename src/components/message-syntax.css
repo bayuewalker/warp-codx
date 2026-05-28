@@ -1,0 +1,133 @@
+/* ─────────────────────────────────────────────────────────────────
+   WARP syntax highlighting — highlight.js token colours.
+   Dark theme tuned to the WARP palette; tokens are scoped to
+   .message-content so they only apply inside the chat prose layer
+   and never bleed into other UI surfaces.
+
+   The container reset (background: transparent, padding: 0, etc.)
+   lives in message-content.css. This file only owns token colours.
+   ───────────────────────────────────────────────────────────────── */
+
+/* Base hljs element — transparent so the code-card background shows
+   through. Foreground inherits the prose colour. */
+.message-content code.hljs,
+.message-content .hljs {
+  background: transparent;
+  color: var(--warp-text, #c9d1d9);
+}
+
+/* Keywords — if / for / return / const / let / … */
+.message-content .hljs-keyword,
+.message-content .hljs-selector-tag,
+.message-content .hljs-subst {
+  color: #79b8ff;
+}
+
+/* Built-in values — true / false / null / undefined / NaN */
+.message-content .hljs-literal,
+.message-content .hljs-built_in,
+.message-content .hljs-type {
+  color: #b392f0;
+}
+
+/* String literals — single, double, template */
+.message-content .hljs-string,
+.message-content .hljs-doctag,
+.message-content .hljs-template-variable,
+.message-content .hljs-template-tag {
+  color: #9ecbff;
+}
+
+/* Numbers and special literals */
+.message-content .hljs-number,
+.message-content .hljs-regexp {
+  color: #f0a45d;
+}
+
+/* Comments — block and line */
+.message-content .hljs-comment,
+.message-content .hljs-quote {
+  color: var(--warp-text-mute, #6a737d);
+  font-style: italic;
+}
+
+/* Function / method names */
+.message-content .hljs-title,
+.message-content .hljs-title.class_,
+.message-content .hljs-title.function_ {
+  color: #b4d0fb;
+}
+
+/* Class, interface, type alias names */
+.message-content .hljs-class .hljs-title,
+.message-content .hljs-type {
+  color: #79d4c8;
+}
+
+/* Function / method parameters */
+.message-content .hljs-params {
+  color: #e1e4e8;
+}
+
+/* Variable, symbol, self, this */
+.message-content .hljs-variable,
+.message-content .hljs-symbol,
+.message-content .hljs-bullet {
+  color: #ffab70;
+}
+
+/* Attribute names (HTML, JSX, CSS) */
+.message-content .hljs-attr,
+.message-content .hljs-attribute {
+  color: #f9e29b;
+}
+
+/* HTML / JSX tags */
+.message-content .hljs-tag {
+  color: #85e89d;
+}
+
+/* HTML / XML tag names */
+.message-content .hljs-name {
+  color: #85e89d;
+}
+
+/* Meta / preprocessor (#include, @decorator, import, …) */
+.message-content .hljs-meta,
+.message-content .hljs-meta .hljs-keyword {
+  color: #b392f0;
+}
+
+/* Punctuation — kept at the prose foreground */
+.message-content .hljs-punctuation,
+.message-content .hljs-operator {
+  color: var(--warp-text-dim, #8b949e);
+}
+
+/* Link / URL text */
+.message-content .hljs-link {
+  color: #79b8ff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Diff additions / deletions */
+.message-content .hljs-addition {
+  color: #85e89d;
+  background: rgba(133, 232, 157, 0.08);
+}
+
+.message-content .hljs-deletion {
+  color: #f97583;
+  background: rgba(249, 117, 131, 0.08);
+}
+
+/* Section headings inside markdown-like blocks */
+.message-content .hljs-section {
+  color: #79b8ff;
+  font-weight: 600;
+}
+
+/* Strong emphasis inside doc comments */
+.message-content .hljs-emphasis { font-style: italic; }
+.message-content .hljs-strong  { font-weight: 600; }
