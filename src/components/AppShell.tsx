@@ -97,10 +97,10 @@ export default function AppShell() {
     initAuth()
       .then((fn) => { cleanup = fn; })
       .catch(() => {
-        // Any unhandled error (e.g. Supabase config missing) → send to sign-in
-        // rather than staying stuck on "CHECKING SESSION…".
+        // On any init error (e.g. Supabase config missing) show the app as
+        // guest — do NOT redirect. Redirecting to /sign-in would break the
+        // soft auth gate for users who haven't signed in yet.
         setAuth({ kind: "guest" });
-        redirect();
       });
     return () => cleanup?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
