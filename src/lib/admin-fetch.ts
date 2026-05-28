@@ -70,18 +70,9 @@ export async function adminFetch(
   let res = await fetch(url, attachHeader(init, initialKey));
 
   if (res.status === 401) {
-    // Wrong / missing key. Clear any stale value and prompt once.
+    // Clear stale key and propagate 401 — caller's UI shows an error state.
+    // The operator sets the secret via ConstitutionSettings.
     clearKey();
-    const promptedRaw =
-      typeof window !== "undefined"
-        ? window.prompt(
-            "Enter CONSTITUTION_ADMIN_SECRET to perform this action:",
-          )
-        : null;
-    const prompted = promptedRaw ? promptedRaw.trim() : "";
-    if (!prompted) return res; // operator cancelled — propagate 401
-    writeKey(prompted);
-    res = await fetch(url, attachHeader(init, prompted));
   }
 
   return res;
