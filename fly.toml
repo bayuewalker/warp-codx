@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for warp-codx on 2026-05-28T07:06:45Z
+# fly.toml app configuration file generated for warp-codx on 2026-05-28T06:10:50Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -8,9 +8,6 @@ primary_region = 'sin'
 
 [build]
   dockerfile = 'Dockerfile'
-  [build.args]
-    NEXT_PUBLIC_SUPABASE_URL = "https://bsisosinwpslfwciqsvu.supabase.co"
-    NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJzaXNvc2lud3BzbGZ3Y2lxc3Z1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0ODgxMzgsImV4cCI6MjA5MzA2NDEzOH0.rx_c3asHZ6pi4c-8q5Y0oWngNhpEPbp8FCQRYhcrc4M"
 
 [env]
   NODE_ENV = 'production'
@@ -19,10 +16,9 @@ primary_region = 'sin'
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 0
-  concurrency = { hard_limit = 250, soft_limit = 200, type = 'requests' }
 
   [http_service.concurrency]
     type = 'requests'
@@ -34,11 +30,3 @@ primary_region = 'sin'
   cpu_kind = 'shared'
   cpus = 1
   memory_mb = 512
-
-[[vm]]
-  memory = '512mb'
-  cpu_kind = 'shared'
-  cpus = 2
-  memory_mb = 512
-  processes = ['app']
-  size = 'shared-cpu-2x'

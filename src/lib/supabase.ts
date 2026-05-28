@@ -4,6 +4,17 @@ import { getDevBypassUser, isAuthBypassActive } from "./dev-bypass";
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
+// Runtime-configurable values for browser client. Set via setBrowserSupabaseConfig()
+// when NEXT_PUBLIC_* vars are not available at build time (e.g. fly.io secrets).
+let _runtimeUrl: string | undefined = SUPABASE_URL;
+let _runtimeAnonKey: string | undefined = SUPABASE_ANON_KEY;
+
+export function setBrowserSupabaseConfig(url: string, anonKey: string) {
+  _runtimeUrl = url;
+  _runtimeAnonKey = anonKey;
+  _browserClient = null; // force re-init with new values
+}
+
 /**
  * Task #2 — Authenticated server client.
  *
@@ -89,8 +100,8 @@ let _browserClient: SupabaseClient | null = null;
 export function getBrowserSupabase(): SupabaseClient {
   if (_browserClient) return _browserClient;
   _browserClient = createClient(
-    assertEnv("NEXT_PUBLIC_SUPABASE_URL", SUPABASE_URL),
-    assertEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", SUPABASE_ANON_KEY),
+    assertEnv("NEXT_PUBLIC_SUPABASE_URL", _runtimeUrl),
+    assertEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", _runtimeAnonKey),
     {
       auth: { persistSession: false, autoRefreshToken: false },
       realtime: { params: { eventsPerSecond: 10 } },
