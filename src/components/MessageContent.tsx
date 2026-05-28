@@ -348,7 +348,7 @@ export default function MessageContent({
                       📁 {sec.title || "FILE TREE"}
                     </span>
                     <span className={sectionStyles.fileTreeBadge}>
-                      WARP•CMD
+                      FILE TREE
                     </span>
                   </div>
                   <pre className={sectionStyles.fileTreePre}>
@@ -509,9 +509,9 @@ export default function MessageContent({
         };
 
   const AGENT_LABELS: Record<AgentReplyName, string> = {
-    forge: "WARP\u2022FORGE",
-    sentinel: "WARP\u2022SENTINEL",
-    echo: "WARP\u2022ECHO",
+    forge: "Planner",
+    sentinel: "Reviewer",
+    echo: "Reporter",
   };
 
   return (

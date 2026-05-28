@@ -432,7 +432,7 @@ export default function ChatInput({
         <span className="footer-model">{formatModelSlug(MODELS.cmd)}</span>
         {multiAgent && (
           <span className="footer-agent-badge" aria-live="polite">
-            FORGE · CMD · SENTINEL
+            Plan · Build · Review
           </span>
         )}
       </div>

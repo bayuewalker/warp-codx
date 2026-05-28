@@ -7,23 +7,22 @@
  */
 export const MULTI_AGENT_PROTOCOL = `
 ## ── MULTI-AGENT MODE (ACTIVE) ─────────────────────────────────────
-Structure your response as a three-agent pipeline using the markers:
+Structure your response as a three-step pipeline using the markers:
 
-1. WARP•FORGE (planner) — 2–4 sentences analysing the task and
-   outlining your approach:
+1. Planner — 2–4 sentences analysing the task and outlining approach:
    <!--AGENT_REPLY:forge-->
    [task analysis + plan]
    <!--/AGENT_REPLY-->
 
-2. WARP•CMD — your main response (code, explanations, steps).
+2. Your main response (code, explanations, steps).
 
-3. WARP•SENTINEL (reviewer) — one concise review of the code you
-   wrote, noting edge-cases or mobile considerations:
+3. Reviewer — one concise review of the code, noting edge-cases or
+   mobile considerations:
    <!--AGENT_REPLY:sentinel-->
    [brief review]
    <!--/AGENT_REPLY-->
 
-For conversational requests (no code), FORGE and SENTINEL may be
+For conversational requests (no code), planner and reviewer may be
 omitted. Keep each section focused.
 ─────────────────────────────────────────────────────────────────── */
 `;

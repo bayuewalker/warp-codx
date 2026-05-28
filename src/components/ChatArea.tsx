@@ -16,8 +16,7 @@ import { authFetch } from "@/lib/api-fetch";
 import { summarizeRefresh, type RefreshBody } from "@/lib/refresh-summary";
 import { useActivityPanel } from "@/hooks/useActivityPanel";
 
-const GUEST_MSG_LIMIT = 5;
-const GUEST_MSG_KEY = "warp_guest_msg_count";
+const GUEST_MSG_KEY = "warp_guest_msg_count"; // kept for localStorage cleanup only
 
 type Props = {
   sessionId: string | null;
@@ -41,7 +40,6 @@ export default function ChatArea({
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
-  const [guestMsgCount, setGuestMsgCount] = useState(0);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const seenIds = useRef<Set<string>>(new Set());
   // Holds the AbortController for the in-flight /api/chat stream so
@@ -60,18 +58,6 @@ export default function ChatArea({
       el.scrollTop = el.scrollHeight;
     });
   }, []);
-
-  // Hydrate guest message count from localStorage once on mount.
-  useEffect(() => {
-    if (!isGuest) return;
-    try {
-      const stored = parseInt(localStorage.getItem(GUEST_MSG_KEY) ?? "0", 10);
-      setGuestMsgCount(Number.isFinite(stored) && stored > 0 ? stored : 0);
-    } catch { /* localStorage unavailable */ }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const isAtGuestLimit = isGuest && guestMsgCount >= GUEST_MSG_LIMIT;
 
   // Load messages whenever the active session changes.
   useEffect(() => {
@@ -174,17 +160,7 @@ export default function ChatArea({
   const handleSend = useCallback(
     async (text: string, opts?: { multiAgent?: boolean }) => {
       if (!sessionId || !text.trim() || streaming) return;
-      if (isAtGuestLimit) return;
       const trimmed = text.trim();
-
-      if (isGuest) {
-        try {
-          const current = parseInt(localStorage.getItem(GUEST_MSG_KEY) ?? "0", 10);
-          const next = (Number.isFinite(current) ? current : 0) + 1;
-          localStorage.setItem(GUEST_MSG_KEY, String(next));
-          setGuestMsgCount(next);
-        } catch { /* localStorage unavailable */ }
-      }
 
       const optimisticUserId = `temp-user-${Date.now()}-${Math.random()
         .toString(36)
@@ -237,7 +213,7 @@ export default function ChatArea({
           const message =
             (errJson && (errJson as { error?: string }).error) ||
             `Request failed (${res.status})`;
-          setStreamingText(`[WARP•SENTINEL] ${message}`);
+          setStreamingText(`[Error] ${message}`);
           setStreaming(false);
           return;
         }
@@ -262,7 +238,7 @@ export default function ChatArea({
           // intentionally silent
         } else {
           const message = err instanceof Error ? err.message : "Stream failed";
-          setStreamingText(`[WARP•SENTINEL] ${message}`);
+          setStreamingText(`[Error] ${message}`);
         }
       } finally {
         // Release the body reader lock so the browser stops feeding
@@ -314,7 +290,7 @@ export default function ChatArea({
         }
       }
     },
-    [sessionId, streaming, scrollToBottom, onSessionUpdated, isGuest, isAtGuestLimit],
+    [sessionId, streaming, scrollToBottom, onSessionUpdated, isGuest],
   );
 
   // Abort the in-flight stream when the operator taps the stop (■) button.
@@ -393,7 +369,7 @@ export default function ChatArea({
         const summary = summarizeRefresh(res, json);
         const bubble = summary.ok
           ? `[WARP🔹CMD] ✓ ${summary.message}`
-          : `[WARP•SENTINEL] ✗ Refresh failed: ${summary.message}`;
+          : `[Error] ✗ Refresh failed: ${summary.message}`;
         setMessages((prev) =>
           prev.map((m) =>
             m.id === tempId ? { ...m, content: bubble } : m,
@@ -406,7 +382,7 @@ export default function ChatArea({
             m.id === tempId
               ? {
                   ...m,
-                  content: `[WARP•SENTINEL] ✗ Refresh failed: ${msg}`,
+                  content: `[Error] ✗ Refresh failed: ${msg}`,
                 }
               : m,
           ),
@@ -435,49 +411,6 @@ export default function ChatArea({
 
   return (
     <div className="flex flex-col h-full min-h-0">
-      {/* Status strip — 26px sticky band with NET / RT / RUN / AGT LEDs.
-          NET + RT light up unconditionally (network is implied alive while
-          the page renders). RUN pulses amber whenever a stream is in
-          flight, otherwise stays amber-still while a session is selected,
-          and dims when no session is active. AGT stays idle until Task #3
-          wires real agent state. */}
-      <header className="status-strip" role="banner">
-        <div className="status-led">
-          <span className="led-dot led-online" aria-label="Network online" />
-          NET
-        </div>
-        <div className="status-led">
-          <span className="led-dot led-online" aria-label="Realtime connected" />
-          RT
-        </div>
-        <div className="status-led">
-          <span
-            className={cn(
-              "led-dot",
-              streaming
-                ? "led-busy led-pulse"
-                : sessionId
-                  ? "led-busy"
-                  : "led-idle",
-            )}
-            aria-label={
-              streaming
-                ? "Streaming"
-                : sessionId
-                  ? "Run state ready"
-                  : "Run state idle"
-            }
-          />
-          RUN
-        </div>
-        <div className="status-led">
-          <span className="led-dot led-idle" aria-label="Agent idle" />
-          AGT
-        </div>
-        <span className="status-spacer" />
-        <span className="status-version">W.A.R.P · v0.1</span>
-      </header>
-
       {/* App header — 44px. Hamburger left (mobile only — drawer is the
           persistent sidebar on desktop), wordmark center, new-directive
           plus right. */}
@@ -548,20 +481,8 @@ export default function ChatArea({
         {!sessionId ? (
           <EmptyStateView
             eyebrow="WARP CodX"
-            title="Powered by W.A.R.P Engine"
-            subtitle={
-              isGuest ? (
-                <>
-                  Try WARP CodX free — no sign-up needed. Chat, build, and review code
-                  with your AI engineering team. {GUEST_MSG_LIMIT} messages included.
-                </>
-              ) : (
-                <>
-                  Your AI coding assistant. Chat, build, review, and dispatch tasks
-                  to FORGE, SENTINEL, and ECHO — your AI engineering team.
-                </>
-              )
-            }
+            title="AI Chat & Coding"
+            subtitle="Your AI assistant. Chat, write code, run it, and get multi-agent reviews — all in one place."
             action={{ label: "+ New session", onClick: onNewDirective }}
           />
         ) : loading ? (
@@ -569,8 +490,8 @@ export default function ChatArea({
         ) : messages.length === 0 && !streaming ? (
           <EmptyStateView
             icon="◆"
-            title="Awaiting directive"
-            subtitle="Send a message to start. WARP🔹CMD routes your task to the right agent automatically."
+            title="Ready to chat"
+            subtitle="Send a message to start."
           />
         ) : (
           <ul className="flex flex-col gap-5 max-w-3xl mx-auto w-full">
@@ -618,48 +539,20 @@ export default function ChatArea({
         />
       )}
 
-      {/* Guest trial banner — shown above input when at/near limit */}
-      {isGuest && isAtGuestLimit && (
-        <div className="bg-warp-amber/10 border-t border-warp-amber/30 px-4 py-2.5 flex items-center justify-between gap-3">
-          <span className="text-[11px] text-warp-amber leading-snug">
-            You&rsquo;ve used all {GUEST_MSG_LIMIT} free messages.
-          </span>
-          <a
-            href="/sign-in"
-            className="text-[11px] text-warp-blue hover:underline shrink-0 font-medium"
-          >
-            Sign in for unlimited →
-          </a>
-        </div>
-      )}
-      {isGuest && !isAtGuestLimit && guestMsgCount > 0 && (
-        <div className="text-center py-1 px-4">
-          <span className="text-[10px] text-white/35">
-            {GUEST_MSG_LIMIT - guestMsgCount} free{" "}
-            {GUEST_MSG_LIMIT - guestMsgCount === 1 ? "message" : "messages"}{" "}
-            remaining ·{" "}
-            <a href="/sign-in" className="text-warp-blue hover:underline">
-              Sign up for unlimited
-            </a>
-          </span>
-        </div>
-      )}
 
       {/* Input */}
       <div className="bg-warp-bg kb-inset">
         <div className="max-w-3xl mx-auto w-full px-3 md:px-6 pt-3 pb-3">
           <ChatInput
-            disabled={!sessionId || isAtGuestLimit}
+            disabled={!sessionId}
             isStreaming={streaming}
             onStopStream={handleStopStream}
             placeholder={
-              isAtGuestLimit
-                ? "Sign in for unlimited access…"
-                : !sessionId
-                  ? "Start a new directive to begin…"
-                  : streaming
-                    ? "WARP CMD is responding…"
-                    : "Describe your task or type / for commands"
+              !sessionId
+                ? "Start a new session to begin…"
+                : streaming
+                  ? "AI is responding…"
+                  : "Describe your task or type / for commands"
             }
             onSend={handleSend}
             onSlashCommand={handleSlashCommand}
