@@ -97,19 +97,10 @@ export async function issuesFetch(
   let res = await fetch(url, attachHeader(init, initialToken));
 
   if (res.status === 403) {
-    // Wrong / missing token. Clear stale value and prompt once.
-    // No `emitChange()` here — emitting would wake sibling listeners
-    // mid-flight and race with `clearToken()` on the new token.
+    // Clear stale token and propagate the 403 — the caller's UI shows
+    // an error state. The operator sets the token via ConstitutionSettings
+    // (no intrusive window.prompt() on auto-fetches).
     clearToken();
-    const promptedRaw =
-      typeof window !== "undefined"
-        ? window.prompt("Enter WARP_ADMIN_TOKEN to perform this action:")
-        : null;
-    const prompted = promptedRaw ? promptedRaw.trim() : "";
-    if (!prompted) return res; // operator cancelled — propagate 403
-    writeToken(prompted);
-    res = await fetch(url, attachHeader(init, prompted));
-    emitStatus(); // Settings badge sync only — no refresh trigger.
   }
 
   return res;

@@ -31,7 +31,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getBrowserSupabase } from "@/lib/supabase";
+import { getBrowserSupabase, setBrowserSupabaseConfig } from "@/lib/supabase";
 
 type Status =
   | { kind: "idle" }
@@ -43,6 +43,22 @@ export default function SignInPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+
+  // Load runtime Supabase config (fly.io doesn't bake NEXT_PUBLIC_* at build
+  // time — fetch /api/config so the browser client initializes correctly).
+  useEffect(() => {
+    void (async () => {
+      try {
+        const res = await fetch("/api/config");
+        if (res.ok) {
+          const cfg = await res.json() as { supabaseUrl?: string; supabaseAnonKey?: string };
+          if (cfg.supabaseUrl && cfg.supabaseAnonKey) {
+            setBrowserSupabaseConfig(cfg.supabaseUrl, cfg.supabaseAnonKey);
+          }
+        }
+      } catch { /* proceed without config */ }
+    })();
+  }, []);
 
   // If the user already has a session (e.g. they manually navigated
   // to /sign-in while logged in), bounce them straight to the app.
@@ -56,8 +72,7 @@ export default function SignInPage() {
           router.replace("/");
         }
       } catch {
-        /* env not configured — let the form render so the operator
-           can see a useful error when they try to send a link. */
+        /* env not configured — let the form render */
       }
     })();
     return () => {
