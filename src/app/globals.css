@@ -398,6 +398,12 @@ body {
   outline-offset: 2px;
 }
 
+/* Multi-agent toggle active state */
+.input-agent-active {
+  color: var(--warp-blue) !important;
+  background: rgba(91, 164, 255, 0.12) !important;
+}
+
 .input-footer {
   display: flex;
   align-items: center;
@@ -406,6 +412,15 @@ body {
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 10px;
   letter-spacing: 0.04em;
+}
+
+.footer-agent-badge {
+  margin-left: auto;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--warp-blue);
+  opacity: 0.8;
+  white-space: nowrap;
 }
 .footer-led {
   width: 6px;
