@@ -94,7 +94,14 @@ export default function AppShell() {
     };
 
     let cleanup: (() => void) | undefined;
-    initAuth().then((fn) => { cleanup = fn; });
+    initAuth()
+      .then((fn) => { cleanup = fn; })
+      .catch(() => {
+        // Any unhandled error (e.g. Supabase config missing) → send to sign-in
+        // rather than staying stuck on "CHECKING SESSION…".
+        setAuth({ kind: "guest" });
+        redirect();
+      });
     return () => cleanup?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
