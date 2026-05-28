@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import ChatArea from "./ChatArea";
 import ConstitutionWarningBanner from "./ConstitutionWarningBanner";
 import ConstitutionSettings from "./ConstitutionSettings";
-import { getBrowserSupabase } from "@/lib/supabase";
 import type { Session } from "@/lib/types";
 import { cn } from "@/lib/cn";
 
@@ -18,14 +16,6 @@ import { cn } from "@/lib/cn";
  * keeping them aligned keeps the "Show more" affordance honest.
  */
 const SESSIONS_PAGE_SIZE = 10;
-
-// Dev-only bypass — see src/lib/dev-bypass.ts. Hard-gated on
-// NODE_ENV !== "production" via isAuthBypassActive(); kept inline
-// here as a constant because the value is needed during render.
-// MUST be removed before publishing.
-const SKIP_AUTH =
-  process.env.NEXT_PUBLIC_SKIP_AUTH === "true" &&
-  process.env.NODE_ENV !== "production";
 
 type SessionsPage = {
   sessions: Session[];
@@ -40,15 +30,6 @@ type AuthState =
   | { kind: "ready"; userId: string; email: string | null };
 
 export default function AppShell() {
-  const router = useRouter();
-
-  // Always start with "checking" so the server-rendered HTML and the
-  // first client render (hydration) are byte-identical regardless of
-  // whether NEXT_PUBLIC_SKIP_AUTH was inlined at compile time or not.
-  // The bypass identity is applied in a useEffect after hydration.
-  // `mounted` starts false on both server and client so the initial
-  // render (SSR + hydration) always produces the same empty shell.
-  // Auth-driven text only appears after the first client-side paint.
   const [mounted, setMounted] = useState(false);
   const [auth, setAuth] = useState<AuthState>({ kind: "checking" });
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -67,79 +48,11 @@ export default function AppShell() {
 
   useEffect(() => {
     setMounted(true);
+    setAuth({ kind: "ready", userId: "public", email: null });
   }, []);
-
-  /**
-   * Auth listener — wires up the Supabase session on mount and
-   * subscribes to subsequent auth-state events. Under the dev bypass,
-   * immediately promotes to "ready" with a placeholder identity so the
-   * chat shell is renderable without a real session.
-   */
-  useEffect(() => {
-    if (SKIP_AUTH) {
-      setAuth({ kind: "ready", userId: "skip-auth", email: "Dev bypass" });
-      return;
-    }
-
-    let cancelled = false;
-    let supabase: ReturnType<typeof getBrowserSupabase>;
-    try {
-      supabase = getBrowserSupabase();
-    } catch {
-      setAuth({ kind: "guest" });
-      return;
-    }
-
-    void supabase.auth.getSession().then(({ data }) => {
-      if (cancelled) return;
-      const session = data.session;
-      if (session) {
-        setAuth({ kind: "ready", userId: session.user.id, email: session.user.email ?? null });
-      } else {
-        setAuth({ kind: "guest" });
-      }
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (cancelled) return;
-      if (session) {
-        setAuth({ kind: "ready", userId: session.user.id, email: session.user.email ?? null });
-      } else {
-        setSessions([]);
-        setActiveId(null);
-        setHasMoreSessions(false);
-        setSessionsCursor(null);
-        setSessionsCursorId(null);
-        setSessionsError(null);
-        setAuth({ kind: "guest" });
-      }
-    });
-
-    return () => {
-      cancelled = true;
-      sub?.subscription.unsubscribe();
-    };
-  }, []);
-
-  // Bounce unauthenticated visitors to sign-in. Skipped under bypass.
-  useEffect(() => {
-    if (SKIP_AUTH) return;
-    if (auth.kind === "guest") {
-      router.replace("/sign-in");
-    }
-  }, [auth.kind, router]);
-
-  const handleSignIn = useCallback(() => {
-    router.push("/sign-in");
-  }, [router]);
 
   const handleSignOut = useCallback(async () => {
-    try {
-      const supabase = getBrowserSupabase();
-      await supabase.auth.signOut();
-    } catch {
-      // Auth state change handler above will update state on signOut event.
-    }
+    // No-op: auth is disabled, app is publicly accessible.
   }, []);
 
   const refreshSessions = useCallback(async (selectFirst = false) => {
@@ -361,8 +274,8 @@ export default function AppShell() {
             setSettingsOpen(true);
           }}
           userEmail={auth.kind === "ready" ? auth.email : null}
-          onSignOut={SKIP_AUTH ? handleSignIn : handleSignOut}
-          signOutLabel={SKIP_AUTH ? "Sign in" : "Sign out"}
+          onSignOut={handleSignOut}
+          signOutLabel="Sign out"
         />
       </aside>
 
