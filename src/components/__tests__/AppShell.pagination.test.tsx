@@ -41,6 +41,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/supabase", () => ({
+  setBrowserSupabaseConfig: vi.fn(),
   getBrowserSupabase: () => ({
     auth: {
       getSession: vi.fn().mockResolvedValue({
@@ -152,6 +153,7 @@ describe("AppShell — sidebar paging integration", () => {
 
     fetchSpy.mockImplementation((async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : (input as Request).url;
+      if (url === "/api/config") return jsonResponse({ supabaseUrl: "http://localhost", supabaseAnonKey: "test-key" });
       if (url.startsWith("/api/sessions")) {
         if (url.includes("before=")) return jsonResponse(secondPage);
         return jsonResponse(firstPage);
@@ -162,12 +164,15 @@ describe("AppShell — sidebar paging integration", () => {
     render(<AppShell />);
     await waitForFirstPage("Session 1");
 
-    // Sanity — the first call is the initial unsorted fetch with no
-    // cursor, just `limit`.
-    const firstUrl = String(fetchSpy.mock.calls[0][0]);
-    expect(firstUrl).toContain("/api/sessions?");
-    expect(firstUrl).toContain("limit=10");
-    expect(firstUrl).not.toContain("before=");
+    // Sanity — find the initial sessions fetch (no cursor, just limit).
+    const firstSessionsUrl = String(
+      fetchSpy.mock.calls.find((c: unknown[]) =>
+        String(c[0]).startsWith("/api/sessions") && !String(c[0]).includes("before="),
+      )?.[0],
+    );
+    expect(firstSessionsUrl).toContain("/api/sessions?");
+    expect(firstSessionsUrl).toContain("limit=10");
+    expect(firstSessionsUrl).not.toContain("before=");
 
     // The Show more button should now be visible because hasMore=true.
     const showMore = await screen.findByRole("button", {
@@ -223,6 +228,7 @@ describe("AppShell — sidebar paging integration", () => {
 
     fetchSpy.mockImplementation((async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : (input as Request).url;
+      if (url === "/api/config") return jsonResponse({ supabaseUrl: "http://localhost", supabaseAnonKey: "test-key" });
       if (url.startsWith("/api/sessions")) {
         if (url.includes("before=")) return jsonResponse(secondPage);
         return jsonResponse(firstPage);
@@ -271,6 +277,7 @@ describe("AppShell — sidebar paging integration", () => {
 
     fetchSpy.mockImplementation((async (input: RequestInfo | URL) => {
       const url = typeof input === "string" ? input : (input as Request).url;
+      if (url === "/api/config") return jsonResponse({ supabaseUrl: "http://localhost", supabaseAnonKey: "test-key" });
       if (url.startsWith("/api/sessions")) {
         if (url.includes("before=")) {
           // Hold the response so we can inspect the in-flight state.

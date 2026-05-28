@@ -8,7 +8,7 @@ import ConstitutionWarningBanner from "./ConstitutionWarningBanner";
 import ConstitutionSettings from "./ConstitutionSettings";
 import type { Session } from "@/lib/types";
 import { cn } from "@/lib/cn";
-import { getBrowserSupabase } from "@/lib/supabase";
+import { getBrowserSupabase, setBrowserSupabaseConfig } from "@/lib/supabase";
 
 /**
  * Task #37 — page size for the sidebar's session list. Mirrors
@@ -51,9 +51,29 @@ export default function AppShell() {
 
   useEffect(() => {
     setMounted(true);
-    const sb = getBrowserSupabase();
     const redirect = () => router.replace("/sign-in");
-    sb.auth.getSession().then(({ data }) => {
+
+    const initAuth = async () => {
+      // Fetch public Supabase config from the server at runtime. This avoids
+      // needing NEXT_PUBLIC_* vars baked into the bundle at Docker build time —
+      // fly.io secrets are only available at runtime, not during `npm run build`.
+      try {
+        const res = await fetch("/api/config");
+        if (res.ok) {
+          const { supabaseUrl, supabaseAnonKey } = await res.json() as {
+            supabaseUrl: string;
+            supabaseAnonKey: string;
+          };
+          if (supabaseUrl && supabaseAnonKey) {
+            setBrowserSupabaseConfig(supabaseUrl, supabaseAnonKey);
+          }
+        }
+      } catch {
+        // If config fetch fails, try with build-time vars (local dev fallback).
+      }
+
+      const sb = getBrowserSupabase();
+      const { data } = await sb.auth.getSession();
       const user = data.session?.user;
       if (user) {
         setAuth({ kind: "ready", userId: user.id, email: user.email ?? null });
@@ -61,23 +81,29 @@ export default function AppShell() {
         setAuth({ kind: "guest" });
         redirect();
       }
-    });
-    const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setAuth({ kind: "ready", userId: session.user.id, email: session.user.email ?? null });
-      } else {
-        setAuth({ kind: "guest" });
-        redirect();
-      }
-    });
-    return () => subscription.unsubscribe();
+
+      const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          setAuth({ kind: "ready", userId: session.user.id, email: session.user.email ?? null });
+        } else {
+          setAuth({ kind: "guest" });
+          redirect();
+        }
+      });
+      return () => subscription.unsubscribe();
+    };
+
+    let cleanup: (() => void) | undefined;
+    initAuth().then((fn) => { cleanup = fn; });
+    return () => cleanup?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSignOut = useCallback(async () => {
     await getBrowserSupabase().auth.signOut();
     router.replace("/sign-in");
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const refreshSessions = useCallback(async (selectFirst = false) => {
     try {
