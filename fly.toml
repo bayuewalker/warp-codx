@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for warp-codx on 2026-05-28T06:10:50Z
+# fly.toml app configuration file generated for warp-codx on 2026-05-28T07:06:45Z
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -16,9 +16,10 @@ primary_region = 'sin'
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = 'stop'
+  auto_stop_machines = true
   auto_start_machines = true
   min_machines_running = 0
+  concurrency = { hard_limit = 250, soft_limit = 200, type = 'requests' }
 
   [http_service.concurrency]
     type = 'requests'
@@ -30,3 +31,11 @@ primary_region = 'sin'
   cpu_kind = 'shared'
   cpus = 1
   memory_mb = 512
+
+[[vm]]
+  memory = '512mb'
+  cpu_kind = 'shared'
+  cpus = 2
+  memory_mb = 512
+  processes = ['app']
+  size = 'shared-cpu-2x'
