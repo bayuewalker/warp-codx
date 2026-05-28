@@ -1,11 +1,15 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { getDevBypassUser, isAuthBypassActive } from "./dev-bypass";
 
-// Bracket notation prevents Next.js/webpack from replacing these with the
-// build-time value (undefined in Docker without --build-arg). Bracket access
-// reads the actual runtime process.env populated by fly.io secrets.
-const SUPABASE_URL = process.env["NEXT_PUBLIC_SUPABASE_URL"];
-const SUPABASE_ANON_KEY = process.env["NEXT_PUBLIC_SUPABASE_ANON_KEY"];
+// Read Supabase config from non-NEXT_PUBLIC_ vars first (these are NEVER
+// webpack-inlined, so they always read from the actual runtime process.env).
+// Fall back to bracket-notation NEXT_PUBLIC_ reads for backward compat.
+// On fly.io: set SUPABASE_URL + SUPABASE_ANON_KEY secrets (shorter names,
+// guaranteed runtime-only) in addition to the NEXT_PUBLIC_ variants.
+const SUPABASE_URL =
+  process.env.SUPABASE_URL ?? process.env["NEXT_PUBLIC_SUPABASE_URL"];
+const SUPABASE_ANON_KEY =
+  process.env.SUPABASE_ANON_KEY ?? process.env["NEXT_PUBLIC_SUPABASE_ANON_KEY"];
 
 // Runtime-configurable values for browser client. Set via setBrowserSupabaseConfig()
 // when NEXT_PUBLIC_* vars are not available at build time (e.g. fly.io secrets).
