@@ -515,18 +515,14 @@ export default function ChatArea({
         {!sessionId ? (
           <EmptyStateView
             eyebrow="WARP CodX"
-            title="Command interface for WalkerMind OS"
+            title="Powered by W.A.R.P Engine"
             subtitle={
               <>
-                Direct WARP🔹CMD. Dispatch tasks to FORGE, SENTINEL, and ECHO.
-                Branches use{" "}
-                <span className="text-warp-blue">
-                  WARP/&#123;feature-slug&#125;
-                </span>
-                .
+                Your AI coding assistant. Chat, build, review, and dispatch tasks
+                to FORGE, SENTINEL, and ECHO — your AI engineering team.
               </>
             }
-            action={{ label: "+ New directive", onClick: onNewDirective }}
+            action={{ label: "+ New session", onClick: onNewDirective }}
           />
         ) : loading ? (
           <div className="text-xs text-warp-text-mute px-1">Loading messages…</div>
@@ -534,7 +530,7 @@ export default function ChatArea({
           <EmptyStateView
             icon="◆"
             title="Awaiting directive"
-            subtitle="Anything you send is routed through WARP🔹CMD, which decides whether FORGE, SENTINEL, or ECHO takes the task."
+            subtitle="Send a message to start. WARP🔹CMD routes your task to the right agent automatically."
           />
         ) : (
           <ul className="flex flex-col gap-5 max-w-3xl mx-auto w-full">

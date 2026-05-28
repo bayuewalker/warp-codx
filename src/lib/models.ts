@@ -1,5 +1,5 @@
 /**
- * Centralized model registry for WalkerMind OS agents.
+ * Centralized model registry for W.A.R.P Engine agents.
  *
  * All chat completions go through OpenRouter (https://openrouter.ai), so model
  * identifiers MUST include the provider prefix (e.g. "openai/gpt-4o").
