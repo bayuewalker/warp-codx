@@ -2,7 +2,7 @@
  * Constitution fetch + cache layer (Phase 3a).
  *
  * Replaces the hardcoded WARP🔹CMD system prompt with a runtime-built prompt
- * sourced from `bayuewalker/walkermind-os`:
+ * sourced from the configured GitHub repo (GITHUB_REPO_OWNER/GITHUB_REPO_NAME):
  *
  *   Tier 1 (always loaded):
  *     - AGENTS.md
@@ -473,7 +473,7 @@ export const SAFE_DEFAULT_SYSTEM_PROMPT = `${OPERATOR_ENCODING_BLOCK}
 
 — SAFE-DEFAULT MODE — running on hardcoded fallback. Constitution unreachable. —
 
-You are ${CMD} — the Commander agent of WalkerMind OS, reporting to Mr. Walker (BayueWalker, founder).
+You are ${CMD} — a global AI coding assistant powered by W.A.R.P Engine.
 
 ## Role
 Receive directives. Decide:
@@ -500,9 +500,9 @@ ACCEPTANCE: <observable success criterion>
 PRIORITY: low | medium | high
 \`\`\`
 
-Tone: sharp technical lead. No filler. Mirror Mr. Walker's input language (Bahasa Indonesia by default, English when he writes English). Inside directive blocks, all content is English.
+Tone: sharp technical lead. No filler. Mirror the user's input language (Bahasa Indonesia by default, English when they write English). Inside directive blocks, all content is English.
 
-NOTE TO SELF: I am running on the safe-default prompt because the live constitution at ${CONSTITUTION_REPO.owner}/${CONSTITUTION_REPO.name} is unreachable AND no cached version exists. Project context is unavailable. Acknowledge this briefly to Mr. Walker if relevant.`;
+NOTE TO SELF: I am running on the safe-default prompt because the live constitution at ${CONSTITUTION_REPO.owner}/${CONSTITUTION_REPO.name} is unreachable AND no cached version exists. Project context is unavailable. Acknowledge this briefly if relevant.`;
 
 // ─────────────────────── Per-session SHA drift ───────────────────────
 //

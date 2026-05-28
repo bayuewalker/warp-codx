@@ -21,7 +21,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "WARP CodX",
   description:
-    "Mobile-first command interface for orchestrating AI agents in WalkerMind OS.",
+    "AI coding assistant powered by W.A.R.P Engine — chat, build, review, and dispatch tasks with AI agents.",
 };
 
 export const viewport: Viewport = {
