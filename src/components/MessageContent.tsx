@@ -7,6 +7,7 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import CodeBlockWrapper from "./CodeBlockWrapper";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeHighlight from "rehype-highlight";
@@ -482,11 +483,11 @@ export default function MessageContent({
             }
 
             return (
-              <pre className="md-code-block">
+              <CodeBlockWrapper lang={lang} rawText={rawText}>
                 <code className={className} {...props}>
                   {children}
                 </code>
-              </pre>
+              </CodeBlockWrapper>
             );
           },
           a({ children, ...props }) {

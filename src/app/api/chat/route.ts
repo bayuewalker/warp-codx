@@ -13,6 +13,7 @@ import {
 import { ISSUE_DRAFT_PROTOCOL } from "@/lib/issue-draft-protocol";
 import { PR_ACTION_PROTOCOL } from "@/lib/pr-action-protocol";
 import { TASK_COMPLETE_PROTOCOL } from "@/lib/task-complete-protocol";
+import { MULTI_AGENT_PROTOCOL } from "@/lib/multi-agent-protocol";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,6 +21,7 @@ export const runtime = "nodejs";
 type ChatBody = {
   sessionId?: string;
   content?: string;
+  agentMode?: string;
 };
 
 /**
@@ -43,6 +45,7 @@ export async function POST(req: Request) {
 
   const sessionId = body.sessionId?.trim();
   const content = body.content?.trim();
+  const agentMode = body.agentMode?.trim();
 
   if (!sessionId) {
     return NextResponse.json(
@@ -152,6 +155,13 @@ export async function POST(req: Request) {
   // outcome. Same additive pattern as the two protocols above; no
   // changes to constitution-fetch or any execution route.
   systemPrompt = `${systemPrompt}\n${TASK_COMPLETE_PROTOCOL}`;
+
+  // Multi-agent mode — append pipeline instructions when the client
+  // sends agentMode: "multi". This is additive and never conflicts
+  // with the existing protocols above.
+  if (agentMode === "multi") {
+    systemPrompt = `${systemPrompt}\n${MULTI_AGENT_PROTOCOL}`;
+  }
 
   // Per-session SHA drift detection (Task #9).
   //

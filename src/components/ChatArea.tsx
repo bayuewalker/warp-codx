@@ -167,12 +167,12 @@ export default function ChatArea({
   const newDirectiveCtxRef = useRef<{
     sessionId: string | null;
     streaming: boolean;
-    handleSend: (text: string) => Promise<void>;
+    handleSend: (text: string, opts?: { multiAgent?: boolean }) => Promise<void>;
     onNewDirective: () => void;
   } | null>(null);
 
   const handleSend = useCallback(
-    async (text: string) => {
+    async (text: string, opts?: { multiAgent?: boolean }) => {
       if (!sessionId || !text.trim() || streaming) return;
       if (isAtGuestLimit) return;
       const trimmed = text.trim();
@@ -224,7 +224,11 @@ export default function ChatArea({
         const res = await authFetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId, content: trimmed }),
+          body: JSON.stringify({
+            sessionId,
+            content: trimmed,
+            ...(opts?.multiAgent ? { agentMode: "multi" } : {}),
+          }),
           signal: controller.signal,
         });
 

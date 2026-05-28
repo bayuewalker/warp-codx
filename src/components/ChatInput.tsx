@@ -18,7 +18,7 @@ type Props = {
   onStopStream?: () => void;
   ledHealth?: LedHealth;
   placeholder?: string;
-  onSend: (text: string) => void;
+  onSend: (text: string, opts?: { multiAgent?: boolean }) => void;
   /**
    * Optional slash-command interceptor. Invoked before `onSend` for
    * any input starting with "/". Return `true` to indicate the
@@ -73,6 +73,7 @@ export default function ChatInput({
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [attachError, setAttachError] = useState<string | null>(null);
+  const [multiAgent, setMultiAgent] = useState(false);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -140,7 +141,7 @@ export default function ChatInput({
       }
     }
 
-    onSend(composeOutgoing(t, attachment));
+    onSend(composeOutgoing(t, attachment), { multiAgent });
     resetField();
     clearAttachment();
   };
@@ -361,6 +362,25 @@ export default function ChatInput({
             </svg>
           </button>
 
+          <button
+            type="button"
+            className={`input-tool-btn${multiAgent ? " input-agent-active" : ""}`}
+            title={multiAgent ? "Multi-agent: ON (click to disable)" : "Multi-agent: OFF (click to enable)"}
+            aria-label="Toggle multi-agent mode"
+            onClick={() => setMultiAgent((v) => !v)}
+            disabled={toolBtnDisabled}
+          >
+            {/* 3-node agent network icon */}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" width={14} height={14} aria-hidden="true">
+              <circle cx="12" cy="4" r="2" />
+              <circle cx="4" cy="20" r="2" />
+              <circle cx="20" cy="20" r="2" />
+              <line x1="12" y1="6" x2="4" y2="18" />
+              <line x1="12" y1="6" x2="20" y2="18" />
+              <line x1="6" y1="20" x2="18" y2="20" />
+            </svg>
+          </button>
+
           <span className="input-toolbar-spacer" aria-hidden="true" />
 
           <button
@@ -410,6 +430,11 @@ export default function ChatInput({
           aria-label={`Model status: ${ledHealth}`}
         />
         <span className="footer-model">{formatModelSlug(MODELS.cmd)}</span>
+        {multiAgent && (
+          <span className="footer-agent-badge" aria-live="polite">
+            FORGE · CMD · SENTINEL
+          </span>
+        )}
       </div>
 
       <ShortcutSheet
