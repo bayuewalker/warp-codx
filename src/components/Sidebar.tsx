@@ -134,7 +134,7 @@ export default function Sidebar({
           <line x1="12" y1="5" x2="12" y2="19" />
           <line x1="5" y1="12" x2="19" y2="12" />
         </svg>
-        {creating ? "Creating…" : "New Directive"}
+        {creating ? "Creating…" : "New Chat"}
       </button>
 
       <nav aria-label="Primary">
@@ -165,7 +165,7 @@ export default function Sidebar({
         </div>
       )}
 
-      <button type="button" className="drawer-section">
+      <div className="drawer-section" style={{ cursor: "default", pointerEvents: "none" }}>
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -173,10 +173,10 @@ export default function Sidebar({
           strokeWidth={2}
           aria-hidden="true"
         >
-          <polyline points="6 9 12 15 18 9" />
+          <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
         </svg>
-        W.A.R.P Engine
-      </button>
+        Sessions
+      </div>
 
       <div
         ref={scrollContainerRef}
@@ -197,8 +197,8 @@ export default function Sidebar({
             <EmptyState
               icon="◇"
               title="No sessions yet"
-              subtitle="Start a new directive to dispatch your first task to WARP🔹CMD."
-              action={{ label: "+ New directive", onClick: onNewDirective }}
+              subtitle="Start a new chat session."
+              action={{ label: "+ New chat", onClick: onNewDirective }}
             />
           )
         ) : (
@@ -275,7 +275,7 @@ export default function Sidebar({
               <circle cx="12" cy="12" r="3" />
               <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
             </svg>
-            CONSTITUTION
+            SETTINGS
           </button>
         )}
 

@@ -13,7 +13,7 @@ import {
 import { ISSUE_DRAFT_PROTOCOL } from "@/lib/issue-draft-protocol";
 import { PR_ACTION_PROTOCOL } from "@/lib/pr-action-protocol";
 import { TASK_COMPLETE_PROTOCOL } from "@/lib/task-complete-protocol";
-import { MULTI_AGENT_PROTOCOL } from "@/lib/multi-agent-protocol";
+import { MULTI_AGENT_PROTOCOL, NEUTRAL_IDENTITY_PROMPT } from "@/lib/multi-agent-protocol";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -162,6 +162,10 @@ export async function POST(req: Request) {
   if (agentMode === "multi") {
     systemPrompt = `${systemPrompt}\n${MULTI_AGENT_PROTOCOL}`;
   }
+
+  // Neutral identity — appended last so it overrides any WARP CMD /
+  // agent-branding instructions that may be in the loaded constitution.
+  systemPrompt = `${systemPrompt}\n${NEUTRAL_IDENTITY_PROMPT}`;
 
   // Per-session SHA drift detection (Task #9).
   //
