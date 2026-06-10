@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import PushNotificationToggle from "@/components/PushNotificationToggle";
 import { authFetch } from "@/lib/api-fetch";
 
@@ -146,7 +146,8 @@ function TabButton({
       aria-selected={active}
       className="cs-action"
       style={{
-        flex: 1,
+        flex: "1 0 auto",
+        whiteSpace: "nowrap",
         opacity: active ? 1 : 0.6,
         borderColor: active ? "var(--accent, #6ea8fe)" : undefined,
       }}
@@ -387,6 +388,7 @@ function SkillsTab() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -404,30 +406,52 @@ function SkillsTab() {
     void load();
   }, [load]);
 
-  const install = async () => {
-    const md = markdown.trim();
-    if (!md) return;
-    setBusy(true);
-    setError(null);
-    setFlash(null);
+  const installMarkdown = useCallback(
+    async (md: string) => {
+      const body = md.trim();
+      if (!body) return;
+      setBusy(true);
+      setError(null);
+      setFlash(null);
+      try {
+        const res = await fetch("/api/skills", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ markdown: body }),
+        });
+        const j = (await res.json().catch(() => ({}))) as {
+          skill?: Skill;
+          error?: string;
+        };
+        if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+        setMarkdown("");
+        setFlash(`Installed "${j.skill?.name ?? "skill"}".`);
+        await load();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "install failed");
+      } finally {
+        setBusy(false);
+      }
+    },
+    [load],
+  );
+
+  const install = () => installMarkdown(markdown);
+
+  // One-tap install from a SKILL.md file — read it client-side and install.
+  const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = ""; // allow re-picking same file
+    if (!file) return;
+    if (file.size > 256 * 1024) {
+      setError("File too large — SKILL.md must be under 256 KB.");
+      return;
+    }
     try {
-      const res = await fetch("/api/skills", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markdown: md }),
-      });
-      const j = (await res.json().catch(() => ({}))) as {
-        skill?: Skill;
-        error?: string;
-      };
-      if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
-      setMarkdown("");
-      setFlash(`Installed "${j.skill?.name ?? "skill"}".`);
-      await load();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "install failed");
-    } finally {
-      setBusy(false);
+      const text = await file.text();
+      await installMarkdown(text);
+    } catch {
+      setError("Could not read the file.");
     }
   };
 
@@ -447,10 +471,29 @@ function SkillsTab() {
   return (
     <div>
       <p className="ws-help">
-        Install SKILL.md modules to extend the assistant. Paste a skill with
-        optional <code>---</code> frontmatter (<code>name</code>,{" "}
+        Install SKILL.md modules to extend the assistant. Upload a{" "}
+        <code>.md</code> file in one tap, or paste a skill with optional{" "}
+        <code>---</code> frontmatter (<code>name</code>,{" "}
         <code>description</code>, <code>triggers</code>).
       </p>
+
+      <div className="cs-actions" style={{ marginBottom: 10 }}>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".md,text/markdown,text/plain"
+          className="hidden"
+          onChange={onPickFile}
+        />
+        <button
+          type="button"
+          className="cs-action"
+          onClick={() => fileRef.current?.click()}
+          disabled={busy}
+        >
+          {busy ? "Installing…" : "⬆ UPLOAD .md"}
+        </button>
+      </div>
 
       <ul className="ws-list">
         {skills.length === 0 && (
@@ -628,7 +671,7 @@ function AdminTab() {
           className="ws-input"
           value={provider}
           onChange={(e) => setProvider(e.target.value as Provider)}
-          style={{ flex: "0 0 auto" }}
+          style={{ flex: "1 1 130px" }}
         >
           {PROVIDERS.map((p) => (
             <option key={p} value={p}>
@@ -641,7 +684,7 @@ function AdminTab() {
           value={label}
           placeholder="label (optional)"
           onChange={(e) => setLabel(e.target.value)}
-          style={{ flex: "0 0 30%" }}
+          style={{ flex: "1 1 120px" }}
         />
       </div>
       <div className="ws-add-row">

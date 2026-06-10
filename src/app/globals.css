@@ -131,6 +131,10 @@ body {
   background: var(--warp-red);
   box-shadow: 0 0 4px var(--warp-red);
 }
+.led-working {
+  background: var(--warp-blue);
+  box-shadow: 0 0 5px var(--warp-blue);
+}
 .led-pulse::after {
   content: "";
   position: absolute;
@@ -1179,10 +1183,18 @@ textarea, input {
   max-width: 560px;
   max-height: 86vh;
   overflow-y: auto;
+  overflow-x: hidden;
   background: var(--warp-bg-1);
   border: 1px solid var(--border-medium);
   border-radius: 14px;
   padding: 16px 18px 18px;
+}
+@media (max-width: 480px) {
+  .cs-modal {
+    width: 94%;
+    max-height: 90vh;
+    padding: 14px 13px 16px;
+  }
 }
 .cs-header {
   display: flex; align-items: flex-start; justify-content: space-between;
@@ -1350,6 +1362,14 @@ textarea, input {
   display: flex;
   gap: 6px;
   margin-bottom: 14px;
+  /* Mobile: let the tab row scroll horizontally instead of overlapping the
+     labels when all four tabs can't fit. Scrollbar hidden for a clean look. */
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.ws-tabs::-webkit-scrollbar {
+  display: none;
 }
 .ws-help {
   font-size: 12px;
@@ -1387,9 +1407,13 @@ textarea, input {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+  /* Wrap on narrow screens so the select / label / key inputs stack instead of
+     forcing the modal to overflow horizontally. */
+  flex-wrap: wrap;
 }
 .ws-add-row .ws-input {
   flex: 1 1 auto;
+  min-width: 0;
 }
 .ws-add-row .cs-action {
   flex: 0 0 auto;
