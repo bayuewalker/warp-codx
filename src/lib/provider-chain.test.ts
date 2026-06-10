@@ -16,6 +16,7 @@ const ENV = [
   "OPENROUTER_API_KEY",
   "OPEN_ROUTER_API_KEY",
   "OPENAI_API_KEY",
+  "OPENAI_API",
   "BLACKBOX_API_KEY",
 ];
 let saved: Record<string, string | undefined>;

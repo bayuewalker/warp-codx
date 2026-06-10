@@ -48,7 +48,7 @@ const PROVIDER_SPECS: Record<Provider, ProviderSpec> = {
   },
   openai: {
     baseURL: "https://api.openai.com/v1",
-    keyEnvs: ["OPENAI_API_KEY"],
+    keyEnvs: ["OPENAI_API_KEY", "OPENAI_API"],
     keyHint: "Get a key at https://platform.openai.com/api-keys (format: sk-...).",
   },
   blackbox: {

@@ -17,6 +17,7 @@ const ENV_KEYS = [
   "OPENROUTER_API_KEY",
   "OPEN_ROUTER_API_KEY",
   "OPENAI_API_KEY",
+  "OPENAI_API",
   "BLACKBOX_API_KEY",
   "OPENROUTER_BASE_URL",
   "OPENAI_BASE_URL",
@@ -83,6 +84,13 @@ describe("resolveProvider", () => {
     process.env.OPEN_ROUTER_API_KEY = "sk-or-alias";
     const r = resolveProvider();
     expect(r.apiKey).toBe("sk-or-alias");
+  });
+
+  it("accepts the OPENAI_API alias for OpenAI", () => {
+    process.env.LLM_PROVIDER = "openai";
+    process.env.OPENAI_API = "sk-oai-alias";
+    const r = resolveProvider();
+    expect(r.apiKey).toBe("sk-oai-alias");
   });
 
   it("resolves OpenAI with no attribution headers", () => {
