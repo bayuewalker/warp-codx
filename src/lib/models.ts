@@ -35,10 +35,10 @@ const MODEL_MATRIX: Record<Provider, Record<AgentRole, string>> = {
     echo: "gpt-4o-mini",
   },
   blackbox: {
-    cmd: "blackboxai/anthropic/claude-sonnet-4",
-    forge: "blackboxai/anthropic/claude-sonnet-4",
-    sentinel: "blackboxai/anthropic/claude-sonnet-4",
-    echo: "blackboxai/openai/gpt-4o-mini",
+    cmd: "blackboxai/anthropic/claude-sonnet-4.6",
+    forge: "blackboxai/anthropic/claude-sonnet-4.6",
+    sentinel: "blackboxai/anthropic/claude-sonnet-4.6",
+    echo: "blackboxai/openai/gpt-5.4-nano",
   },
 };
 

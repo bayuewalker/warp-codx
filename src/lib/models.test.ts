@@ -36,7 +36,7 @@ describe("getModel", () => {
     expect(getModel("echo")).toBe("gpt-4o-mini");
 
     process.env.LLM_PROVIDER = "blackbox";
-    expect(getModel("cmd")).toBe("blackboxai/anthropic/claude-sonnet-4");
+    expect(getModel("cmd")).toBe("blackboxai/anthropic/claude-sonnet-4.6");
   });
 
   it("LLM_MODEL overrides every provider/role", () => {
@@ -54,8 +54,8 @@ describe("getModel", () => {
 describe("formatModelSlug", () => {
   it("strips provider prefix and the claude- tag", () => {
     expect(formatModelSlug("anthropic/claude-sonnet-4-6")).toBe("sonnet-4-6");
-    expect(formatModelSlug("blackboxai/anthropic/claude-sonnet-4")).toBe(
-      "sonnet-4",
+    expect(formatModelSlug("blackboxai/anthropic/claude-sonnet-4.6")).toBe(
+      "sonnet-4.6",
     );
     expect(formatModelSlug("gpt-4o")).toBe("gpt-4o");
   });
