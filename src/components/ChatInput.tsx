@@ -14,9 +14,13 @@ import ShortcutSheet from "./ShortcutSheet";
 type Props = {
   disabled?: boolean;
   isStreaming?: boolean;
+  /** Short, real remark of what the assistant is doing (e.g. "writing code"). */
+  thinkingLabel?: string;
+  /** Elapsed seconds since the current stream started. */
+  thinkingSeconds?: number;
   onStopStream?: () => void;
   placeholder?: string;
-  onSend: (text: string, opts?: { multiAgent?: boolean }) => void;
+  onSend: (text: string) => void;
   /**
    * Optional slash-command interceptor. Invoked before `onSend` for
    * any input starting with "/". Return `true` to indicate the
@@ -25,15 +29,20 @@ type Props = {
    */
   onSlashCommand?: (raw: string) => Promise<boolean> | boolean;
   /**
-   * WARP/input-shortcuts — fire a quick-command as the next user
-   * turn. ChatArea wires this to its own `handleSend`. If omitted
-   * the shortcut sheet's three text shortcuts are no-ops (the grid
-   * icon stays disabled too).
+   * Fire a quick-command as the next user turn. ChatArea wires this to its own
+   * `handleSend`. If omitted the shortcut sheet's text shortcuts are no-ops.
    */
   onShortcutSend?: (text: string) => void;
   /** Mirrors the `+` header button — open a brand-new session. */
   onNewDirective?: () => void;
 };
+
+/** Format elapsed seconds as m:ss for the thinking remark. */
+function formatElapsed(total: number): string {
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 const MAX_HEIGHT_PX = 144;
 
@@ -58,6 +67,8 @@ type Attachment = {
 export default function ChatInput({
   disabled = false,
   isStreaming = false,
+  thinkingLabel = "",
+  thinkingSeconds = 0,
   onStopStream,
   placeholder = "Describe your task or type / for commands",
   onSend,
@@ -70,7 +81,6 @@ export default function ChatInput({
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [attachError, setAttachError] = useState<string | null>(null);
-  const [multiAgent, setMultiAgent] = useState(false);
   // Live provider connection — the footer LED + model label reflect the real,
   // currently-active provider/model (top of the failover chain), never a
   // hardcoded value. Shared with the top status strip via the same endpoint.
@@ -142,7 +152,7 @@ export default function ChatInput({
       }
     }
 
-    onSend(composeOutgoing(t, attachment), { multiAgent });
+    onSend(composeOutgoing(t, attachment));
     resetField();
     clearAttachment();
   };
@@ -363,25 +373,6 @@ export default function ChatInput({
             </svg>
           </button>
 
-          <button
-            type="button"
-            className={`input-tool-btn${multiAgent ? " input-agent-active" : ""}`}
-            title={multiAgent ? "Multi-agent: ON (click to disable)" : "Multi-agent: OFF (click to enable)"}
-            aria-label="Toggle multi-agent mode"
-            onClick={() => setMultiAgent((v) => !v)}
-            disabled={toolBtnDisabled}
-          >
-            {/* 3-node agent network icon */}
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" width={14} height={14} aria-hidden="true">
-              <circle cx="12" cy="4" r="2" />
-              <circle cx="4" cy="20" r="2" />
-              <circle cx="20" cy="20" r="2" />
-              <line x1="12" y1="6" x2="4" y2="18" />
-              <line x1="12" y1="6" x2="20" y2="18" />
-              <line x1="6" y1="20" x2="18" y2="20" />
-            </svg>
-          </button>
-
           <span className="input-toolbar-spacer" aria-hidden="true" />
 
           <button
@@ -447,24 +438,27 @@ export default function ChatInput({
               : "no model"}
         </span>
 
-        {/* Live thinking animation — sits right next to the model while the
-            assistant is generating, and is driven by real streaming state. */}
-        {isStreaming ? (
+        {/* Live thinking remark — sits next to the model while the assistant is
+            generating. The label is a real description of the current phase
+            (thinking → writing → writing code), driven by the actual stream;
+            the timer is real elapsed time. Not decorative. */}
+        {isStreaming && (
           <span className="footer-thinking" role="status" aria-live="polite">
             <span className="footer-thinking-orb" aria-hidden="true" />
-            <span className="footer-thinking-label">thinking</span>
+            <span className="footer-thinking-label">
+              {thinkingLabel || "thinking"}
+            </span>
             <span className="footer-thinking-dots" aria-hidden="true">
               <i />
               <i />
               <i />
             </span>
+            {thinkingSeconds > 0 && (
+              <span className="footer-thinking-time">
+                {formatElapsed(thinkingSeconds)}
+              </span>
+            )}
           </span>
-        ) : (
-          multiAgent && (
-            <span className="footer-agent-badge" aria-live="polite">
-              Plan · Build · Review
-            </span>
-          )
         )}
       </div>
 
