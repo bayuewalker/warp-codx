@@ -167,3 +167,31 @@ create table if not exists public.skills (
 );
 create index if not exists skills_enabled_idx on public.skills (enabled);
 alter table public.skills disable row level security;
+
+-- Multi-user (roles) + admin-managed provider keys. See
+-- db/migrations/0003-users-roles-provider-keys.sql for the full migration
+-- (which also wipes chat data + adds sessions.user_id).
+
+create table if not exists public.profiles (
+  id          uuid primary key references auth.users(id) on delete cascade,
+  email       text,
+  role        text not null default 'user' check (role in ('admin', 'user')),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+alter table public.profiles disable row level security;
+
+create table if not exists public.provider_keys (
+  id          uuid primary key default gen_random_uuid(),
+  provider    text not null check (provider in ('openrouter', 'openai', 'blackbox')),
+  api_key     text not null,
+  label       text not null default '',
+  enabled     boolean not null default true,
+  priority    int not null default 100,
+  last_error  text,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists provider_keys_chain_idx
+  on public.provider_keys (enabled, priority, created_at);
+alter table public.provider_keys disable row level security;

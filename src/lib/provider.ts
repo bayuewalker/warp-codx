@@ -56,6 +56,30 @@ const PROVIDER_SPECS: Record<Provider, ProviderSpec> = {
   },
 };
 
+/** Env var name that holds a given provider's API key. */
+export function providerKeyEnv(provider: Provider): string {
+  return PROVIDER_SPECS[provider].keyEnv;
+}
+
+/**
+ * Base URL the OpenAI SDK should target for a provider, honoring an optional
+ * `<PROVIDER>_BASE_URL` override (e.g. Blackbox enterprise host, OpenAI proxy).
+ */
+export function providerBaseURL(provider: Provider): string {
+  const override = process.env[`${provider.toUpperCase()}_BASE_URL`]?.trim();
+  return override || PROVIDER_SPECS[provider].baseURL;
+}
+
+/** Provider-specific default headers (only OpenRouter uses attribution headers). */
+export function providerHeaders(provider: Provider): Record<string, string> {
+  if (provider !== "openrouter") return {};
+  return {
+    "HTTP-Referer":
+      process.env.NEXT_PUBLIC_SITE_URL ?? "https://warp-codx.fly.dev",
+    "X-Title": "WARP CodX",
+  };
+}
+
 /**
  * Resolve the active provider from `LLM_PROVIDER`. Case-insensitive; falls
  * back to the default when unset and throws on an unknown value so a typo

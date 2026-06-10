@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
-import { getOpenAI } from "@/lib/openai";
-import { getModel } from "@/lib/models";
+import { openChatStreamWithFailover } from "@/lib/llm";
 import { buildChatSystemPrompt, BASE_SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { extractAndStoreMemories } from "@/lib/memory";
 import { ISSUE_DRAFT_PROTOCOL } from "@/lib/issue-draft-protocol";
@@ -55,7 +54,6 @@ export async function POST(req: Request) {
   }
 
   const supabase = getServerSupabase();
-  const openai = getOpenAI();
 
   // Verify session exists
   const { data: session, error: sessionErr } = await supabase
@@ -172,12 +170,14 @@ export async function POST(req: Request) {
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const completion = await openai.chat.completions.create({
-          model: getModel("cmd"),
-          stream: true,
-          temperature: 0.6,
-          max_tokens: 8192,
+        // Auto-switch across configured providers/keys — if one is out of
+        // credit / rate-limited, the next available key is used. See
+        // src/lib/llm.ts.
+        const { stream: completion } = await openChatStreamWithFailover({
+          role: "cmd",
           messages,
+          temperature: 0.6,
+          maxTokens: 8192,
         });
 
         let finishReason: string | null | undefined = null;

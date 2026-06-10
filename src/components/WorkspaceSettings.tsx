@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import PushNotificationToggle from "@/components/PushNotificationToggle";
+import { authFetch } from "@/lib/api-fetch";
 
 /**
  * Workspace settings — the operator-facing panel for the three workspace
@@ -13,7 +14,19 @@ import PushNotificationToggle from "@/components/PushNotificationToggle";
  * Reuses the existing `cs-*` modal styling from globals.css.
  */
 
-type Tab = "instructions" | "memory" | "skills";
+type Tab = "instructions" | "memory" | "skills" | "admin";
+
+type Provider = "openrouter" | "openai" | "blackbox";
+
+type ProviderKeyPublic = {
+  id: string;
+  provider: Provider;
+  label: string;
+  enabled: boolean;
+  priority: number;
+  last_error: string | null;
+  keyPreview: string;
+};
 
 type Memory = {
   id: string;
@@ -40,6 +53,24 @@ export default function WorkspaceSettings({
   onClose: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("instructions");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Resolve the signed-in user's role so the Admin tab only shows for admins.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    authFetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { role?: string } | null) => {
+        if (!cancelled) setIsAdmin(d?.role === "admin");
+      })
+      .catch(() => {
+        /* not signed in / no role — hide admin */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -77,11 +108,17 @@ export default function WorkspaceSettings({
           <TabButton id="skills" tab={tab} setTab={setTab}>
             Skills
           </TabButton>
+          {isAdmin && (
+            <TabButton id="admin" tab={tab} setTab={setTab}>
+              Admin
+            </TabButton>
+          )}
         </div>
 
         {tab === "instructions" && <InstructionsTab />}
         {tab === "memory" && <MemoryTab />}
         {tab === "skills" && <SkillsTab />}
+        {tab === "admin" && isAdmin && <AdminTab />}
 
         <div className="cs-section-title">Notifications</div>
         <PushNotificationToggle />
@@ -463,6 +500,166 @@ function SkillsTab() {
           disabled={busy || !markdown.trim()}
         >
           {busy ? "Installing…" : "INSTALL SKILL"}
+        </button>
+      </div>
+      {flash && <div className="cs-flash">{flash}</div>}
+      {error && <div className="cs-error">{error}</div>}
+    </div>
+  );
+}
+
+// ───────────────────────────── Admin ─────────────────────────────
+
+const PROVIDERS: Provider[] = ["openrouter", "openai", "blackbox"];
+
+function AdminTab() {
+  const [keys, setKeys] = useState<ProviderKeyPublic[]>([]);
+  const [provider, setProvider] = useState<Provider>("blackbox");
+  const [apiKey, setApiKey] = useState("");
+  const [label, setLabel] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await authFetch("/api/admin/provider-keys");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = (await res.json()) as { keys: ProviderKeyPublic[] };
+      setKeys(d.keys ?? []);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "load failed");
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const add = async () => {
+    const key = apiKey.trim();
+    if (!key) return;
+    setBusy(true);
+    setError(null);
+    setFlash(null);
+    try {
+      const res = await authFetch("/api/admin/provider-keys", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, apiKey: key, label: label.trim() }),
+      });
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+      setApiKey("");
+      setLabel("");
+      setFlash(`Saved ${provider} key.`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "save failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggle = async (k: ProviderKeyPublic) => {
+    await authFetch(`/api/admin/provider-keys/${k.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: !k.enabled }),
+    });
+    await load();
+  };
+  const remove = async (id: string) => {
+    await authFetch(`/api/admin/provider-keys/${id}`, { method: "DELETE" });
+    await load();
+  };
+
+  return (
+    <div>
+      <p className="ws-help">
+        Provider API keys (admin only). Chat auto-switches across enabled keys —
+        if one runs out of credit or is rate-limited, the next one is used.
+        Lower priority is tried first. Keys are stored server-side and shown
+        masked.
+      </p>
+
+      <ul className="ws-list">
+        {keys.length === 0 && (
+          <li className="ws-empty">
+            No provider keys yet — env keys (if any) are used as a fallback.
+          </li>
+        )}
+        {keys.map((k) => (
+          <li key={k.id} className="ws-item">
+            <span className="ws-item-text">
+              <strong>{k.provider}</strong>
+              <span className="ws-item-desc">
+                {k.keyPreview}
+                {k.label ? ` · ${k.label}` : ""} · p{k.priority}
+                {k.last_error ? ` · ⚠ ${k.last_error}` : ""}
+              </span>
+            </span>
+            <span className="ws-item-actions">
+              <button
+                type="button"
+                className="ws-mini"
+                title={k.enabled ? "Disable" : "Enable"}
+                onClick={() => toggle(k)}
+              >
+                {k.enabled ? "ON" : "OFF"}
+              </button>
+              <button
+                type="button"
+                className="ws-mini"
+                title="Delete"
+                onClick={() => remove(k.id)}
+              >
+                🗑
+              </button>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="cs-section-title">Add a key</div>
+      <div className="ws-add-row">
+        <select
+          className="ws-input"
+          value={provider}
+          onChange={(e) => setProvider(e.target.value as Provider)}
+          style={{ flex: "0 0 auto" }}
+        >
+          {PROVIDERS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+        <input
+          className="ws-input"
+          value={label}
+          placeholder="label (optional)"
+          onChange={(e) => setLabel(e.target.value)}
+          style={{ flex: "0 0 30%" }}
+        />
+      </div>
+      <div className="ws-add-row">
+        <input
+          className="ws-input"
+          value={apiKey}
+          placeholder={`${provider} API key`}
+          type="password"
+          autoComplete="off"
+          onChange={(e) => setApiKey(e.target.value)}
+        />
+        <button
+          type="button"
+          className="cs-action"
+          onClick={add}
+          disabled={busy || !apiKey.trim()}
+        >
+          {busy ? "Saving…" : "SAVE KEY"}
         </button>
       </div>
       {flash && <div className="cs-flash">{flash}</div>}

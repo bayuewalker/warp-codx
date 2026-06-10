@@ -49,14 +49,23 @@ const MODEL_MATRIX: Record<Provider, Record<AgentRole, string>> = {
 export const MODELS = MODEL_MATRIX.openrouter;
 
 /**
- * Resolve the model slug for a given agent role under the active provider.
- * Honors the `LLM_MODEL` env override.
+ * Resolve the model slug for a role under a specific provider. Honors the
+ * `LLM_MODEL` env override (applies across providers). Used by the auto-switch
+ * failover chain, which picks the model to match whichever provider's key it
+ * is currently trying.
  */
-export function getModel(role: AgentRole = "cmd"): string {
+export function getModelForProvider(provider: Provider, role: AgentRole = "cmd"): string {
   const override = process.env.LLM_MODEL?.trim();
   if (override) return override;
-  const provider = getProvider();
   return MODEL_MATRIX[provider][role];
+}
+
+/**
+ * Resolve the model slug for a given agent role under the active (env-selected)
+ * provider. Honors the `LLM_MODEL` env override.
+ */
+export function getModel(role: AgentRole = "cmd"): string {
+  return getModelForProvider(getProvider(), role);
 }
 
 /**

@@ -10,8 +10,7 @@
  * failure so a missing table never breaks a chat turn.
  */
 import { getServerSupabase } from "./supabase";
-import { getOpenAI } from "./openai";
-import { getModel } from "./models";
+import { createCompletionWithFailover } from "./llm";
 
 export type MemoryStatus = "active" | "pending" | "archived";
 export type MemorySource = "manual" | "auto";
@@ -115,11 +114,10 @@ export async function extractAndStoreMemories(
   assistantReply: string,
 ): Promise<number> {
   try {
-    const openai = getOpenAI();
-    const completion = await openai.chat.completions.create({
-      model: getModel("echo"),
+    const { content } = await createCompletionWithFailover({
+      role: "echo",
       temperature: 0,
-      max_tokens: 300,
+      maxTokens: 300,
       messages: [
         { role: "system", content: EXTRACTION_SYSTEM },
         {
@@ -128,7 +126,7 @@ export async function extractAndStoreMemories(
         },
       ],
     });
-    const raw = completion.choices?.[0]?.message?.content?.trim() ?? "";
+    const raw = content.trim();
     const candidates = parseCandidates(raw);
     if (candidates.length === 0) return 0;
 
