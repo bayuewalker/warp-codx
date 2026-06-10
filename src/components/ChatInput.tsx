@@ -7,8 +7,6 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from "react";
-import { formatModelSlug } from "@/lib/models";
-import { useProviderStatus } from "@/lib/use-provider-status";
 import ShortcutSheet from "./ShortcutSheet";
 
 type Props = {
@@ -81,10 +79,6 @@ export default function ChatInput({
   const [attachment, setAttachment] = useState<Attachment | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [attachError, setAttachError] = useState<string | null>(null);
-  // Live provider connection — the footer LED + model label reflect the real,
-  // currently-active provider/model (top of the failover chain), never a
-  // hardcoded value. Shared with the top status strip via the same endpoint.
-  const { data: providerStatus, status: ledStatus } = useProviderStatus();
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -414,34 +408,12 @@ export default function ChatInput({
         </div>
       </div>
 
-      <div className="input-footer">
-        <span
-          className="footer-led"
-          data-health={ledStatus}
-          title={
-            providerStatus
-              ? `${providerStatus.provider ?? "provider"}` +
-                (providerStatus.model ? ` · ${providerStatus.model}` : "") +
-                ` — ${ledStatus}` +
-                (providerStatus.reason && providerStatus.reason !== "ok"
-                  ? ` (${providerStatus.reason})`
-                  : "")
-              : "Checking provider connection…"
-          }
-          aria-label={`Provider connection: ${ledStatus}`}
-        />
-        <span className="footer-model">
-          {providerStatus?.model
-            ? formatModelSlug(providerStatus.model)
-            : ledStatus === "checking"
-              ? "connecting…"
-              : "no model"}
-        </span>
-
-        {/* Live thinking remark — sits next to the model while the assistant is
-            generating. The label is a real description of the current phase
-            (thinking → writing → writing code), driven by the actual stream;
-            the timer is real elapsed time. Not decorative. */}
+      {/* Dedicated thinking zone — empty (but height-stable) when idle, the
+          live thinking animation when the assistant is actually streaming. The
+          model + connection moved to the top status strip. The phase label
+          ("thinking" → "writing" → "writing code") and the m:ss timer are
+          driven by real stream state, not decorative. */}
+      <div className="input-footer" data-streaming={isStreaming ? "true" : "false"}>
         {isStreaming && (
           <span className="footer-thinking" role="status" aria-live="polite">
             <span className="footer-thinking-orb" aria-hidden="true" />

@@ -63,9 +63,6 @@ export default function TaskCompleteCard({ payload }: Props) {
           <span aria-hidden="true">{view.tone === "warn" ? "⏸" : "✓"}</span>
           <span className="truncate">{view.title}</span>
         </div>
-        <span className="text-[10px] uppercase tracking-[0.18em] text-white/55 shrink-0">
-          WARP•CMD
-        </span>
       </div>
       <div className="px-4 py-3 flex flex-col gap-2">
         {view.body && (
@@ -152,17 +149,11 @@ function renderForKind(p: TaskCompletePayload): View {
         tone: "success",
         title: `PR #${p.pr.number} merged`,
         body: bodyParts.length > 0 ? bodyParts.join(" · ") : null,
-        subtitle: "Post-merge sync required",
+        subtitle: "Merged successfully",
         link: url,
         actions: [
           { kind: "link", label: "Open in GitHub", href: url },
-          {
-            kind: "new-directive",
-            label: "Post-merge sync ▶",
-            prefill: p.pr.branch
-              ? `post-merge sync for ${p.pr.branch}: update PROJECT_STATE.md, ROADMAP.md, WORKTODO.md, CHANGELOG.md`
-              : `post-merge sync for PR #${p.pr.number}: update PROJECT_STATE.md, ROADMAP.md, WORKTODO.md, CHANGELOG.md`,
-          },
+          { kind: "new-directive", label: "New chat" },
         ],
       };
     }
@@ -211,7 +202,7 @@ function renderForKind(p: TaskCompletePayload): View {
         body: p.summary,
         subtitle: null,
         link: null,
-        actions: [{ kind: "new-directive", label: "New directive" }],
+        actions: [{ kind: "new-directive", label: "New chat" }],
       };
   }
 }
