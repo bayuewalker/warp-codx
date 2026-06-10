@@ -30,20 +30,18 @@ vi.mock("@/lib/openai", () => ({
   getOpenAI: () => openaiClient,
 }));
 
-vi.mock("@/lib/constitution", () => ({
-  buildSystemPrompt: vi.fn(async () => ({
+vi.mock("@/lib/system-prompt", () => ({
+  buildChatSystemPrompt: vi.fn(async () => ({
     prompt: "SYSTEM_PROMPT",
-    warnings: [],
-    source: "live" as const,
-    // Empty so the per-session SHA drift branch is skipped — that
-    // path has its own dedicated coverage in constitution.test.ts.
-    tier1Files: [],
+    included: { customInstructions: false, memory: false, skills: false },
   })),
-  SAFE_DEFAULT_SYSTEM_PROMPT: "SAFE_DEFAULT",
-  readSessionConstitutionShas: vi.fn(async () => ({})),
-  writeSessionConstitutionShas: vi.fn(async () => {}),
-  diffConstitutionShas: vi.fn(() => ({ changed: [], added: [], removed: [] })),
-  renderConstitutionDiffBlock: vi.fn(() => ""),
+  BASE_SYSTEM_PROMPT: "BASE_SYSTEM_PROMPT",
+}));
+
+// Auto-memory extraction is best-effort and fired after the reply is
+// streamed/persisted; stub it so the route runs without a network call.
+vi.mock("@/lib/memory", () => ({
+  extractAndStoreMemories: vi.fn(async () => 0),
 }));
 
 const inserts: Array<{ table: string; row: unknown }> = [];

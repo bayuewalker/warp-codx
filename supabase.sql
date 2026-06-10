@@ -127,3 +127,43 @@ create index if not exists push_subscriptions_endpoint_idx
   on public.push_subscriptions (endpoint);
 
 alter table public.push_subscriptions disable row level security;
+
+-- Workspace features — custom instructions, memory, skills.
+-- These replace the GitHub "constitution" as the chat system-prompt source.
+-- Single-tenant (no user_id), RLS disabled — server-only via service key.
+-- Mirrors db/migrations/0002-workspace-features.sql; re-running is a no-op.
+
+create table if not exists public.app_settings (
+  id                  smallint primary key default 1,
+  custom_instructions text not null default '',
+  updated_at          timestamptz not null default now(),
+  constraint app_settings_singleton check (id = 1)
+);
+insert into public.app_settings (id) values (1) on conflict (id) do nothing;
+alter table public.app_settings disable row level security;
+
+create table if not exists public.memories (
+  id          uuid primary key default gen_random_uuid(),
+  content     text not null,
+  source      text not null default 'manual' check (source in ('manual', 'auto')),
+  status      text not null default 'active' check (status in ('active', 'pending', 'archived')),
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists memories_status_idx
+  on public.memories (status, created_at desc);
+alter table public.memories disable row level security;
+
+create table if not exists public.skills (
+  id          uuid primary key default gen_random_uuid(),
+  slug        text not null unique,
+  name        text not null,
+  description text not null default '',
+  content     text not null default '',
+  triggers    text[] not null default '{}',
+  enabled     boolean not null default true,
+  created_at  timestamptz not null default now(),
+  updated_at  timestamptz not null default now()
+);
+create index if not exists skills_enabled_idx on public.skills (enabled);
+alter table public.skills disable row level security;

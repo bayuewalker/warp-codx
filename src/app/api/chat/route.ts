@@ -2,14 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
 import { getOpenAI } from "@/lib/openai";
 import { getModel } from "@/lib/models";
-import {
-  buildSystemPrompt,
-  SAFE_DEFAULT_SYSTEM_PROMPT,
-  readSessionConstitutionShas,
-  writeSessionConstitutionShas,
-  diffConstitutionShas,
-  renderConstitutionDiffBlock,
-} from "@/lib/constitution";
+import { buildChatSystemPrompt, BASE_SYSTEM_PROMPT } from "@/lib/system-prompt";
+import { extractAndStoreMemories } from "@/lib/memory";
 import { ISSUE_DRAFT_PROTOCOL } from "@/lib/issue-draft-protocol";
 import { PR_ACTION_PROTOCOL } from "@/lib/pr-action-protocol";
 import { TASK_COMPLETE_PROTOCOL } from "@/lib/task-complete-protocol";
@@ -115,23 +109,20 @@ export async function POST(req: Request) {
     );
   }
 
+  // Build the system prompt from operator-owned blocks (custom instructions,
+  // memory, installed skills) — see src/lib/system-prompt.ts. Each block
+  // degrades independently, so this only throws on an unexpected error.
   let systemPrompt: string;
-  let warnings: string[] = [];
-  let promptSource: "live" | "safe_default" = "live";
-  let tier1Files: Awaited<ReturnType<typeof buildSystemPrompt>>["tier1Files"] =
-    [];
   try {
-    const built = await buildSystemPrompt(content);
+    const built = await buildChatSystemPrompt(content);
     systemPrompt = built.prompt;
-    warnings = built.warnings;
-    promptSource = built.source;
-    tier1Files = built.tier1Files;
   } catch (err) {
-    systemPrompt = SAFE_DEFAULT_SYSTEM_PROMPT;
-    promptSource = "safe_default";
-    const reason =
-      err instanceof Error ? err.message : "constitution unavailable";
-    warnings = [`Safe-default mode: constitution unreachable (${reason}).`];
+    console.error(
+      `[chat] system-prompt build failed: ${
+        err instanceof Error ? err.message : String(err)
+      }`,
+    );
+    systemPrompt = BASE_SYSTEM_PROMPT;
   }
 
   // Phase 3b — additive issue-draft protocol. Appended to either the
@@ -163,74 +154,9 @@ export async function POST(req: Request) {
     systemPrompt = `${systemPrompt}\n${MULTI_AGENT_PROTOCOL}`;
   }
 
-  // Neutral identity — appended last so it overrides any WARP CMD /
-  // agent-branding instructions that may be in the loaded constitution.
+  // Neutral identity — appended last so it wins over any branding the model
+  // might infer from custom instructions or skills.
   systemPrompt = `${systemPrompt}\n${NEUTRAL_IDENTITY_PROMPT}`;
-
-  // Per-session SHA drift detection (Task #9).
-  //
-  // Compare the SHAs of the Tier-1 files we just loaded against whatever
-  // this session saw on its previous turn. If anything changed, append a
-  // brief heads-up block to the system prompt so the model can adapt
-  // instead of silently contradicting earlier replies. Always upsert the
-  // current SHAs so the next turn starts from this baseline. Skipped in
-  // safe-default mode — we have no reliable SHAs to record there.
-  let driftMessage: string | null = null;
-  if (promptSource === "live" && tier1Files.length > 0) {
-    try {
-      const previousShas = await readSessionConstitutionShas(sessionId);
-      const diff = diffConstitutionShas(previousShas, tier1Files);
-      if (diff.changed.length > 0) {
-        const block = renderConstitutionDiffBlock(diff);
-        if (block) systemPrompt = `${systemPrompt}\n\n${block}`;
-        driftMessage = `Constitution updated mid-session: ${diff.changed
-          .map((c) => c.path)
-          .join(", ")}`;
-      }
-      // Await the baseline upsert. In a streaming Route Handler an
-      // unawaited write can be cut off when the response stream
-      // completes, which would silently drop the new baseline and cause
-      // the same drift notice to fire again on the next turn.
-      await writeSessionConstitutionShas(sessionId, tier1Files);
-    } catch (err) {
-      // Drift detection is best-effort. A failure here must not block
-      // the assistant reply — log and continue.
-      console.error(
-        `[chat] constitution drift check failed: ${
-          err instanceof Error ? err.message : String(err)
-        }`,
-      );
-    }
-  }
-
-  if (warnings.length > 0) {
-    const level = promptSource === "safe_default" ? "error" : "warn";
-    const { error: warnErr } = await supabase.from("chat_warnings").insert(
-      warnings.map((message) => ({
-        session_id: sessionId,
-        level,
-        message,
-      })),
-    );
-    if (warnErr) {
-      console.error(
-        `[chat] failed to insert chat_warnings (${warnings.length} rows, level=${level}): ${warnErr.message}`,
-      );
-    }
-  }
-
-  if (driftMessage) {
-    const { error: driftErr } = await supabase.from("chat_warnings").insert({
-      session_id: sessionId,
-      level: "info",
-      message: driftMessage,
-    });
-    if (driftErr) {
-      console.error(
-        `[chat] failed to insert constitution-drift info row: ${driftErr.message}`,
-      );
-    }
-  }
 
   const messages = [
     { role: "system" as const, content: systemPrompt },
@@ -292,7 +218,7 @@ export async function POST(req: Request) {
           if (insertErr) {
             controller.enqueue(
               encoder.encode(
-                `\n\n[WARP•SENTINEL] Failed to persist assistant message: ${insertErr.message}`,
+                `\n\n[system] Failed to persist assistant message: ${insertErr.message}`,
               ),
             );
           } else {
@@ -303,11 +229,22 @@ export async function POST(req: Request) {
           }
         }
 
+        // Auto-memory — extract durable facts from this turn and store them
+        // as `pending` for operator review. Best-effort: never blocks or
+        // breaks the reply (already streamed and persisted above).
+        if (assembled.trim().length > 0) {
+          try {
+            await extractAndStoreMemories(content, assembled);
+          } catch {
+            /* best-effort */
+          }
+        }
+
         controller.close();
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
         controller.enqueue(
-          encoder.encode(`\n\n[WARP•SENTINEL] Stream error: ${message}`),
+          encoder.encode(`\n\n[system] Stream error: ${message}`),
         );
         try {
           controller.close();

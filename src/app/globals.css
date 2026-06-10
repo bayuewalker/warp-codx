@@ -1248,6 +1248,126 @@ textarea, input {
 }
 
 /* ─────────────────────────────────────────────────────────────────
+   WORKSPACE SETTINGS — tabs, lists, and form controls for the
+   Instructions / Memory / Skills panel (WorkspaceSettings.tsx).
+   Reuses the .cs-* modal shell; these add the inner UI.
+   ───────────────────────────────────────────────────────────────── */
+.ws-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.ws-help {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--warp-text-mute);
+  margin: 0 0 10px;
+}
+.ws-help code {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  background: var(--warp-bg-2);
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+.ws-textarea,
+.ws-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--warp-bg-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  color: var(--warp-text);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  resize: vertical;
+}
+.ws-textarea:focus,
+.ws-input:focus {
+  outline: none;
+  border-color: var(--warp-blue-dim, var(--border-medium));
+}
+.ws-add-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.ws-add-row .ws-input {
+  flex: 1 1 auto;
+}
+.ws-add-row .cs-action {
+  flex: 0 0 auto;
+}
+.ws-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.ws-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--warp-bg-2);
+  border: 1px solid var(--border-faint);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--warp-text);
+}
+.ws-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  word-break: break-word;
+}
+.ws-item-desc {
+  font-size: 11px;
+  color: var(--warp-text-mute);
+}
+.ws-item-actions {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.ws-mini {
+  background: var(--warp-bg-3, var(--warp-bg-1));
+  border: 1px solid var(--border-soft);
+  color: var(--warp-text-dim);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  min-width: 26px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ws-mini:hover {
+  background: var(--warp-bg-1);
+  color: var(--warp-text);
+}
+.ws-badge {
+  margin-left: 6px;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--warp-text-mute);
+  border: 1px solid var(--border-faint);
+  border-radius: 4px;
+  padding: 0 4px;
+}
+.ws-empty {
+  font-size: 12px;
+  color: var(--warp-text-mute);
+  padding: 6px 2px;
+}
+
+/* ─────────────────────────────────────────────────────────────────
    ATTACHMENT PILL — sits above .input-zone when a file is staged.
    Shows the paperclip icon, name, size, and a × clear button. The
    pill is one row tall (~32px) so it never displaces the input

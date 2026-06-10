@@ -1,0 +1,472 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import PushNotificationToggle from "@/components/PushNotificationToggle";
+
+/**
+ * Workspace settings — the operator-facing panel for the three workspace
+ * features that drive the chat system prompt:
+ *   - Custom instructions (app_settings)
+ *   - Memory (manual + auto-captured, with review)
+ *   - Skills (installed SKILL.md modules)
+ *
+ * Reuses the existing `cs-*` modal styling from globals.css.
+ */
+
+type Tab = "instructions" | "memory" | "skills";
+
+type Memory = {
+  id: string;
+  content: string;
+  source: "manual" | "auto";
+  status: "active" | "pending" | "archived";
+  created_at: string;
+};
+
+type Skill = {
+  id: string;
+  slug: string;
+  name: string;
+  description: string;
+  triggers: string[];
+  enabled: boolean;
+};
+
+export default function WorkspaceSettings({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [tab, setTab] = useState<Tab>("instructions");
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="cs-root"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Workspace settings"
+    >
+      <div className="cs-backdrop" onClick={onClose} />
+      <div className="cs-modal">
+        <div className="cs-header">
+          <div>
+            <div className="cs-eyebrow">Workspace</div>
+            <div className="cs-title">Settings</div>
+          </div>
+          <button
+            type="button"
+            className="cs-close"
+            onClick={onClose}
+            aria-label="Close settings"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="ws-tabs" role="tablist">
+          <TabButton id="instructions" tab={tab} setTab={setTab}>
+            Instructions
+          </TabButton>
+          <TabButton id="memory" tab={tab} setTab={setTab}>
+            Memory
+          </TabButton>
+          <TabButton id="skills" tab={tab} setTab={setTab}>
+            Skills
+          </TabButton>
+        </div>
+
+        {tab === "instructions" && <InstructionsTab />}
+        {tab === "memory" && <MemoryTab />}
+        {tab === "skills" && <SkillsTab />}
+
+        <div className="cs-section-title">Notifications</div>
+        <PushNotificationToggle />
+      </div>
+    </div>
+  );
+}
+
+function TabButton({
+  id,
+  tab,
+  setTab,
+  children,
+}: {
+  id: Tab;
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  children: React.ReactNode;
+}) {
+  const active = tab === id;
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={active}
+      className="cs-action"
+      style={{
+        flex: 1,
+        opacity: active ? 1 : 0.6,
+        borderColor: active ? "var(--accent, #6ea8fe)" : undefined,
+      }}
+      onClick={() => setTab(id)}
+    >
+      {children}
+    </button>
+  );
+}
+
+// ─────────────────────────── Instructions ───────────────────────────
+
+function InstructionsTab() {
+  const [value, setValue] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [flash, setFlash] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/settings", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then((d: { customInstructions?: string }) => {
+        if (!cancelled) setValue(d.customInstructions ?? "");
+      })
+      .catch((e) => !cancelled && setError(e.message))
+      .finally(() => !cancelled && setLoading(false));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    setError(null);
+    setFlash(null);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customInstructions: value }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(j.error ?? `HTTP ${res.status}`);
+      }
+      setFlash("Saved. Applies to your next message.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "save failed");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div>
+      <p className="ws-help">
+        Always-on guidance for the assistant — tone, stack preferences, how you
+        like answers. Injected into every chat.
+      </p>
+      <textarea
+        className="ws-textarea"
+        rows={8}
+        value={value}
+        disabled={loading}
+        placeholder="e.g. I work in TypeScript + Next.js. Prefer concise answers with runnable code. Reply in Bahasa Indonesia."
+        onChange={(e) => setValue(e.target.value)}
+      />
+      <div className="cs-actions">
+        <button
+          type="button"
+          className="cs-action"
+          onClick={save}
+          disabled={saving || loading}
+        >
+          {saving ? "Saving…" : "SAVE"}
+        </button>
+      </div>
+      {flash && <div className="cs-flash">{flash}</div>}
+      {error && <div className="cs-error">{error}</div>}
+    </div>
+  );
+}
+
+// ───────────────────────────── Memory ─────────────────────────────
+
+function MemoryTab() {
+  const [memories, setMemories] = useState<Memory[]>([]);
+  const [newContent, setNewContent] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/memory", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = (await res.json()) as { memories: Memory[] };
+      setMemories(d.memories ?? []);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "load failed");
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const add = async () => {
+    const content = newContent.trim();
+    if (!content) return;
+    setBusy(true);
+    try {
+      const res = await fetch("/api/memory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setNewContent("");
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "add failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const patch = async (id: string, body: Record<string, unknown>) => {
+    await fetch(`/api/memory/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    await load();
+  };
+  const remove = async (id: string) => {
+    await fetch(`/api/memory/${id}`, { method: "DELETE" });
+    await load();
+  };
+
+  const pending = memories.filter((m) => m.status === "pending");
+  const active = memories.filter((m) => m.status === "active");
+
+  return (
+    <div>
+      <p className="ws-help">
+        Durable facts the assistant remembers across sessions. Add your own, or
+        review what it picked up automatically.
+      </p>
+
+      <div className="ws-add-row">
+        <input
+          className="ws-input"
+          value={newContent}
+          placeholder="Add a memory…"
+          onChange={(e) => setNewContent(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void add();
+          }}
+        />
+        <button
+          type="button"
+          className="cs-action"
+          onClick={add}
+          disabled={busy || !newContent.trim()}
+        >
+          ADD
+        </button>
+      </div>
+
+      {pending.length > 0 && (
+        <>
+          <div className="cs-section-title">
+            Pending review ({pending.length})
+          </div>
+          <ul className="ws-list">
+            {pending.map((m) => (
+              <li key={m.id} className="ws-item">
+                <span className="ws-item-text">{m.content}</span>
+                <span className="ws-item-actions">
+                  <button
+                    type="button"
+                    className="ws-mini"
+                    title="Approve"
+                    onClick={() => patch(m.id, { status: "active" })}
+                  >
+                    ✓
+                  </button>
+                  <button
+                    type="button"
+                    className="ws-mini"
+                    title="Dismiss"
+                    onClick={() => remove(m.id)}
+                  >
+                    ×
+                  </button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <div className="cs-section-title">Active ({active.length})</div>
+      <ul className="ws-list">
+        {active.length === 0 && <li className="ws-empty">No memories yet.</li>}
+        {active.map((m) => (
+          <li key={m.id} className="ws-item">
+            <span className="ws-item-text">
+              {m.content}
+              {m.source === "auto" && <span className="ws-badge">auto</span>}
+            </span>
+            <span className="ws-item-actions">
+              <button
+                type="button"
+                className="ws-mini"
+                title="Delete"
+                onClick={() => remove(m.id)}
+              >
+                🗑
+              </button>
+            </span>
+          </li>
+        ))}
+      </ul>
+      {error && <div className="cs-error">{error}</div>}
+    </div>
+  );
+}
+
+// ───────────────────────────── Skills ─────────────────────────────
+
+function SkillsTab() {
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [markdown, setMarkdown] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [flash, setFlash] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/skills", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = (await res.json()) as { skills: Skill[] };
+      setSkills(d.skills ?? []);
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "load failed");
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const install = async () => {
+    const md = markdown.trim();
+    if (!md) return;
+    setBusy(true);
+    setError(null);
+    setFlash(null);
+    try {
+      const res = await fetch("/api/skills", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ markdown: md }),
+      });
+      const j = (await res.json().catch(() => ({}))) as {
+        skill?: Skill;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+      setMarkdown("");
+      setFlash(`Installed "${j.skill?.name ?? "skill"}".`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "install failed");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggle = async (s: Skill) => {
+    await fetch(`/api/skills/${s.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: !s.enabled }),
+    });
+    await load();
+  };
+  const remove = async (id: string) => {
+    await fetch(`/api/skills/${id}`, { method: "DELETE" });
+    await load();
+  };
+
+  return (
+    <div>
+      <p className="ws-help">
+        Install SKILL.md modules to extend the assistant. Paste a skill with
+        optional <code>---</code> frontmatter (<code>name</code>,{" "}
+        <code>description</code>, <code>triggers</code>).
+      </p>
+
+      <ul className="ws-list">
+        {skills.length === 0 && (
+          <li className="ws-empty">No skills installed.</li>
+        )}
+        {skills.map((s) => (
+          <li key={s.id} className="ws-item">
+            <span className="ws-item-text">
+              <strong>{s.name}</strong>
+              <span className="ws-item-desc">{s.description}</span>
+            </span>
+            <span className="ws-item-actions">
+              <button
+                type="button"
+                className="ws-mini"
+                title={s.enabled ? "Disable" : "Enable"}
+                onClick={() => toggle(s)}
+              >
+                {s.enabled ? "ON" : "OFF"}
+              </button>
+              <button
+                type="button"
+                className="ws-mini"
+                title="Delete"
+                onClick={() => remove(s.id)}
+              >
+                🗑
+              </button>
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="cs-section-title">Install a skill</div>
+      <textarea
+        className="ws-textarea"
+        rows={7}
+        value={markdown}
+        placeholder={"---\nname: Python Expert\ndescription: Idiomatic, well-tested Python\ntriggers: python, pytest, django\n---\n\nWhen writing Python, prefer type hints and..."}
+        onChange={(e) => setMarkdown(e.target.value)}
+      />
+      <div className="cs-actions">
+        <button
+          type="button"
+          className="cs-action"
+          onClick={install}
+          disabled={busy || !markdown.trim()}
+        >
+          {busy ? "Installing…" : "INSTALL SKILL"}
+        </button>
+      </div>
+      {flash && <div className="cs-flash">{flash}</div>}
+      {error && <div className="cs-error">{error}</div>}
+    </div>
+  );
+}

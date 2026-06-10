@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import ChatArea from "./ChatArea";
 import ConstitutionWarningBanner from "./ConstitutionWarningBanner";
-import ConstitutionSettings from "./ConstitutionSettings";
+import WorkspaceSettings from "./WorkspaceSettings";
 import type { Session } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { getBrowserSupabase, setBrowserSupabaseConfig } from "@/lib/supabase";
@@ -345,7 +345,7 @@ export default function AppShell() {
           isGuest={auth.kind === "guest"}
         />
       </main>
-      <ConstitutionSettings
+      <WorkspaceSettings
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
       />
