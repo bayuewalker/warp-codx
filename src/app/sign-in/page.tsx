@@ -87,9 +87,10 @@ export default function SignInPage() {
     setStatus({ kind: "sending" });
     try {
       const supabase = getBrowserSupabase();
-      const appUrl =
-        process.env.NEXT_PUBLIC_APP_URL ?? "https://warp-codx.replit.app";
-      const redirectTo = `${appUrl.replace(/\/+$/, "")}/auth/callback`;
+      // Always return to the domain the user is signing in from (fly.dev,
+      // localhost, etc.) — never a hardcoded host. Supabase will only honor
+      // this if the origin is in the project's Redirect URLs allow-list.
+      const redirectTo = `${window.location.origin}/auth/callback`;
       const { error } = await supabase.auth.signInWithOtp({
         email: trimmed,
         options: { emailRedirectTo: redirectTo },
