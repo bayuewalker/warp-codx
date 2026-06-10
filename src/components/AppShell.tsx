@@ -6,6 +6,7 @@ import Sidebar from "./Sidebar";
 import ChatArea from "./ChatArea";
 import ConstitutionWarningBanner from "./ConstitutionWarningBanner";
 import WorkspaceSettings from "./WorkspaceSettings";
+import ProviderStatusBar from "./ProviderStatusBar";
 import type { Session } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { getBrowserSupabase, setBrowserSupabaseConfig } from "@/lib/supabase";
@@ -285,7 +286,11 @@ export default function AppShell() {
   }
 
   return (
-    <div className="flex warp-h-screen w-screen overflow-hidden bg-warp-bg text-white">
+    <div className="flex flex-col warp-h-screen w-screen overflow-hidden bg-warp-bg text-white">
+      {/* Realtime LLM provider connection status strip. */}
+      <ProviderStatusBar />
+
+      <div className="flex flex-1 min-h-0 w-full overflow-hidden">
       {/* Mobile drawer overlay */}
       <div
         className={cn(
@@ -350,6 +355,7 @@ export default function AppShell() {
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
       />
+      </div>
     </div>
   );
 }
