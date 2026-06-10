@@ -135,11 +135,11 @@ function renderForKind(p: TaskCompletePayload): View {
         tone: "success",
         title: `Issue #${p.issue.number} created`,
         body: p.issue.title,
-        subtitle: "Next: WARP•FORGE ready for dispatch",
+        subtitle: "Opened on GitHub",
         link: p.issue.url,
         actions: [
           { kind: "link", label: "Open in GitHub", href: p.issue.url },
-          { kind: "new-directive", label: "New directive" },
+          { kind: "new-directive", label: "New chat" },
         ],
       };
     case "pr_merged": {

@@ -24,6 +24,15 @@ vi.mock("@/lib/supabase", () => ({
   getServerSupabase: getServerSupabaseMock,
 }));
 
+// Per-user isolation gate — the route calls requireUser(req) and 401s on null.
+vi.mock("@/lib/roles", () => ({
+  requireUser: vi.fn(async () => ({
+    id: "user-1",
+    email: "user@example.com",
+    role: "user",
+  })),
+}));
+
 beforeEach(() => {
   maybeSingleMock.mockReset();
   eqMock.mockReset();
@@ -31,7 +40,9 @@ beforeEach(() => {
   fromMock.mockReset();
   getServerSupabaseMock.mockReset();
 
-  eqMock.mockReturnValue({ maybeSingle: maybeSingleMock });
+  // GET chain is now: select().eq("id", id).eq("user_id", uid).maybeSingle()
+  // — eq must be chainable to itself and terminate at maybeSingle.
+  eqMock.mockReturnValue({ eq: eqMock, maybeSingle: maybeSingleMock });
   selectMock.mockReturnValue({ eq: eqMock });
   fromMock.mockReturnValue({ select: selectMock });
   getServerSupabaseMock.mockReturnValue({ from: fromMock });

@@ -353,7 +353,7 @@ export default function ChatArea({
           id: tempId,
           session_id: sessionId ?? "",
           role: "system",
-          content: "[WARP🔹CMD] /refresh constitution → fetching from GitHub…",
+          content: "[system] /refresh constitution → fetching from GitHub…",
           created_at: new Date().toISOString(),
         },
       ]);
@@ -368,7 +368,7 @@ export default function ChatArea({
           .catch(() => null)) as RefreshBody | null;
         const summary = summarizeRefresh(res, json);
         const bubble = summary.ok
-          ? `[WARP🔹CMD] ✓ ${summary.message}`
+          ? `[system] ✓ ${summary.message}`
           : `[Error] ✗ Refresh failed: ${summary.message}`;
         setMessages((prev) =>
           prev.map((m) =>

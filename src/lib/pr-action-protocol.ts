@@ -25,115 +25,44 @@
  */
 export const PR_ACTION_PROTOCOL = `
 
-# PR ACTION PROTOCOL (Phase 3c)
+# GITHUB PULL REQUESTS
 
-When the user's directive matches one of these shortcut commands —
-\`cek pr\`, \`list pr\`, \`pr panel\`, \`merge pr [#N]\`, \`close pr [#N]\`,
-\`hold pr [#N]\`, \`review pr [#N]\`, \`pr #N\`, or any natural-language
-equivalent in Bahasa Indonesia or English (e.g. "tunjukin PR yang
-masih open", "tutup PR 42 karena duplikat", "merge PR 17 dong",
-"hold dulu PR 24, gw mau cek SENTINEL") — you MUST follow this output
-protocol:
+When the user wants to work with GitHub pull requests — e.g. "cek pr",
+"list pr", "show open PRs", "merge pr #N", "close pr #N", "hold pr #N",
+"review pr #N", "pr #N", or any natural-language equivalent in Bahasa
+Indonesia or English ("tunjukin PR yang masih open", "tutup PR 42 karena
+duplikat", "merge PR 17 dong") — follow this output protocol so the app can
+render an interactive PR card:
 
-1. Reply normally in conversational tone first (1–3 sentences max).
-   Acknowledge the request and state any inferences (e.g. which PR
-   number you parsed, which action the user intends).
+1. Reply in a normal conversational tone first (1–3 sentences). Acknowledge the
+   request and state any inferences (e.g. which PR number you parsed, which
+   action the user intends).
 
 2. Emit EXACTLY ONE marker on its own line, choosing from:
-   <!-- PR_ACTION: list -->            (when the user wants the list)
-   <!-- PR_ACTION: detail:N -->        (when the user wants to inspect PR #N)
-   <!-- PR_ACTION: merge:N -->         (when the user wants to merge PR #N)
-   <!-- PR_ACTION: close:N -->         (when the user wants to close PR #N)
-   <!-- PR_ACTION: hold:N -->          (when the user wants to manually HOLD PR #N — soft pause, PR stays open)
+   <!-- PR_ACTION: list -->        (the user wants the list of open PRs)
+   <!-- PR_ACTION: detail:N -->    (the user wants to inspect PR #N)
+   <!-- PR_ACTION: merge:N -->     (the user wants to merge PR #N)
+   <!-- PR_ACTION: close:N -->     (the user wants to close PR #N)
+   <!-- PR_ACTION: hold:N -->      (the user wants to soft-pause PR #N — stays open)
 
    Replace \`N\` with the literal PR number (digits only, no leading #).
 
-3. AUTO PR ACTION RULE — when the user explicitly asked to merge,
-   close, or hold a specific PR (e.g. "merge pr #42", "tutup PR 17",
-   "hold pr 24"), emit the \`merge:N\` / \`close:N\` / \`hold:N\` marker
-   directly. The card will render with the chosen action pre-selected.
-   The user (or you, on the user's behalf) must still tap the button —
-   the API is gated server-side and the merge gate re-runs fresh on
-   every merge call. Manual HOLD is a soft pause: it posts a comment
-   on GitHub but does NOT close the PR. Do NOT promise the action
-   completed; say "ready to merge — tap MERGE to execute" or "ready
-   to hold — tap HOLD to post the pause comment" or similar.
+3. The card actions are gated server-side — the user must tap the button, and
+   the merge route re-checks everything (CI, branch protection, conflicts) fresh
+   on every call. So never claim an action already completed; say things like
+   "ready to merge — tap MERGE to run it" or "ready to hold — tap HOLD to post
+   the pause comment". A manual HOLD posts a comment but does NOT close the PR.
 
-4. BLOCKER GUIDANCE — when you emit a \`merge:N\` marker AND the PR
-   has pre-merge gate issues (you know this because the user told you,
-   the previous turn showed the HELD card, or the PR description is
-   clearly missing required fields), append the following categorized
-   guidance AFTER the marker. Categorize each blocker into one of two
-   buckets and only render a section if at least one blocker fits it.
-   Write in Bahasa Indonesia. Use this exact format:
-
-   ---
-   PR #N diblokir — X issue harus diselesaikan sebelum merge bisa dilanjutkan.
-
-   **Bisa difix langsung (tanpa FORGE):**
-   _(hanya render jika ada blocker di kategori ini)_
-   - CI belum run → trigger workflow dari GitHub Actions tab atau push empty commit
-   - Validation Tier / Claim Level / Validation Target / Not in Scope missing →
-     edit PR description di GitHub dan tambahkan field yang missing
-
-   **Butuh WARP•FORGE:**
-   _(hanya render jika ada blocker di kategori ini)_
-   - FORGE output missing Report: / State: lines → FORGE harus update PR body
-   - WARP•SENTINEL PR belum merged → selesaikan SENTINEL task dulu, merge SENTINEL PR,
-     lalu retry merge ini
-
-   Setelah fix → ketik: cek pr #N
-   ---
-
-   Blocker categorization rules:
-   SELF_FIX bucket (no FORGE needed):
-     - CI belum run / CI failed / CI pending / CI missing
-     - Validation Tier missing from PR body
-     - Claim Level missing from PR body
-     - Validation Target missing from PR body
-     - Not in Scope missing from PR body
-   FORGE_FIX bucket (FORGE required):
-     - WARP•FORGE output missing Report: line
-     - WARP•FORGE output missing State: line
-     - WARP•SENTINEL — paired WARP•FORGE PR not yet merged
-
-   If ALL blockers are SELF_FIX → omit the "Butuh WARP•FORGE" section entirely.
-   If ALL blockers are FORGE_FIX → omit the "Bisa difix langsung" section entirely.
-   If NO blockers are known (clean PR) → omit the blocker guidance block entirely.
-
-5. POST-MERGE REMINDER — when the action is a merge AND the card
-   reports success (the user will tell you, or you will see the
-   merged-state card in the next turn), include this exact line as
-   plain prose in your acknowledgement:
-   > Post-merge sync required: update PROJECT_STATE.md + ROADMAP.md +
-   > WORKTODO.md + CHANGELOG.md for WARP/{feature}
-   Replace \`{feature}\` with the actual branch slug.
+4. If a merge is blocked (CI not passing, merge conflicts, branch protection, or
+   missing required checks), explain the specific blockers plainly and tell the
+   user what to fix, then suggest re-checking with "cek pr #N" afterwards.
 
 Marker rules:
-- Exactly one marker per assistant turn. Multiple markers will break
-  the client renderer.
-- The marker MUST be the literal HTML comment shown above. No
-  variations, no extra whitespace inside the brackets, no surrounding
-  triple-backticks.
-- If the user's intent is ambiguous ("ada PR baru?" with no clear
-  action), prefer \`list\` and let the user pick from the list.
-- If you are NOT confident a PR action is intended, do NOT emit any
-  marker — just answer normally.
-
-Pre-merge gates (informational — server enforces these regardless):
-- PR body must declare all four: \`Validation Tier:\`, \`Claim Level:\`,
-  \`Validation Target:\`, \`Not in Scope:\`.
-- Branch must start with \`WARP/\`.
-- PR body must contain WARP•FORGE output lines: \`Report:\` and \`State:\`.
-- If \`Validation Tier: MAJOR\`, an APPROVED review from WARP•SENTINEL
-  containing the word APPROVED or CONDITIONAL is required.
-- If this is a WARP•SENTINEL PR, its paired WARP•FORGE PR must already
-  be merged.
-- CI \`test\` job must pass on the head SHA.
-
-If a merge attempt is BLOCKED by gates, the MERGE button on the card
-will display "MERGE BLOCKED" in amber and be disabled. Acknowledge the
-blockers using the categorized guidance format above ("Gate blocked:
-<reasons>. Resolve and try again.") and remind the user to type
-\`cek pr #N\` after fixing.
+- Exactly one marker per assistant turn — multiple markers break the renderer.
+- The marker must be the literal HTML comment shown above: no variations, no
+  extra whitespace inside the brackets, no surrounding triple-backticks.
+- If intent is ambiguous ("ada PR baru?" with no clear action), prefer \`list\`
+  and let the user pick.
+- If you are NOT confident a PR action is intended, do NOT emit any marker —
+  just answer normally.
 `;

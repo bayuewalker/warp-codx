@@ -7,16 +7,14 @@ import {
   type ChangeEvent,
   type KeyboardEvent,
 } from "react";
-import { MODELS, formatModelSlug } from "@/lib/models";
+import { formatModelSlug } from "@/lib/models";
+import { useProviderStatus } from "@/lib/use-provider-status";
 import ShortcutSheet from "./ShortcutSheet";
-
-type LedHealth = "online" | "checking" | "error" | "unknown";
 
 type Props = {
   disabled?: boolean;
   isStreaming?: boolean;
   onStopStream?: () => void;
-  ledHealth?: LedHealth;
   placeholder?: string;
   onSend: (text: string, opts?: { multiAgent?: boolean }) => void;
   /**
@@ -61,7 +59,6 @@ export default function ChatInput({
   disabled = false,
   isStreaming = false,
   onStopStream,
-  ledHealth = "online",
   placeholder = "Describe your task or type / for commands",
   onSend,
   onSlashCommand,
@@ -74,27 +71,12 @@ export default function ChatInput({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [multiAgent, setMultiAgent] = useState(false);
-  // Active model resolved server-side (depends on LLM_PROVIDER / LLM_MODEL,
-  // which aren't available to the client bundle). Falls back to the static
-  // default until /api/config responds.
-  const [activeModel, setActiveModel] = useState<string>(MODELS.cmd);
+  // Live provider connection — the footer LED + model label reflect the real,
+  // currently-active provider/model (top of the failover chain), never a
+  // hardcoded value. Shared with the top status strip via the same endpoint.
+  const { data: providerStatus, status: ledStatus } = useProviderStatus();
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch("/api/config")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((cfg: { model?: string | null } | null) => {
-        if (!cancelled && cfg?.model) setActiveModel(cfg.model);
-      })
-      .catch(() => {
-        /* keep the static default */
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
 
   useEffect(() => {
     const ta = taRef.current;
@@ -444,15 +426,45 @@ export default function ChatInput({
       <div className="input-footer">
         <span
           className="footer-led"
-          data-health={ledHealth}
-          title={`${activeModel} — ${ledHealth}`}
-          aria-label={`Model status: ${ledHealth}`}
+          data-health={ledStatus}
+          title={
+            providerStatus
+              ? `${providerStatus.provider ?? "provider"}` +
+                (providerStatus.model ? ` · ${providerStatus.model}` : "") +
+                ` — ${ledStatus}` +
+                (providerStatus.reason && providerStatus.reason !== "ok"
+                  ? ` (${providerStatus.reason})`
+                  : "")
+              : "Checking provider connection…"
+          }
+          aria-label={`Provider connection: ${ledStatus}`}
         />
-        <span className="footer-model">{formatModelSlug(activeModel)}</span>
-        {multiAgent && (
-          <span className="footer-agent-badge" aria-live="polite">
-            Plan · Build · Review
+        <span className="footer-model">
+          {providerStatus?.model
+            ? formatModelSlug(providerStatus.model)
+            : ledStatus === "checking"
+              ? "connecting…"
+              : "no model"}
+        </span>
+
+        {/* Live thinking animation — sits right next to the model while the
+            assistant is generating, and is driven by real streaming state. */}
+        {isStreaming ? (
+          <span className="footer-thinking" role="status" aria-live="polite">
+            <span className="footer-thinking-orb" aria-hidden="true" />
+            <span className="footer-thinking-label">thinking</span>
+            <span className="footer-thinking-dots" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
           </span>
+        ) : (
+          multiAgent && (
+            <span className="footer-agent-badge" aria-live="polite">
+              Plan · Build · Review
+            </span>
+          )
         )}
       </div>
 

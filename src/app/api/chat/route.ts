@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
+import { requireUser } from "@/lib/roles";
 import { openChatStreamWithFailover } from "@/lib/llm";
 import { buildChatSystemPrompt, BASE_SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { extractAndStoreMemories } from "@/lib/memory";
@@ -29,6 +30,14 @@ type ChatBody = {
  * Response: text/plain chunked stream.
  */
 export async function POST(req: Request) {
+  const user = await requireUser(req);
+  if (!user) {
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 },
+    );
+  }
+
   let body: ChatBody;
   try {
     body = (await req.json()) as ChatBody;
@@ -55,11 +64,12 @@ export async function POST(req: Request) {
 
   const supabase = getServerSupabase();
 
-  // Verify session exists
+  // Verify the session exists AND belongs to the caller (per-user isolation).
   const { data: session, error: sessionErr } = await supabase
     .from("sessions")
     .select("id, label")
     .eq("id", sessionId)
+    .eq("user_id", user.id)
     .single();
 
   if (sessionErr || !session) {

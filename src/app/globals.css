@@ -127,6 +127,10 @@ body {
 .led-idle {
   background: var(--warp-text-muted);
 }
+.led-offline {
+  background: var(--warp-red);
+  box-shadow: 0 0 4px var(--warp-red);
+}
 .led-pulse::after {
   content: "";
   position: absolute;
@@ -443,6 +447,15 @@ body {
   background: var(--warp-red);
   box-shadow: 0 0 4px var(--warp-red);
 }
+.footer-led[data-health="degraded"] {
+  background: var(--warp-amber);
+  box-shadow: 0 0 4px var(--warp-amber);
+  animation: footer-led-pulse 1.4s ease-in-out infinite;
+}
+.footer-led[data-health="offline"] {
+  background: var(--warp-red);
+  box-shadow: 0 0 5px var(--warp-red);
+}
 .footer-led[data-health="unknown"] {
   background: var(--warp-text-mute);
 }
@@ -453,6 +466,79 @@ body {
 .footer-model {
   color: var(--warp-text-dim);
   font-weight: 500;
+}
+
+/* Live "thinking" indicator in the input footer — pulsing orb + shimmering
+   label + staggered dots. Mounted next to the model while the assistant is
+   actually streaming, so it reflects real generation state (not decorative). */
+.footer-thinking {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 8px;
+  color: var(--warp-teal);
+}
+.footer-thinking-orb {
+  position: relative;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--warp-teal);
+  box-shadow: 0 0 6px var(--warp-teal);
+}
+.footer-thinking-orb::after {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--warp-teal);
+  animation: footer-think-ring 1.4s ease-out infinite;
+}
+@keyframes footer-think-ring {
+  0%   { transform: scale(0.6); opacity: 0.6; }
+  100% { transform: scale(1.85); opacity: 0; }
+}
+.footer-thinking-label {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  background: linear-gradient(
+    90deg,
+    rgba(61, 223, 168, 0.30) 0%,
+    var(--warp-teal) 50%,
+    rgba(61, 223, 168, 0.30) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: footer-think-shimmer 1.6s linear infinite;
+}
+@keyframes footer-think-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.footer-thinking-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+.footer-thinking-dots i {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--warp-teal);
+  animation: footer-think-dot 1.2s ease-in-out infinite;
+}
+.footer-thinking-dots i:nth-child(2) { animation-delay: 0.2s; }
+.footer-thinking-dots i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes footer-think-dot {
+  0%, 100% { opacity: 0.25; transform: translateY(0); }
+  50%      { opacity: 1;    transform: translateY(-2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .footer-thinking-orb::after,
+  .footer-thinking-label,
+  .footer-thinking-dots i { animation: none; }
+  .footer-thinking-label { color: var(--warp-teal); }
 }
 
 /* ─────────────────────────────────────────────────────────────────

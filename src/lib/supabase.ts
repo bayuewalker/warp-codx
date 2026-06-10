@@ -110,7 +110,15 @@ export function getBrowserSupabase(): SupabaseClient {
     assertEnv("NEXT_PUBLIC_SUPABASE_URL", _runtimeUrl),
     assertEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", _runtimeAnonKey),
     {
-      auth: { persistSession: false, autoRefreshToken: false },
+      auth: {
+        // Persist the session in localStorage so a magic-link login survives
+        // the redirect to "/" and subsequent reloads. detectSessionInUrl lets
+        // /auth/callback finalize the session from the URL the email link
+        // returns to.
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
       realtime: { params: { eventsPerSecond: 10 } },
     },
   );
