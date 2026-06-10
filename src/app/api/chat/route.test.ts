@@ -41,22 +41,34 @@ vi.mock("@/lib/memory", () => ({
   extractAndStoreMemories: vi.fn(async () => 0),
 }));
 
+// Per-user isolation gate — the route calls requireUser(req) and 401s on null.
+vi.mock("@/lib/roles", () => ({
+  requireUser: vi.fn(async () => ({
+    id: "user-1",
+    email: "user@example.com",
+    role: "user",
+  })),
+}));
+
 const inserts: Array<{ table: string; row: unknown }> = [];
 
 function makeSupabase() {
   return {
     from(table: string) {
       if (table === "sessions") {
+        // The route now scopes the lookup with .eq("id").eq("user_id"), so the
+        // select chain must accept two chained .eq() calls before .single().
+        const single = () =>
+          Promise.resolve({
+            data: { id: "sess-1", label: "Existing label" },
+            error: null,
+          });
+        const eqChain: { eq: () => typeof eqChain; single: typeof single } = {
+          eq: () => eqChain,
+          single,
+        };
         return {
-          select: () => ({
-            eq: () => ({
-              single: () =>
-                Promise.resolve({
-                  data: { id: "sess-1", label: "Existing label" },
-                  error: null,
-                }),
-            }),
-          }),
+          select: () => ({ eq: () => eqChain }),
           update: () => ({
             eq: () => Promise.resolve({ data: null, error: null }),
           }),

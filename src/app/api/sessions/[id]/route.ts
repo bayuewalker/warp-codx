@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
+import { requireUser } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+/** Standard 401 for unauthenticated callers (per-user isolation gate). */
+function unauthorized() {
+  return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+}
 
 /**
  * Task #37 — fetch a single session by id.
@@ -15,7 +21,7 @@ export const runtime = "nodejs";
  * first page), so we expose a per-id GET instead.
  */
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } },
 ) {
   try {
@@ -23,11 +29,15 @@ export async function GET(
     if (!id) {
       return NextResponse.json({ error: "Missing id" }, { status: 400 });
     }
+    const user = await requireUser(req);
+    if (!user) return unauthorized();
     const supabase = getServerSupabase();
     const { data, error } = await supabase
       .from("sessions")
       .select("id, label, created_at, updated_at")
       .eq("id", id)
+      // Per-user isolation: you can only read your own session.
+      .eq("user_id", user.id)
       .maybeSingle();
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
@@ -43,7 +53,7 @@ export async function GET(
 }
 
 export async function DELETE(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } },
 ) {
   try {
@@ -51,8 +61,15 @@ export async function DELETE(
     if (!id) {
       return NextResponse.json({ error: "Missing id" }, { status: 400 });
     }
+    const user = await requireUser(req);
+    if (!user) return unauthorized();
     const supabase = getServerSupabase();
-    const { error } = await supabase.from("sessions").delete().eq("id", id);
+    const { error } = await supabase
+      .from("sessions")
+      .delete()
+      .eq("id", id)
+      // Per-user isolation: you can only delete your own session.
+      .eq("user_id", user.id);
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
@@ -72,6 +89,8 @@ export async function PATCH(
     if (!id) {
       return NextResponse.json({ error: "Missing id" }, { status: 400 });
     }
+    const user = await requireUser(req);
+    if (!user) return unauthorized();
     const body = (await req.json().catch(() => ({}))) as { label?: string };
     if (!body.label || typeof body.label !== "string") {
       return NextResponse.json(
@@ -84,6 +103,8 @@ export async function PATCH(
       .from("sessions")
       .update({ label: body.label.slice(0, 120), updated_at: new Date().toISOString() })
       .eq("id", id)
+      // Per-user isolation: you can only rename your own session.
+      .eq("user_id", user.id)
       .select("id, label, created_at, updated_at")
       .single();
     if (error) {

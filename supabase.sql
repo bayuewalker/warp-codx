@@ -6,9 +6,15 @@ create extension if not exists "pgcrypto";
 create table if not exists public.sessions (
   id          uuid primary key default gen_random_uuid(),
   label       text not null default 'New directive',
+  -- Owner of the session. Per-user isolation (migration 0005): every row is
+  -- stamped with the authenticated caller's id and RLS scopes reads/writes to
+  -- the owner. NOT NULL is enforced by 0005 once the table is empty.
+  user_id     uuid references auth.users(id) on delete cascade,
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
+
+create index if not exists sessions_user_id_idx on public.sessions (user_id);
 
 -- Task #38 — composite index on (created_at desc, id desc).
 --
@@ -44,11 +50,56 @@ create table if not exists public.messages (
 create index if not exists messages_session_created_idx
   on public.messages (session_id, created_at);
 
--- Phase 1: no auth → disable RLS so anon and service keys both work.
-alter table public.sessions  disable row level security;
-alter table public.messages  disable row level security;
+-- Per-user isolation (migration 0005): RLS scopes every row to its owner.
+-- Server routes use the service-role key (bypasses RLS) but additionally filter
+-- by user_id; the browser's anon-key Realtime subscriptions carry the signed-in
+-- user's JWT and are constrained by these policies.
+alter table public.sessions  enable row level security;
+alter table public.messages  enable row level security;
 
--- Enable Realtime broadcasts on both tables.
+drop policy if exists sessions_select_own on public.sessions;
+create policy sessions_select_own on public.sessions
+  for select using (auth.uid() = user_id);
+drop policy if exists sessions_insert_own on public.sessions;
+create policy sessions_insert_own on public.sessions
+  for insert with check (auth.uid() = user_id);
+drop policy if exists sessions_update_own on public.sessions;
+create policy sessions_update_own on public.sessions
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists sessions_delete_own on public.sessions;
+create policy sessions_delete_own on public.sessions
+  for delete using (auth.uid() = user_id);
+
+drop policy if exists messages_select_own on public.messages;
+create policy messages_select_own on public.messages
+  for select using (
+    exists (select 1 from public.sessions s
+            where s.id = messages.session_id and s.user_id = auth.uid())
+  );
+drop policy if exists messages_insert_own on public.messages;
+create policy messages_insert_own on public.messages
+  for insert with check (
+    exists (select 1 from public.sessions s
+            where s.id = messages.session_id and s.user_id = auth.uid())
+  );
+drop policy if exists messages_update_own on public.messages;
+create policy messages_update_own on public.messages
+  for update using (
+    exists (select 1 from public.sessions s
+            where s.id = messages.session_id and s.user_id = auth.uid())
+  ) with check (
+    exists (select 1 from public.sessions s
+            where s.id = messages.session_id and s.user_id = auth.uid())
+  );
+drop policy if exists messages_delete_own on public.messages;
+create policy messages_delete_own on public.messages
+  for delete using (
+    exists (select 1 from public.sessions s
+            where s.id = messages.session_id and s.user_id = auth.uid())
+  );
+
+-- Enable Realtime broadcasts on both tables. Realtime respects RLS, so each
+-- subscriber only receives change events for rows they own.
 alter publication supabase_realtime add table public.messages;
 alter publication supabase_realtime add table public.sessions;
 
@@ -130,7 +181,11 @@ alter table public.push_subscriptions disable row level security;
 
 -- Workspace features — custom instructions, memory, skills.
 -- These replace the GitHub "constitution" as the chat system-prompt source.
--- Single-tenant (no user_id), RLS disabled — server-only via service key.
+-- Single-tenant (no user_id) and accessed only by server code via the
+-- service-role key. RLS is ENABLED with no policies (migration 0006), which
+-- denies the anon/authenticated roles while the service-role key bypasses RLS —
+-- so the app is unaffected but the tables are no longer readable via the public
+-- anon key through PostgREST.
 -- Mirrors db/migrations/0002-workspace-features.sql; re-running is a no-op.
 
 create table if not exists public.app_settings (
@@ -140,7 +195,7 @@ create table if not exists public.app_settings (
   constraint app_settings_singleton check (id = 1)
 );
 insert into public.app_settings (id) values (1) on conflict (id) do nothing;
-alter table public.app_settings disable row level security;
+alter table public.app_settings enable row level security;
 
 create table if not exists public.memories (
   id          uuid primary key default gen_random_uuid(),
@@ -152,7 +207,7 @@ create table if not exists public.memories (
 );
 create index if not exists memories_status_idx
   on public.memories (status, created_at desc);
-alter table public.memories disable row level security;
+alter table public.memories enable row level security;
 
 create table if not exists public.skills (
   id          uuid primary key default gen_random_uuid(),
@@ -166,7 +221,7 @@ create table if not exists public.skills (
   updated_at  timestamptz not null default now()
 );
 create index if not exists skills_enabled_idx on public.skills (enabled);
-alter table public.skills disable row level security;
+alter table public.skills enable row level security;
 
 -- Multi-user (roles) + admin-managed provider keys. See
 -- db/migrations/0003-users-roles-provider-keys.sql for the full migration
@@ -179,7 +234,8 @@ create table if not exists public.profiles (
   created_at  timestamptz not null default now(),
   updated_at  timestamptz not null default now()
 );
-alter table public.profiles disable row level security;
+-- Server-only (read via service-role in src/lib/roles.ts). RLS on, no policies.
+alter table public.profiles enable row level security;
 
 create table if not exists public.provider_keys (
   id          uuid primary key default gen_random_uuid(),
@@ -194,4 +250,6 @@ create table if not exists public.provider_keys (
 );
 create index if not exists provider_keys_chain_idx
   on public.provider_keys (enabled, priority, created_at);
-alter table public.provider_keys disable row level security;
+-- Holds raw provider API keys — must never be reachable via the anon key.
+-- Server-only (src/lib/provider-keys.ts via service-role). RLS on, no policies.
+alter table public.provider_keys enable row level security;

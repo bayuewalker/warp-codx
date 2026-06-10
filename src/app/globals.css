@@ -127,6 +127,10 @@ body {
 .led-idle {
   background: var(--warp-text-muted);
 }
+.led-offline {
+  background: var(--warp-red);
+  box-shadow: 0 0 4px var(--warp-red);
+}
 .led-pulse::after {
   content: "";
   position: absolute;
