@@ -9,6 +9,7 @@ import WorkspaceSettings from "./WorkspaceSettings";
 import type { Session } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { getBrowserSupabase, setBrowserSupabaseConfig } from "@/lib/supabase";
+import { authFetch } from "@/lib/api-fetch";
 
 /**
  * Task #37 — page size for the sidebar's session list. Mirrors
@@ -114,7 +115,7 @@ export default function AppShell() {
 
   const refreshSessions = useCallback(async (selectFirst = false) => {
     try {
-      const res = await fetch(
+      const res = await authFetch(
         `/api/sessions?limit=${SESSIONS_PAGE_SIZE}`,
         { cache: "no-store" },
       );
@@ -159,7 +160,7 @@ export default function AppShell() {
         before: sessionsCursor,
       });
       if (sessionsCursorId) params.set("beforeId", sessionsCursorId);
-      const res = await fetch(`/api/sessions?${params.toString()}`, {
+      const res = await authFetch(`/api/sessions?${params.toString()}`, {
         cache: "no-store",
       });
       if (!res.ok) {
@@ -200,7 +201,7 @@ export default function AppShell() {
     setCreating(true);
     setSessionsError(null);
     try {
-      const res = await fetch("/api/sessions", {
+      const res = await authFetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
@@ -247,7 +248,7 @@ export default function AppShell() {
       });
 
       try {
-        const res = await fetch(`/api/sessions/${id}`, { method: "DELETE" });
+        const res = await authFetch(`/api/sessions/${id}`, { method: "DELETE" });
         if (!res.ok) throw new Error(`Delete failed (${res.status})`);
       } catch {
         setSessions(prevSessions);

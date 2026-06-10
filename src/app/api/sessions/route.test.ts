@@ -23,12 +23,23 @@ const ltMock = vi.fn();
 const orMock = vi.fn();
 const limitMock = vi.fn();
 const orderMock = vi.fn();
+const eqMock = vi.fn();
 const selectMock = vi.fn();
 const fromMock = vi.fn();
 const getServerSupabaseMock = vi.fn();
 
 vi.mock("@/lib/supabase", () => ({
   getServerSupabase: getServerSupabaseMock,
+}));
+
+// Per-user isolation gate — the route calls requireUser(req) and 401s when it
+// returns null. Pin a fixed user so the pagination contract tests run as before.
+vi.mock("@/lib/roles", () => ({
+  requireUser: vi.fn(async () => ({
+    id: "user-1",
+    email: "user@example.com",
+    role: "user",
+  })),
 }));
 
 /**
@@ -45,6 +56,7 @@ function setupChain(result: { data: unknown; error: unknown }) {
   orMock.mockReset();
   limitMock.mockReset();
   orderMock.mockReset();
+  eqMock.mockReset();
   selectMock.mockReset();
   fromMock.mockReset();
   getServerSupabaseMock.mockReset();
@@ -78,7 +90,10 @@ function setupChain(result: { data: unknown; error: unknown }) {
     };
   })());
 
-  selectMock.mockReturnValue({ order: orderMock });
+  // Route chain is now: from().select().eq("user_id", id).order().order().limit()
+  // — the `.eq` is the per-user isolation filter.
+  eqMock.mockReturnValue({ order: orderMock });
+  selectMock.mockReturnValue({ eq: eqMock });
   fromMock.mockReturnValue({ select: selectMock });
   getServerSupabaseMock.mockReturnValue({ from: fromMock });
 }
@@ -113,6 +128,8 @@ describe("GET /api/sessions — pagination", () => {
     expect(selectMock).toHaveBeenCalledWith(
       "id, label, created_at, updated_at",
     );
+    // Per-user isolation: results are scoped to the caller.
+    expect(eqMock).toHaveBeenCalledWith("user_id", "user-1");
     // Two ORDER BYs: created_at then id — the tie-breaker.
     expect(orderMock).toHaveBeenNthCalledWith(1, "created_at", {
       ascending: false,

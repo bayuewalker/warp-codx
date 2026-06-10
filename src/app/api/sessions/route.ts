@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
+import { requireUser } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+/** Standard 401 for unauthenticated callers (per-user isolation gate). */
+function unauthorized() {
+  return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+}
 
 /**
  * Task #37 — paginated session list.
@@ -46,6 +52,9 @@ const MAX_LIMIT = 50;
 
 export async function GET(req: Request) {
   try {
+    const user = await requireUser(req);
+    if (!user) return unauthorized();
+
     const url = new URL(req.url);
     const rawLimit = Number.parseInt(url.searchParams.get("limit") ?? "", 10);
     const limit = Number.isFinite(rawLimit) && rawLimit > 0
@@ -58,6 +67,10 @@ export async function GET(req: Request) {
     let query = supabase
       .from("sessions")
       .select("id, label, created_at, updated_at")
+      // Per-user isolation: only the caller's own sessions. RLS enforces this
+      // for the anon/Realtime path; this filter enforces it for the
+      // service-role server path.
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       // Stable secondary sort breaks ties on `created_at`. Combined with
       // the tuple cursor below, this guarantees no row is ever skipped
@@ -104,6 +117,9 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
+    const user = await requireUser(req);
+    if (!user) return unauthorized();
+
     const body = (await req.json().catch(() => ({}))) as {
       label?: string;
     };
@@ -118,7 +134,7 @@ export async function POST(req: Request) {
     const supabase = getServerSupabase();
     const { data, error } = await supabase
       .from("sessions")
-      .insert({ label })
+      .insert({ label, user_id: user.id })
       .select("id, label, created_at, updated_at")
       .single();
 
