@@ -14,6 +14,7 @@ import { adminFetch } from "@/lib/admin-fetch";
 import { authFetch } from "@/lib/api-fetch";
 import { summarizeRefresh, type RefreshBody } from "@/lib/refresh-summary";
 import { emitAssistantActivity } from "@/lib/assistant-activity";
+import { getSelectedModelId } from "@/lib/selected-model";
 
 const GUEST_MSG_KEY = "warp_guest_msg_count"; // kept for localStorage cleanup only
 
@@ -202,6 +203,7 @@ export default function ChatArea({
           body: JSON.stringify({
             sessionId,
             content: trimmed,
+            model: getSelectedModelId(),
           }),
           signal: controller.signal,
         });

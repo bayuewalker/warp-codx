@@ -8,6 +8,7 @@ import {
   type KeyboardEvent,
 } from "react";
 import ShortcutSheet from "./ShortcutSheet";
+import ModelPicker from "./ModelPicker";
 
 type Props = {
   disabled?: boolean;
@@ -366,6 +367,8 @@ export default function ChatInput({
               <rect x="14" y="14" width="7" height="7" rx="1" />
             </svg>
           </button>
+
+          <ModelPicker disabled={toolBtnDisabled} />
 
           <span className="input-toolbar-spacer" aria-hidden="true" />
 

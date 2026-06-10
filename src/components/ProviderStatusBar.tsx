@@ -19,6 +19,8 @@
  */
 import { useProviderStatus, type LiveStatus } from "@/lib/use-provider-status";
 import { useAssistantActivity } from "@/lib/assistant-activity";
+import { useSelectedModel } from "@/lib/selected-model";
+import { modelShort } from "@/lib/models";
 
 type StripState = LiveStatus | "working";
 
@@ -50,6 +52,7 @@ const REASON_LABEL: Record<string, string> = {
 export default function ProviderStatusBar({ version = "v0.1" }: { version?: string }) {
   const { data, status } = useProviderStatus();
   const working = useAssistantActivity();
+  const [selectedModel] = useSelectedModel();
 
   // Working overrides the connection status (it implies we're online).
   const state: StripState = working ? "working" : status;
@@ -65,7 +68,10 @@ export default function ProviderStatusBar({ version = "v0.1" }: { version?: stri
             ? REASON_LABEL[data?.reason ?? ""] ?? "degraded"
             : "idle";
 
-  const model = data?.model ?? (status === "checking" ? "connecting…" : "llm");
+  // Show the user's picker selection (kept in sync app-wide). "Auto" routes per
+  // message, so we label it "auto" rather than guessing a model up front.
+  const model =
+    selectedModel === "auto" ? "auto" : modelShort(selectedModel).toLowerCase();
 
   const title = data
     ? `LLM provider: ${data.provider ?? "none"}` +

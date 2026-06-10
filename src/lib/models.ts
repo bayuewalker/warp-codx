@@ -78,3 +78,111 @@ export function formatModelSlug(slug: string): string {
   const tail = slug.includes("/") ? slug.split("/").pop()! : slug;
   return tail.replace(/^claude-/, "");
 }
+
+// ─────────────────────────── Model selection ───────────────────────────
+//
+// User-facing model picker (composer). "Auto" routes per message — a strong
+// coding model (Sonnet) for code work, a general model (GPT-4o) for plain chat
+// — while explicit picks pin one model. Each logical choice maps to the right
+// per-provider slug so it works whichever provider the failover chain uses.
+
+export type SelectableModelId = "auto" | "sonnet" | "gpt-4o" | "gpt-4o-mini";
+
+export type SelectableModel = {
+  id: SelectableModelId;
+  label: string;
+  /** Compact label for the closed picker / status strip. */
+  short: string;
+  hint: string;
+  /** Per-provider slug. Missing providers fall back to the role default. */
+  slugs: Partial<Record<Provider, string>>;
+};
+
+export const SELECTABLE_MODELS: SelectableModel[] = [
+  {
+    id: "auto",
+    label: "Auto",
+    short: "Auto",
+    hint: "Sonnet for coding, GPT-4o for chat",
+    slugs: {},
+  },
+  {
+    id: "sonnet",
+    label: "Claude Sonnet 4.6",
+    short: "Sonnet",
+    hint: "Best for coding & reasoning",
+    slugs: {
+      openrouter: "anthropic/claude-sonnet-4-6",
+      blackbox: "blackboxai/anthropic/claude-sonnet-4.6",
+      openai: "gpt-4o", // no Claude on OpenAI — closest capable fallback
+    },
+  },
+  {
+    id: "gpt-4o",
+    label: "GPT-4o",
+    short: "GPT-4o",
+    hint: "General purpose chat",
+    slugs: {
+      openrouter: "openai/gpt-4o",
+      openai: "gpt-4o",
+      blackbox: "blackboxai/openai/gpt-4o",
+    },
+  },
+  {
+    id: "gpt-4o-mini",
+    label: "GPT-4o mini",
+    short: "GPT-4o mini",
+    hint: "Fast & cheap",
+    slugs: {
+      openrouter: "openai/gpt-4o-mini",
+      openai: "gpt-4o-mini",
+      blackbox: "blackboxai/openai/gpt-5.4-nano",
+    },
+  },
+];
+
+export function modelShort(id: SelectableModelId): string {
+  return SELECTABLE_MODELS.find((m) => m.id === id)?.short ?? id;
+}
+
+export function isSelectableModelId(v: unknown): v is SelectableModelId {
+  return (
+    v === "auto" || v === "sonnet" || v === "gpt-4o" || v === "gpt-4o-mini"
+  );
+}
+
+export function modelLabel(id: SelectableModelId): string {
+  return SELECTABLE_MODELS.find((m) => m.id === id)?.label ?? id;
+}
+
+/**
+ * Resolve a concrete provider slug for a (non-auto) selected model under a
+ * given provider, falling back to the provider's `cmd` default if that model
+ * isn't mapped for the provider.
+ */
+export function resolveSelectedModel(
+  id: SelectableModelId,
+  provider: Provider,
+): string {
+  const override = process.env.LLM_MODEL?.trim();
+  if (override) return override;
+  const entry = SELECTABLE_MODELS.find((m) => m.id === id);
+  return entry?.slugs[provider] ?? MODEL_MATRIX[provider].cmd;
+}
+
+/**
+ * Lightweight, transparent coding-vs-chat classifier for "Auto". Looks for a
+ * code fence or common engineering keywords. Used only to pick the default
+ * model; never hidden from the user (the strip still shows what's active).
+ */
+export function isCodingMessage(text: string): boolean {
+  if (/```/.test(text)) return true;
+  return /\b(code|coding|function|class|bug|debug|error|stack ?trace|refactor|implement|compile|api|endpoint|sql|query|regex|component|deploy|docker|build|test|npm|yarn|pnpm|git|typescript|javascript|python|java|rust|golang|react|next\.?js|node|css|html|terminal|command|script)\b/i.test(
+    text,
+  );
+}
+
+/** Auto-route a message to a concrete selectable model id. */
+export function autoPickModelId(userMessage: string): SelectableModelId {
+  return isCodingMessage(userMessage) ? "sonnet" : "gpt-4o";
+}

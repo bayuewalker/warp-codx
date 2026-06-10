@@ -49,6 +49,12 @@ export type ChatParams = {
   messages: ChatCompletionMessageParam[];
   temperature?: number;
   maxTokens?: number;
+  /**
+   * Optional per-provider model resolver. When provided (e.g. from the user's
+   * model picker), it overrides the role default for each candidate provider.
+   * Falls back to the role default when it returns empty.
+   */
+  resolveModel?: (provider: Provider) => string;
 };
 
 export type StreamResult = {
@@ -69,7 +75,9 @@ export async function openChatStreamWithFailover(
 
   let lastErr: unknown;
   for (const cand of chain) {
-    const model = getModelForProvider(cand.provider, params.role ?? "cmd");
+    const model =
+      params.resolveModel?.(cand.provider) ||
+      getModelForProvider(cand.provider, params.role ?? "cmd");
     try {
       const stream = await clientFor(cand).chat.completions.create({
         model,
