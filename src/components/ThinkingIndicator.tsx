@@ -22,7 +22,7 @@ export default function ThinkingIndicator() {
       className="warp-thinking"
       role="status"
       aria-live="polite"
-      aria-label="WARP CMD is thinking"
+      aria-label="Assistant is thinking"
     >
       <span className="warp-thinking-dot" />
       <span className="warp-thinking-dot" />

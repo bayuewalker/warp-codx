@@ -17,21 +17,8 @@
  * NET mirrors the browser's online/offline state. The strip is intentionally
  * read-only and self-contained so it can sit above the whole app shell.
  */
-import { useCallback, useEffect, useState } from "react";
-import { authFetch } from "@/lib/api-fetch";
-
-type LiveStatus = "online" | "degraded" | "offline" | "checking";
-
-type StatusResponse = {
-  status: "online" | "degraded" | "offline";
-  reason: string;
-  provider: string | null;
-  model: string | null;
-  providerCount: number;
-  checkedAt: string;
-};
-
-const POLL_MS = 15_000;
+import { useEffect, useState } from "react";
+import { useProviderStatus, type LiveStatus } from "@/lib/use-provider-status";
 
 const LED_CLASS: Record<LiveStatus, string> = {
   online: "led-online led-pulse",
@@ -50,59 +37,21 @@ const REASON_LABEL: Record<string, string> = {
 };
 
 export default function ProviderStatusBar({ version = "v0.1" }: { version?: string }) {
-  const [data, setData] = useState<StatusResponse | null>(null);
-  const [status, setStatus] = useState<LiveStatus>("checking");
+  const { data, status } = useProviderStatus();
   const [online, setOnline] = useState(true);
 
-  const refresh = useCallback(async () => {
-    try {
-      const res = await authFetch("/api/provider/status", { cache: "no-store" });
-      if (res.status === 401) {
-        setStatus("checking");
-        setData(null);
-        return;
-      }
-      if (!res.ok) {
-        setStatus("offline");
-        return;
-      }
-      const json = (await res.json()) as StatusResponse;
-      setData(json);
-      setStatus(json.status);
-    } catch {
-      setStatus("offline");
-    }
-  }, []);
-
   useEffect(() => {
-    let alive = true;
-    const tick = () => {
-      if (alive) void refresh();
-    };
-    tick();
-    const id = window.setInterval(tick, POLL_MS);
-
-    const onVisible = () => {
-      if (document.visibilityState === "visible") tick();
-    };
     const syncNet = () => {
-      const isOnline =
-        typeof navigator !== "undefined" ? navigator.onLine : true;
-      setOnline(isOnline);
-      if (isOnline) tick();
+      setOnline(typeof navigator !== "undefined" ? navigator.onLine : true);
     };
     syncNet();
-    document.addEventListener("visibilitychange", onVisible);
     window.addEventListener("online", syncNet);
     window.addEventListener("offline", syncNet);
     return () => {
-      alive = false;
-      window.clearInterval(id);
-      document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", syncNet);
       window.removeEventListener("offline", syncNet);
     };
-  }, [refresh]);
+  }, []);
 
   const providerLabel =
     status === "offline"

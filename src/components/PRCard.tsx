@@ -394,7 +394,7 @@ export default function PRCard({
             {state.data.pr.title}
           </div>
           <div className="text-[11px] text-white/55">
-            Merged by WARP🔹CMD via WARP CodX · sha{" "}
+            Merged via WARP CodX · sha{" "}
             <span className="font-mono text-warp-blue">
               {state.sha.slice(0, 7)}
             </span>

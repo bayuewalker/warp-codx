@@ -76,7 +76,7 @@ export default function IssueCard({ data, sessionId }: Props) {
             <span aria-hidden="true">✓</span>
             <span>Issue #{state.issueNumber} created</span>
           </div>
-          <span className="agent-pill forge">WARP•FORGE</span>
+          <span className="agent-pill">GitHub</span>
         </div>
         <div className="px-4 py-4 flex flex-col gap-3">
           <div className="text-[13px] text-white/90 leading-snug">
@@ -161,7 +161,7 @@ export default function IssueCard({ data, sessionId }: Props) {
           <span aria-hidden="true">🔖</span>
           <span>{isEditing ? "Editing draft" : "New issue draft"}</span>
         </div>
-        <span className="agent-pill forge">WARP•FORGE</span>
+        <span className="agent-pill">GitHub</span>
       </div>
 
       <div className="px-4 py-4 flex flex-col gap-3">
