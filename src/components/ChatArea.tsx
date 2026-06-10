@@ -13,6 +13,7 @@ import { cn } from "@/lib/cn";
 import { adminFetch } from "@/lib/admin-fetch";
 import { authFetch } from "@/lib/api-fetch";
 import { summarizeRefresh, type RefreshBody } from "@/lib/refresh-summary";
+import { emitAssistantActivity } from "@/lib/assistant-activity";
 
 const GUEST_MSG_KEY = "warp_guest_msg_count"; // kept for localStorage cleanup only
 
@@ -404,6 +405,12 @@ export default function ChatArea({
   // derived from the actual streamed output (not a canned animation): before any
   // token it's "thinking"; inside an open code fence it's "writing code";
   // otherwise "writing the response".
+  // Broadcast streaming state so the top status strip's LED can flip between
+  // idle and working in realtime.
+  useEffect(() => {
+    emitAssistantActivity(streaming);
+  }, [streaming]);
+
   const [thinkingSeconds, setThinkingSeconds] = useState(0);
   useEffect(() => {
     if (!streaming) {
