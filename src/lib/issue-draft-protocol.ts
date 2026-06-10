@@ -21,44 +21,37 @@
  */
 export const ISSUE_DRAFT_PROTOCOL = `
 
-# ISSUE DRAFT PROTOCOL (Phase 3b)
+# GITHUB ISSUE DRAFT
 
-When the user's directive matches an issue-creation intent — explicit
-triggers in Bahasa Indonesia or English: \`buat issue\`, \`create issue\`,
-\`tambah issue\`, \`open issue\`, \`bikin task untuk\`, \`dispatch ke forge\`,
-\`kasih ke forge\`, \`forge task:\`, \`# WARP•FORGE TASK:\` — or implicit
-(the directive clearly scopes a buildable feature and you have enough
-context to compose a complete FORGE TASK), you MUST follow this exact
-output protocol:
+When the user clearly wants to open a GitHub issue — e.g. "buat issue", "create
+issue", "open issue", "bikin task untuk…", "track this as an issue" — or when a
+request clearly scopes a concrete, buildable piece of work and you have enough
+context to write a complete issue, follow this output protocol so the app can
+render an editable issue card:
 
-1. Reply normally in conversational tone first (1–3 sentences max,
-   acknowledging the request and stating any inferences you made).
-2. Generate the full WARP•FORGE TASK markdown body using the template
-   defined in COMMANDER.md. Render it as plain markdown — do NOT wrap
-   the body in triple backticks (the body itself contains code-fence-
-   sensitive content).
-3. Immediately after the FORGE TASK body, emit a single sidecar JSON
-   comment on its own line, with these exact fields:
-   <!--ISSUE_DRAFT_DATA {"title":"<short task name>","branchSlug":"<kebab-case>","validationTier":"MINOR|STANDARD|MAJOR","objective":"<1-2 sentences>","body":"<full FORGE TASK markdown body, with \\\\n for newlines and \\\\\" for quotes>"}-->
+1. Reply in a normal conversational tone first (1–3 sentences), acknowledging
+   the request and stating any assumptions you made.
+2. Write the full issue body as plain markdown (a short objective, acceptance
+   criteria, and any relevant notes). Do NOT wrap the body in triple backticks.
+3. Immediately after the body, emit a single sidecar JSON comment on its own
+   line, with these exact fields:
+   <!--ISSUE_DRAFT_DATA {"title":"<short issue title>","branchSlug":"<kebab-case>","validationTier":"MINOR|STANDARD|MAJOR","objective":"<1-2 sentences>","body":"<full markdown body, with \\\\n for newlines and \\\\\" for quotes>"}-->
 4. End your response with exactly this literal marker on its own line:
    <!-- ISSUE_DRAFT: true -->
 
 Field rules:
 - \`title\` ≤ 80 chars, no markdown formatting, no leading "#".
-- \`branchSlug\` is kebab-case, alphanumeric + hyphens only, ≤ 30 chars,
-  derived from the directive. Do NOT include the \`WARP/\` prefix.
-- \`validationTier\` defaults to \`STANDARD\`. Use \`MINOR\` for trivial
-  changes (≤ 1 file, no schema/risk impact). Use \`MAJOR\` only when
-  the directive touches capital, risk, execution, or auth boundaries.
-- \`objective\` is the human-readable summary the IssueCard previews
-  inline (truncated to ~3 lines in the UI).
-- \`body\` is the EXACT markdown that will be POSTed to GitHub as the
-  issue body — preserve it verbatim, do not abridge.
+- \`branchSlug\` is a suggested kebab-case branch name (alphanumeric + hyphens,
+  ≤ 30 chars) derived from the title.
+- \`validationTier\` is a rough size estimate: \`MINOR\` (trivial, ≤ 1 file),
+  \`STANDARD\` (default), or \`MAJOR\` (touches auth, database schema, payments,
+  or many files). It is only a hint shown on the card.
+- \`objective\` is the human-readable summary previewed on the card.
+- \`body\` is the EXACT markdown POSTed to GitHub as the issue body — preserve
+  it verbatim.
 
-If the directive is ambiguous, ASK first ("Mau gw buatkan GitHub
-issue untuk ini?") and do NOT emit the markers. Emitting either
-marker without the other will break the client renderer.
-
-If the request is conversational and not a buildable task, do NOT
-emit any of these markers — just answer normally.
+If the request is ambiguous, ASK first (e.g. "Mau gw buatkan GitHub issue untuk
+ini?") and do NOT emit the markers. Emitting one marker without the other will
+break the renderer. If the message is just conversational, do NOT emit any
+markers — answer normally.
 `;
