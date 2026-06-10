@@ -413,6 +413,9 @@ body {
   align-items: center;
   gap: 7px;
   padding: 8px 4px 0;
+  /* Reserve the row so the composer doesn't jump when the thinking
+     animation mounts/unmounts (the zone is dedicated to it). */
+  min-height: 22px;
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 10px;
   letter-spacing: 0.04em;

@@ -1,23 +1,21 @@
 "use client";
 
 /**
- * Top-bar LLM provider connection status strip.
+ * Top status strip.
  *
- * Renders a compact row of status LEDs — the headline one being a *live*
- * indicator of whether the active LLM provider (the top of the failover chain)
- * is reachable and accepting the key. It polls `/api/provider/status` every
- * ~15s (and on tab focus / network changes), so the LED reflects the real
- * connection state in near-realtime:
+ * Left:  ● W.A.R.P · <model>  — a *live* connection LED for the active LLM
+ *        provider (top of the failover chain) plus the real model name. The
+ *        LED polls `/api/provider/status` (~15s + on focus/online) so it
+ *        reflects the actual connection state:
+ *          teal  (online)   — provider reachable, key accepted
+ *          amber (degraded) — reachable but key rejected / out of credit / rate-limited
+ *          red   (offline)  — unreachable, timed out, or no key configured
+ *          grey  (checking) — first probe in flight / not signed in
+ * Right: the app version.
  *
- *   teal  (online)   — provider reachable, key accepted
- *   amber (degraded) — reachable but key rejected / out of credit / rate-limited
- *   red   (offline)  — unreachable, timed out, or no key configured
- *   grey  (checking) — first probe in flight / not signed in
- *
- * NET mirrors the browser's online/offline state. The strip is intentionally
- * read-only and self-contained so it can sit above the whole app shell.
+ * Text is intentionally small (mono, 10px) to match the model line in the
+ * composer footer.
  */
-import { useEffect, useState } from "react";
 import { useProviderStatus, type LiveStatus } from "@/lib/use-provider-status";
 
 const LED_CLASS: Record<LiveStatus, string> = {
@@ -28,37 +26,26 @@ const LED_CLASS: Record<LiveStatus, string> = {
 };
 
 const REASON_LABEL: Record<string, string> = {
-  "no-providers": "NO KEY",
-  auth: "KEY REJECTED",
-  limit: "NO CREDIT",
-  upstream: "UPSTREAM",
-  timeout: "TIMEOUT",
-  network: "UNREACHABLE",
+  "no-providers": "no key",
+  auth: "key rejected",
+  limit: "no credit",
+  upstream: "upstream error",
+  timeout: "timeout",
+  network: "unreachable",
 };
 
 export default function ProviderStatusBar({ version = "v0.1" }: { version?: string }) {
   const { data, status } = useProviderStatus();
-  const [online, setOnline] = useState(true);
 
-  useEffect(() => {
-    const syncNet = () => {
-      setOnline(typeof navigator !== "undefined" ? navigator.onLine : true);
-    };
-    syncNet();
-    window.addEventListener("online", syncNet);
-    window.addEventListener("offline", syncNet);
-    return () => {
-      window.removeEventListener("online", syncNet);
-      window.removeEventListener("offline", syncNet);
-    };
-  }, []);
-
-  const providerLabel =
-    status === "offline"
-      ? REASON_LABEL[data?.reason ?? ""] ?? "OFFLINE"
-      : status === "degraded"
-        ? REASON_LABEL[data?.reason ?? ""] ?? "DEGRADED"
-        : (data?.provider ?? "LLM").toUpperCase();
+  // Right-hand label: model when online, the failure reason when not.
+  const statusText =
+    status === "checking"
+      ? "connecting…"
+      : status === "offline"
+        ? REASON_LABEL[data?.reason ?? ""] ?? "offline"
+        : status === "degraded"
+          ? REASON_LABEL[data?.reason ?? ""] ?? "degraded"
+          : data?.model ?? "llm";
 
   const title = data
     ? `LLM provider: ${data.provider ?? "none"}` +
@@ -69,35 +56,20 @@ export default function ProviderStatusBar({ version = "v0.1" }: { version?: stri
 
   return (
     <div
-      className="flex items-center gap-4 px-3 h-7 shrink-0 border-b border-hair
-        bg-warp-bg text-[10px] uppercase tracking-[0.18em] text-white/45
+      className="flex items-center gap-2 px-3 h-6 shrink-0 border-b border-hair
+        bg-warp-bg font-mono text-[10px] tracking-normal text-white/40
         select-none"
       role="status"
       aria-label="System status"
     >
-      {/* NET — browser connectivity */}
-      <span className="inline-flex items-center gap-1.5">
-        <span
-          className={`led-dot ${online ? "led-online" : "led-offline"}`}
-          aria-hidden="true"
-        />
-        NET
-      </span>
-
-      {/* LLM — live provider connection (the headline LED) */}
-      <span className="inline-flex items-center gap-1.5" title={title}>
+      <span className="inline-flex items-center gap-1.5 min-w-0" title={title}>
         <span className={`led-dot ${LED_CLASS[status]}`} aria-hidden="true" />
-        <span className="text-white/55">{providerLabel}</span>
+        <span className="text-white/55">W.A.R.P</span>
+        <span className="text-white/20">·</span>
+        <span className="truncate text-white/45">{statusText}</span>
       </span>
 
-      {/* Model slug — shown when known, hidden on very small screens */}
-      {data?.model && status !== "offline" && (
-        <span className="hidden sm:inline text-white/30 normal-case tracking-normal">
-          {data.model}
-        </span>
-      )}
-
-      <span className="ml-auto text-white/30">W.A.R.P · {version}</span>
+      <span className="ml-auto shrink-0 text-white/25">{version}</span>
     </div>
   );
 }
