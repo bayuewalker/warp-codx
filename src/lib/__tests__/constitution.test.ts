@@ -419,23 +419,17 @@ describe("buildSystemPrompt — warnings drive chat_warnings", () => {
     );
   });
 
-  it("spec #4 — SAFE_DEFAULT_SYSTEM_PROMPT is exported, non-empty, and self-identifies as degraded", () => {
+  it("spec #4 — SAFE_DEFAULT_SYSTEM_PROMPT is exported, non-empty, and self-identifies as a coding assistant", () => {
     expect(typeof SAFE_DEFAULT_SYSTEM_PROMPT).toBe("string");
     expect(SAFE_DEFAULT_SYSTEM_PROMPT.length).toBeGreaterThan(200);
-    // Must announce safe-default mode so Mr. Walker can be told the
-    // operational truth is unavailable.
-    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/SAFE-DEFAULT MODE/);
-    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/hardcoded fallback/);
-    // Must preserve the operator-encoding block (diamond/bullet rules)
-    // so degraded mode still respects the brand-rule contract.
-    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/OPERATOR NAME ENCODING/);
-    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/WARP\u{1F539}CMD/u);
-    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/WARP\u{2022}FORGE/u);
-    // Roster completeness — SENTINEL and ECHO must also be named so a
-    // partial-prompt drift (e.g. only naming FORGE) is caught here, not
-    // by a downstream user noticing the agent forgot a peer.
-    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/WARP\u{2022}SENTINEL/u);
-    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/WARP\u{2022}ECHO/u);
+    // Neutral branding (see "remove all WARP CMD identity"): the fallback
+    // prompt must present a plain, helpful coding assistant — no operator
+    // roster, no diamond/bullet encoding.
+    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/coding assistant/i);
+    expect(SAFE_DEFAULT_SYSTEM_PROMPT).toMatch(/debug/i);
+    // Guard against the old WARP branding creeping back in.
+    expect(SAFE_DEFAULT_SYSTEM_PROMPT).not.toMatch(/WARP/);
+    expect(SAFE_DEFAULT_SYSTEM_PROMPT).not.toMatch(/OPERATOR NAME ENCODING/);
   });
 
   it("Tier-1 file with no cache + GitHub error becomes a placeholder + 'Constitution unavailable' warning", async () => {

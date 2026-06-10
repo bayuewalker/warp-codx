@@ -74,8 +74,27 @@ export default function ChatInput({
   const [sheetOpen, setSheetOpen] = useState(false);
   const [attachError, setAttachError] = useState<string | null>(null);
   const [multiAgent, setMultiAgent] = useState(false);
+  // Active model resolved server-side (depends on LLM_PROVIDER / LLM_MODEL,
+  // which aren't available to the client bundle). Falls back to the static
+  // default until /api/config responds.
+  const [activeModel, setActiveModel] = useState<string>(MODELS.cmd);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/config")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((cfg: { model?: string | null } | null) => {
+        if (!cancelled && cfg?.model) setActiveModel(cfg.model);
+      })
+      .catch(() => {
+        /* keep the static default */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const ta = taRef.current;
@@ -426,10 +445,10 @@ export default function ChatInput({
         <span
           className="footer-led"
           data-health={ledHealth}
-          title={`${MODELS.cmd} — ${ledHealth}`}
+          title={`${activeModel} — ${ledHealth}`}
           aria-label={`Model status: ${ledHealth}`}
         />
-        <span className="footer-model">{formatModelSlug(MODELS.cmd)}</span>
+        <span className="footer-model">{formatModelSlug(activeModel)}</span>
         {multiAgent && (
           <span className="footer-agent-badge" aria-live="polite">
             Plan · Build · Review

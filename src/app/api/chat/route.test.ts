@@ -21,29 +21,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const TRUNCATION_NOTICE =
   "\n\n⚠️ Response truncated — reply with 'continue' to get the rest.";
 
-const createMock = vi.fn();
-const openaiClient = {
-  chat: { completions: { create: createMock } },
-};
-
-vi.mock("@/lib/openai", () => ({
-  getOpenAI: () => openaiClient,
+// The chat route opens its stream through the auto-switch failover helper.
+const streamMock = vi.fn();
+vi.mock("@/lib/llm", () => ({
+  openChatStreamWithFailover: streamMock,
 }));
 
-vi.mock("@/lib/constitution", () => ({
-  buildSystemPrompt: vi.fn(async () => ({
+vi.mock("@/lib/system-prompt", () => ({
+  buildChatSystemPrompt: vi.fn(async () => ({
     prompt: "SYSTEM_PROMPT",
-    warnings: [],
-    source: "live" as const,
-    // Empty so the per-session SHA drift branch is skipped — that
-    // path has its own dedicated coverage in constitution.test.ts.
-    tier1Files: [],
+    included: { customInstructions: false, memory: false, skills: false },
   })),
-  SAFE_DEFAULT_SYSTEM_PROMPT: "SAFE_DEFAULT",
-  readSessionConstitutionShas: vi.fn(async () => ({})),
-  writeSessionConstitutionShas: vi.fn(async () => {}),
-  diffConstitutionShas: vi.fn(() => ({ changed: [], added: [], removed: [] })),
-  renderConstitutionDiffBlock: vi.fn(() => ""),
+  BASE_SYSTEM_PROMPT: "BASE_SYSTEM_PROMPT",
+}));
+
+// Auto-memory extraction is best-effort and fired after the reply is
+// streamed/persisted; stub it so the route runs without a network call.
+vi.mock("@/lib/memory", () => ({
+  extractAndStoreMemories: vi.fn(async () => 0),
 }));
 
 const inserts: Array<{ table: string; row: unknown }> = [];
@@ -165,9 +160,21 @@ function makeReq(body: unknown): Request {
   });
 }
 
+/** Resolve the failover helper with a stream, mirroring its real shape. */
+function resolveStream(
+  deltas: string[],
+  finishReason: "stop" | "length" | "tool_calls" | null,
+) {
+  streamMock.mockResolvedValueOnce({
+    stream: makeCompletionStream(deltas, finishReason),
+    provider: "blackbox",
+    model: "blackboxai/anthropic/claude-sonnet-4.6",
+  });
+}
+
 beforeEach(() => {
   inserts.length = 0;
-  createMock.mockReset();
+  streamMock.mockReset();
 });
 
 afterEach(() => {
@@ -175,34 +182,29 @@ afterEach(() => {
 });
 
 describe("POST /api/chat — stream truncation handling", () => {
-  it("sends max_tokens: 8192 to the OpenAI client (alongside model/stream/temperature/messages)", async () => {
-    createMock.mockResolvedValueOnce(
-      makeCompletionStream(["hello", " world"], "stop"),
-    );
+  it("requests the failover stream with role cmd, temperature 0.6, maxTokens 8192, and the message array", async () => {
+    resolveStream(["hello", " world"], "stop");
     const { POST } = await import("./route");
 
     const res = await POST(
       makeReq({ sessionId: "sess-1", content: "hi cmd" }),
     );
     // Drain so the stream's `start()` actually runs to completion
-    // (the create() call happens inside start()).
+    // (the failover call happens inside start()).
     await readBody(res);
 
-    expect(createMock).toHaveBeenCalledTimes(1);
-    const args = createMock.mock.calls[0][0];
+    expect(streamMock).toHaveBeenCalledTimes(1);
+    const args = streamMock.mock.calls[0][0];
     expect(args).toMatchObject({
-      stream: true,
+      role: "cmd",
       temperature: 0.6,
-      max_tokens: 8192,
+      maxTokens: 8192,
     });
-    expect(typeof args.model).toBe("string");
     expect(Array.isArray(args.messages)).toBe(true);
   });
 
   it("does NOT append the truncation notice when finish_reason is 'stop' — stream and persisted row match the raw deltas", async () => {
-    createMock.mockResolvedValueOnce(
-      makeCompletionStream(["alpha ", "beta ", "gamma"], "stop"),
-    );
+    resolveStream(["alpha ", "beta ", "gamma"], "stop");
     const { POST } = await import("./route");
 
     const res = await POST(
@@ -225,9 +227,7 @@ describe("POST /api/chat — stream truncation handling", () => {
   });
 
   it("appends the truncation notice to BOTH the live stream and the persisted assistant row when finish_reason is 'length'", async () => {
-    createMock.mockResolvedValueOnce(
-      makeCompletionStream(["partial", " reply"], "length"),
-    );
+    resolveStream(["partial", " reply"], "length");
     const { POST } = await import("./route");
 
     const res = await POST(
