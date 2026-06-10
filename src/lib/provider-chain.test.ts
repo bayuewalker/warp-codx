@@ -14,6 +14,7 @@ import { resolveProviderChain } from "./provider-chain";
 const ENV = [
   "LLM_PROVIDER",
   "OPENROUTER_API_KEY",
+  "OPEN_ROUTER_API_KEY",
   "OPENAI_API_KEY",
   "BLACKBOX_API_KEY",
 ];

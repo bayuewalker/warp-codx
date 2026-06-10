@@ -28,8 +28,13 @@ export const DEFAULT_PROVIDER: Provider = "openrouter";
 type ProviderSpec = {
   /** Base URL the OpenAI SDK points at. The SDK appends `/chat/completions`. */
   baseURL: string;
-  /** Env var that holds this provider's API key. */
-  keyEnv: string;
+  /**
+   * Env var names that may hold this provider's API key. The first is the
+   * canonical name (used in docs + error messages); the rest are accepted
+   * aliases so a slightly different naming (e.g. OPEN_ROUTER_API_KEY) still
+   * works without forcing a rename.
+   */
+  keyEnvs: string[];
   /** Human-friendly label + where to get a key (used in error messages). */
   keyHint: string;
 };
@@ -37,13 +42,13 @@ type ProviderSpec = {
 const PROVIDER_SPECS: Record<Provider, ProviderSpec> = {
   openrouter: {
     baseURL: "https://openrouter.ai/api/v1",
-    keyEnv: "OPENROUTER_API_KEY",
+    keyEnvs: ["OPENROUTER_API_KEY", "OPEN_ROUTER_API_KEY"],
     keyHint:
       "Get a key at https://openrouter.ai/keys (format: sk-or-v1-...).",
   },
   openai: {
     baseURL: "https://api.openai.com/v1",
-    keyEnv: "OPENAI_API_KEY",
+    keyEnvs: ["OPENAI_API_KEY"],
     keyHint: "Get a key at https://platform.openai.com/api-keys (format: sk-...).",
   },
   blackbox: {
@@ -51,14 +56,27 @@ const PROVIDER_SPECS: Record<Provider, ProviderSpec> = {
     // `/chat/completions` to this base. Enterprise users override the host
     // via BLACKBOX_BASE_URL.
     baseURL: "https://api.blackbox.ai",
-    keyEnv: "BLACKBOX_API_KEY",
+    keyEnvs: ["BLACKBOX_API_KEY"],
     keyHint: "Get a key from your Blackbox AI dashboard (https://www.blackbox.ai/api).",
   },
 };
 
-/** Env var name that holds a given provider's API key. */
+/** Canonical env var name that holds a given provider's API key. */
 export function providerKeyEnv(provider: Provider): string {
-  return PROVIDER_SPECS[provider].keyEnv;
+  return PROVIDER_SPECS[provider].keyEnvs[0];
+}
+
+/**
+ * Read a provider's API key from the environment, accepting any of its
+ * configured env-var names (canonical + aliases). Returns undefined when none
+ * is set.
+ */
+export function readProviderEnvKey(provider: Provider): string | undefined {
+  for (const name of PROVIDER_SPECS[provider].keyEnvs) {
+    const v = process.env[name]?.trim();
+    if (v) return v;
+  }
+  return undefined;
 }
 
 /**
@@ -115,10 +133,10 @@ export function resolveProvider(): ResolvedProvider {
   const provider = getProvider();
   const spec = PROVIDER_SPECS[provider];
 
-  const apiKey = process.env[spec.keyEnv]?.trim();
+  const apiKey = readProviderEnvKey(provider);
   if (!apiKey) {
     throw new Error(
-      `Missing required environment variable: ${spec.keyEnv} ` +
+      `Missing required environment variable: ${spec.keyEnvs[0]} ` +
         `(needed for LLM_PROVIDER="${provider}"). ${spec.keyHint} See .env.example.`,
     );
   }

@@ -19,7 +19,7 @@ import {
   getProvider,
   providerBaseURL,
   providerHeaders,
-  providerKeyEnv,
+  readProviderEnvKey,
   type Provider,
 } from "./provider";
 import { listEnabledProviderKeys } from "./provider-keys";
@@ -77,7 +77,7 @@ export async function resolveProviderChain(): Promise<ProviderCandidate[]> {
     envOrder = [...SUPPORTED_PROVIDERS];
   }
   for (const provider of envOrder) {
-    const envKey = process.env[providerKeyEnv(provider)]?.trim();
+    const envKey = readProviderEnvKey(provider);
     if (envKey) push("env", null, provider, envKey);
   }
 

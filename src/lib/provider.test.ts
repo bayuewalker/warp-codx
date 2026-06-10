@@ -15,6 +15,7 @@ import {
 const ENV_KEYS = [
   "LLM_PROVIDER",
   "OPENROUTER_API_KEY",
+  "OPEN_ROUTER_API_KEY",
   "OPENAI_API_KEY",
   "BLACKBOX_API_KEY",
   "OPENROUTER_BASE_URL",
@@ -75,6 +76,13 @@ describe("resolveProvider", () => {
     expect(r.apiKey).toBe("sk-or-test");
     expect(r.defaultHeaders["HTTP-Referer"]).toBe("https://example.test");
     expect(r.defaultHeaders["X-Title"]).toBe("WARP CodX");
+  });
+
+  it("accepts the OPEN_ROUTER_API_KEY alias for OpenRouter", () => {
+    process.env.LLM_PROVIDER = "openrouter";
+    process.env.OPEN_ROUTER_API_KEY = "sk-or-alias";
+    const r = resolveProvider();
+    expect(r.apiKey).toBe("sk-or-alias");
   });
 
   it("resolves OpenAI with no attribution headers", () => {
