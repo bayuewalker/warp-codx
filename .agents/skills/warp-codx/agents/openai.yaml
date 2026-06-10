@@ -1,0 +1,6 @@
+interface:
+  display_name: "Warp Codx"
+  short_description: "Repo-specific patterns and workflows for warp-codx"
+  default_prompt: "Use the warp-codx repo skill to follow existing architecture, testing, and workflow conventions."
+policy:
+  allow_implicit_invocation: true
