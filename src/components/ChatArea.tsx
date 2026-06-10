@@ -9,12 +9,10 @@ import SessionBar from "./SessionBar";
 import WarningBanner from "./WarningBanner";
 import ThinkingIndicator from "./ThinkingIndicator";
 import EmptyStateView from "./EmptyState";
-import ActivityPanel from "./ActivityPanel";
 import { cn } from "@/lib/cn";
 import { adminFetch } from "@/lib/admin-fetch";
 import { authFetch } from "@/lib/api-fetch";
 import { summarizeRefresh, type RefreshBody } from "@/lib/refresh-summary";
-import { useActivityPanel } from "@/hooks/useActivityPanel";
 
 const GUEST_MSG_KEY = "warp_guest_msg_count"; // kept for localStorage cleanup only
 
@@ -153,12 +151,12 @@ export default function ChatArea({
   const newDirectiveCtxRef = useRef<{
     sessionId: string | null;
     streaming: boolean;
-    handleSend: (text: string, opts?: { multiAgent?: boolean }) => Promise<void>;
+    handleSend: (text: string) => Promise<void>;
     onNewDirective: () => void;
   } | null>(null);
 
   const handleSend = useCallback(
-    async (text: string, opts?: { multiAgent?: boolean }) => {
+    async (text: string) => {
       if (!sessionId || !text.trim() || streaming) return;
       const trimmed = text.trim();
 
@@ -203,7 +201,6 @@ export default function ChatArea({
           body: JSON.stringify({
             sessionId,
             content: trimmed,
-            ...(opts?.multiAgent ? { agentMode: "multi" } : {}),
           }),
           signal: controller.signal,
         });
@@ -402,12 +399,33 @@ export default function ChatArea({
     [messages],
   );
 
-  // Activity panel — shows task progress above the input while CMD streams.
-  const {
-    items: activityItems,
-    elapsedSeconds: activityElapsed,
-    visible: activityVisible,
-  } = useActivityPanel({ streaming, streamingText });
+  // Live "thinking" state for the input footer — a short, real remark of what
+  // the assistant is doing right now plus a ticking elapsed timer. The phase is
+  // derived from the actual streamed output (not a canned animation): before any
+  // token it's "thinking"; inside an open code fence it's "writing code";
+  // otherwise "writing the response".
+  const [thinkingSeconds, setThinkingSeconds] = useState(0);
+  useEffect(() => {
+    if (!streaming) {
+      setThinkingSeconds(0);
+      return;
+    }
+    const start = Date.now();
+    setThinkingSeconds(0);
+    const id = window.setInterval(() => {
+      setThinkingSeconds(Math.floor((Date.now() - start) / 1000));
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [streaming]);
+
+  const thinkingLabel = useMemo(() => {
+    if (!streaming) return "";
+    if (streamingText.startsWith("[Error]")) return "error";
+    if (streamingText.length === 0) return "thinking";
+    const fenceCount = (streamingText.match(/```/g) ?? []).length;
+    if (fenceCount % 2 === 1) return "writing code";
+    return "writing";
+  }, [streaming, streamingText]);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -527,25 +545,14 @@ export default function ChatArea({
         )}
       </div>
 
-      {/* Activity panel — mounts above the input while CMD streams,
-          dismisses 1.5 s after streaming ends. Visibility is driven
-          by `useActivityPanel`; no animation needed on unmount because
-          the 1.5-s delay gives the user time to see the final state. */}
-      {activityVisible && (
-        <ActivityPanel
-          items={activityItems}
-          elapsedSeconds={activityElapsed}
-          streaming={streaming}
-        />
-      )}
-
-
       {/* Input */}
       <div className="bg-warp-bg kb-inset">
         <div className="max-w-3xl mx-auto w-full px-3 md:px-6 pt-3 pb-3">
           <ChatInput
             disabled={!sessionId}
             isStreaming={streaming}
+            thinkingLabel={thinkingLabel}
+            thinkingSeconds={thinkingSeconds}
             onStopStream={handleStopStream}
             placeholder={
               !sessionId
