@@ -1,0 +1,17 @@
+# graphify working state files
+.graphify_python
+.graphify_root
+.graphify_chunk_*.json
+.graphify_chunk_list_*.txt
+.graphify_detect.json
+.graphify_extract.json
+.graphify_ast.json
+.graphify_semantic.json
+.graphify_semantic_new.json
+.graphify_cached.json
+.graphify_uncached.txt
+.graphify_analysis.json
+.needs_update
+
+# graphify cache (derived, large)
+cache/
