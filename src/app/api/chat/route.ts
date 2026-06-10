@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
 import { requireUser } from "@/lib/roles";
 import { openChatStreamWithFailover } from "@/lib/llm";
+import {
+  autoPickModelId,
+  resolveSelectedModel,
+  isSelectableModelId,
+  type SelectableModelId,
+} from "@/lib/models";
 import { buildChatSystemPrompt, BASE_SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { extractAndStoreMemories } from "@/lib/memory";
 import { ISSUE_DRAFT_PROTOCOL } from "@/lib/issue-draft-protocol";
@@ -15,6 +21,8 @@ export const runtime = "nodejs";
 type ChatBody = {
   sessionId?: string;
   content?: string;
+  /** User-selected model id from the composer picker ("auto" by default). */
+  model?: string;
 };
 
 /**
@@ -46,6 +54,12 @@ export async function POST(req: Request) {
 
   const sessionId = body.sessionId?.trim();
   const content = body.content?.trim();
+  // Resolve the user's model choice. "Auto" routes per message (coding →
+  // Sonnet, chat → GPT-4o); an explicit pick pins that model. Either way the
+  // failover chain can still fall over to another provider on a credit error.
+  const selectedId: SelectableModelId = isSelectableModelId(body.model)
+    ? body.model
+    : "auto";
 
   if (!sessionId) {
     return NextResponse.json(
@@ -165,6 +179,11 @@ export async function POST(req: Request) {
     })),
   ];
 
+  // "Auto" resolves per message; an explicit pick is used verbatim. Computed
+  // here (where `content` is narrowed to a string) and captured by the stream.
+  const effectiveModelId =
+    selectedId === "auto" ? autoPickModelId(content) : selectedId;
+
   const encoder = new TextEncoder();
   let assembled = "";
 
@@ -179,6 +198,8 @@ export async function POST(req: Request) {
           messages,
           temperature: 0.6,
           maxTokens: 8192,
+          resolveModel: (provider) =>
+            resolveSelectedModel(effectiveModelId, provider),
         });
 
         let finishReason: string | null | undefined = null;
