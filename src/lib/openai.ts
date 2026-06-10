@@ -1,37 +1,27 @@
 import OpenAI from "openai";
+import { resolveProvider, type Provider } from "./provider";
 
 let _client: OpenAI | null = null;
+let _clientProvider: Provider | null = null;
 
 /**
- * OpenAI SDK pointed at OpenRouter (https://openrouter.ai).
+ * OpenAI SDK pointed at the active LLM provider (OpenRouter, OpenAI, or
+ * Blackbox — selected via `LLM_PROVIDER`, see `src/lib/provider.ts`).
  *
- * OpenRouter is a unified gateway that exposes an OpenAI-compatible API for
- * many model providers. Only `apiKey`, `baseURL`, and the optional attribution
- * headers change — streaming, message format, and tool-calling all stay the
- * same as the stock OpenAI SDK.
+ * All three providers expose an OpenAI-compatible API, so only `apiKey`,
+ * `baseURL`, and the optional attribution headers change — streaming, message
+ * format, and tool-calling all stay the same as the stock OpenAI SDK.
  *
- * Model names MUST include the provider prefix (e.g. "openai/gpt-4o"). See
- * `src/lib/models.ts`.
+ * Model names are resolved per-provider in `src/lib/models.ts`.
  */
 export function getOpenAI(): OpenAI {
-  if (_client) return _client;
-  const key = process.env.OPENROUTER_API_KEY;
-  if (!key) {
-    throw new Error(
-      "Missing required environment variable: OPENROUTER_API_KEY. " +
-        "Get a key at https://openrouter.ai/keys (format: sk-or-v1-...). " +
-        "See .env.example.",
-    );
-  }
-  _client = new OpenAI({
-    apiKey: key,
-    baseURL: "https://openrouter.ai/api/v1",
-    defaultHeaders: {
-      "HTTP-Referer":
-        process.env.NEXT_PUBLIC_SITE_URL ?? "https://warp-codx.fly.dev",
-      "X-Title": "WARP CodX",
-    },
-  });
+  const { provider, baseURL, apiKey, defaultHeaders } = resolveProvider();
+  // Re-create the client if the resolved provider changed (e.g. env flipped
+  // between requests in dev). In production the provider is fixed per process,
+  // so this is effectively a one-time init.
+  if (_client && _clientProvider === provider) return _client;
+  _client = new OpenAI({ apiKey, baseURL, defaultHeaders });
+  _clientProvider = provider;
   return _client;
 }
 

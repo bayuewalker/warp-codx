@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
 import { getOpenAI } from "@/lib/openai";
-import { MODELS } from "@/lib/models";
+import { getModel } from "@/lib/models";
 import {
   buildSystemPrompt,
   SAFE_DEFAULT_SYSTEM_PROMPT,
@@ -247,7 +247,7 @@ export async function POST(req: Request) {
     async start(controller) {
       try {
         const completion = await openai.chat.completions.create({
-          model: MODELS.cmd,
+          model: getModel("cmd"),
           stream: true,
           temperature: 0.6,
           max_tokens: 8192,

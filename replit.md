@@ -52,12 +52,12 @@ Still deferred (the auth-dependent half): sign-in UI (email magic-link), 401 gat
 
 - **Supabase**: Used for database operations, real-time functionalities, and caching.
     - `@supabase/supabase-js`
-- **OpenAI API**: Integrated for AI model interactions, specifically pointing to an OpenRouter gateway.
+- **LLM provider (OpenAI-compatible)**: All AI completions go through one OpenAI-compatible endpoint; the provider is selected at runtime via `LLM_PROVIDER` (`openrouter` | `openai` | `blackbox`). Resolution lives in `src/lib/provider.ts`; per-provider model defaults (overridable with `LLM_MODEL`) live in `src/lib/models.ts`.
     - OpenAI SDK
+    - `LLM_PROVIDER`, `LLM_MODEL` (optional)
+    - `OPENROUTER_API_KEY` (openrouter) · `OPENAI_API_KEY` (openai) · `BLACKBOX_API_KEY` (blackbox)
 - **GitHub API**: Utilized for fetching constitution files, creating issues, listing, and managing pull requests. Requires a Personal Access Token (`GITHUB_PAT_CONSTITUTION`).
     - Octokit (internal wrapper `src/lib/github-issues.ts`, `src/lib/github-prs.ts`)
-- **OpenRouter**: Acts as a gateway for OpenAI models, handling API key management and model routing.
-    - `OPENROUTER_API_KEY`
 - **Highlight.js**: Used for syntax highlighting in code blocks within chat messages.
     - `highlight.js/styles/github-dark.css`
 - **web-push**: Server-side Web Push (VAPID) delivery for Phase 4 push notifications. The browser opts in via `PushNotificationToggle` in Constitution Settings, the SW lives at `public/sw.js`, the helper at `src/lib/push-server.ts`, and routes at `/api/push/{subscribe,unsubscribe,test,vapid-public-key}`. Successful merge/close/hold/issue-create/constitution-refresh fire-and-forget a `sendPushToAll(...)` (which never throws — failures are logged, expired 410/404 endpoints are GCed). VAPID identity is read from `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_EMAIL` Replit Secrets.
