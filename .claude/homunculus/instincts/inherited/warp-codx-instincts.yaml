@@ -1,0 +1,319 @@
+# Instincts generated from https://github.com/bayuewalker/warp-codx
+# Generated: 2026-06-10T16:51:57.940Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: warp-codx-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/bayuewalker/warp-codx
+---
+
+# Warp Codx Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat
+
+## Evidence
+
+- 3 commits analyzed
+- Detected conventional commit pattern
+- Examples: feat: add graphify knowledge graph outputs, feat(graphify): add labels, HTML viz, and gitignore for working files
+
+---
+id: warp-codx-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/bayuewalker/warp-codx
+---
+
+# Warp Codx Commit Length
+
+## Action
+
+Write moderate-length commit messages (~63 characters)
+
+## Evidence
+
+- Average commit message length: 63 chars
+- Based on 3 commits
+
+---
+id: warp-codx-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/bayuewalker/warp-codx
+---
+
+# Warp Codx Naming Files
+
+## Action
+
+Use camelCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: camelCase
+
+---
+id: warp-codx-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/bayuewalker/warp-codx
+---
+
+# Warp Codx Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: warp-codx-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/bayuewalker/warp-codx
+---
+
+# Warp Codx Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: warp-codx-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/bayuewalker/warp-codx
+---
+
+# Warp Codx Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: warp-codx-instinct-file-naming-camelCase
+trigger: "When creating a new file in the repository"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: bayuewalker/warp-codx
+---
+
+# Warp Codx Instinct File Naming CamelCase
+
+## Action
+
+Name the file using camelCase format
+
+## Evidence
+
+- Pattern in namingConventions.files: camelCase
+
+---
+id: warp-codx-instinct-function-naming-camelCase
+trigger: "When defining a new function"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: bayuewalker/warp-codx
+---
+
+# Warp Codx Instinct Function Naming CamelCase
+
+## Action
+
+Name the function using camelCase format
+
+## Evidence
+
+- Pattern in namingConventions.functions: camelCase
+
+---
+id: warp-codx-instinct-class-naming-PascalCase
+trigger: "When defining a new class"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: bayuewalker/warp-codx
+---
+
+# Warp Codx Instinct Class Naming PascalCase
+
+## Action
+
+Name the class using PascalCase format
+
+## Evidence
+
+- Pattern in namingConventions.classes: PascalCase
+
+---
+id: warp-codx-instinct-constant-naming-SCREAMING_SNAKE_CASE
+trigger: "When defining a constant"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: bayuewalker/warp-codx
+---
+
+# Warp Codx Instinct Constant Naming SCREAMING_SNAKE_CASE
+
+## Action
+
+Name the constant using SCREAMING_SNAKE_CASE format
+
+## Evidence
+
+- Pattern in namingConventions.constants: SCREAMING_SNAKE_CASE
+
+---
+id: warp-codx-instinct-import-relative
+trigger: "When importing modules"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: bayuewalker/warp-codx
+---
+
+# Warp Codx Instinct Import Relative
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- importStyle: relative
+
+---
+id: warp-codx-instinct-export-named
+trigger: "When exporting functions, classes, or constants"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: bayuewalker/warp-codx
+---
+
+# Warp Codx Instinct Export Named
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- exportStyle: named
+
+---
+id: warp-codx-instinct-commit-conventional-feat
+trigger: "When making a commit that adds a new feature"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: bayuewalker/warp-codx
+---
+
+# Warp Codx Instinct Commit Conventional Feat
+
+## Action
+
+Prefix the commit message with 'feat:' following the conventional commit format
+
+## Evidence
+
+- Seen in commit: feat: add graphify knowledge graph outputs
+- Seen in commit: feat(graphify): add labels, HTML viz, and gitignore for working files
+- Pattern in commits.prefixes: feat
+
+---
+id: warp-codx-instinct-commit-length-60
+trigger: "When writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: bayuewalker/warp-codx
+---
+
+# Warp Codx Instinct Commit Length 60
+
+## Action
+
+Keep the commit message around 60 characters in length
+
+## Evidence
+
+- commits.averageLength: 63
+
+---
+id: warp-codx-instinct-test-location-separate
+trigger: "When adding or updating tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: bayuewalker/warp-codx
+---
+
+# Warp Codx Instinct Test Location Separate
+
+## Action
+
+Place test files in a separate directory from source files
+
+## Evidence
+
+- architecture.folderStructure.testLocation: separate
+
+---
+id: warp-codx-instinct-common-folder-graphify-out
+trigger: "When generating or storing graphify outputs"
+confidence: 0.8
+domain: architecture
+source: repo-analysis
+source_repo: bayuewalker/warp-codx
+---
+
+# Warp Codx Instinct Common Folder Graphify Out
+
+## Action
+
+Use the 'graphify-out' folder for output files
+
+## Evidence
+
+- architecture.folderStructure.commonFolders: graphify-out
+
