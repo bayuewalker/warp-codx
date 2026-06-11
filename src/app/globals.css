@@ -161,12 +161,60 @@ body {
    ───────────────────────────────────────────────────────────────── */
 .app-header {
   height: 44px;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   padding: 0 12px;
   background: var(--warp-bg);
   border-bottom: 1px solid var(--border-faint);
+}
+.app-header > .brand-wordmark { justify-self: center; }
+.header-actions {
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Chat actions overflow menu (Copy / Export) */
+.chat-actions { position: relative; display: inline-flex; }
+.chat-actions-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 50;
+  min-width: 150px;
+  padding: 4px;
+  background: var(--warp-bg-1);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+}
+.chat-actions-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--warp-text);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.chat-actions-item:hover { background: var(--warp-bg-2); }
+.chat-actions-flash {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  white-space: nowrap;
+  font-size: 11px;
+  color: var(--warp-text-dim);
+  background: var(--warp-bg-1);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+  padding: 3px 8px;
 }
 
 .header-icon-btn {

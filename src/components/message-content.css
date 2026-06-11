@@ -159,13 +159,17 @@
   border-top: none;
 }
 
-/* Header row gets a subtle tint so it reads as the column legend
-   rather than a data row. */
+/* Header row reads as the column legend (mono uppercase, muted) per the
+   mockup's def-table chrome — distinct from the bold white data rows. */
 .message-content .md-table-kv-row--header .md-table-kv-key,
 .message-content .md-table-kv-row--header .md-table-kv-val {
   background: var(--warp-bg-2);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
   font-weight: 600;
-  color: var(--warp-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--warp-text-mute);
 }
 
 /* Pattern B — status table. Same vertical-flow contract as the
@@ -452,10 +456,10 @@
    scroll away; code area scrolls horizontally on touch.
    ─────────────────────────────────────────────────────────────────── */
 .message-content .cbw {
-  margin: 0.7em 0;
+  margin: 0.8em 0;
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
-  background: var(--warp-bg);
+  border-radius: var(--radius-md);
+  background: var(--warp-bg-1);
   overflow: hidden;
 }
 
@@ -463,18 +467,24 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 5px 10px;
-  background: rgba(255,255,255,0.04);
+  padding: 7px 10px 7px 12px;
+  background: var(--warp-bg-2);
   border-bottom: 1px solid var(--border-soft);
-  min-height: 32px;
+  min-height: 34px;
 }
 
+/* Language label as a compact mono chip, matching the mockup's card chrome. */
 .message-content .cbw-lang {
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--warp-text-mute);
+  color: var(--warp-text-dim);
+  background: var(--warp-bg-3);
+  border: 1px solid var(--border-faint);
+  padding: 2px 7px;
+  border-radius: 4px;
 }
 
 .message-content .cbw-actions {
