@@ -25,6 +25,7 @@
 
 import { useState } from "react";
 import { issuesFetch } from "@/lib/issues-fetch";
+import { stripUrlScheme } from "@/lib/format";
 
 export type IssueDraftData = {
   title: string;
@@ -327,6 +328,3 @@ function kebab(s: string): string {
     .slice(0, 40);
 }
 
-function stripUrlScheme(url: string): string {
-  return url.replace(/^https?:\/\//, "");
-}

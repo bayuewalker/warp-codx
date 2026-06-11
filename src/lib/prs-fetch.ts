@@ -6,17 +6,18 @@
  * Mirrors `src/lib/issues-fetch.ts` exactly:
  *   - sends `x-warp-admin-token` (matches `adminGate` server contract)
  *   - reads/persists `WARP_ADMIN_TOKEN` in `sessionStorage`
- *   - on 403, prompts the operator once for the token, persists it,
- *     and retries the request once
+ *   - on 403, clears the stale token and propagates the response
  *   - in dev / preview the gate is permissive, so this behaves like
  *     a plain `fetch()` and no prompt fires
  *
  * Distinct sessionStorage key from `issues-fetch.ts` so the two
  * surfaces can in principle hold different tokens; in practice they
  * are the same secret. Never logged.
+ *
+ * Shared plumbing lives in `src/lib/session-token-fetch.ts`.
  */
 
-const STORAGE_KEY = "warpcodx.prsAdminToken";
+import { createSessionTokenClient } from "./session-token-fetch";
 
 /** Fires on explicit SET / CLEAR from Settings — listeners refetch. */
 export const PRS_ADMIN_TOKEN_EVENT = "warpcodx:prs-admin-token-changed";
@@ -25,59 +26,12 @@ export const PRS_ADMIN_TOKEN_EVENT = "warpcodx:prs-admin-token-changed";
 export const PRS_ADMIN_TOKEN_STATUS_EVENT =
   "warpcodx:prs-admin-token-status";
 
-function emitChange(): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.dispatchEvent(new CustomEvent(PRS_ADMIN_TOKEN_EVENT));
-  } catch {
-    /* noop */
-  }
-}
-
-function emitStatus(): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.dispatchEvent(new CustomEvent(PRS_ADMIN_TOKEN_STATUS_EVENT));
-  } catch {
-    /* noop */
-  }
-}
-
-function readToken(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    return window.sessionStorage.getItem(STORAGE_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function writeToken(value: string): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.setItem(STORAGE_KEY, value);
-  } catch {
-    /* private mode etc. — silently degrade */
-  }
-}
-
-function clearToken(): void {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.removeItem(STORAGE_KEY);
-  } catch {
-    /* noop */
-  }
-}
-
-function attachHeader(
-  init: RequestInit | undefined,
-  token: string | null,
-): RequestInit {
-  const headers = new Headers(init?.headers);
-  if (token) headers.set("x-warp-admin-token", token);
-  return { ...init, headers };
-}
+const client = createSessionTokenClient({
+  storageKey: "warpcodx.prsAdminToken",
+  headerName: "x-warp-admin-token",
+  clearOnStatus: 403,
+  changeEvent: PRS_ADMIN_TOKEN_EVENT,
+});
 
 /**
  * Drop-in replacement for `fetch()` targeting `/api/prs/*` routes.
@@ -87,23 +41,12 @@ export async function prsFetch(
   url: string,
   init?: RequestInit,
 ): Promise<Response> {
-  const initialToken = readToken();
-  let res = await fetch(url, attachHeader(init, initialToken));
-
-  if (res.status === 403) {
-    // Clear stale token and propagate the 403 — the caller's UI shows
-    // an error state. The operator sets the token via ConstitutionSettings
-    // (no intrusive window.prompt() on auto-fetches).
-    clearToken();
-  }
-
-  return res;
+  return client.fetch(url, init);
 }
 
 /** True iff a PRs admin token is currently cached in sessionStorage. */
 export function hasPRsAdminToken(): boolean {
-  const t = readToken();
-  return t !== null && t !== "";
+  return client.has();
 }
 
 /**
@@ -111,13 +54,9 @@ export function hasPRsAdminToken(): boolean {
  * Always emits a change event so live consumers can re-fetch.
  */
 export function setPRsAdminToken(value: string): void {
-  const trimmed = value.trim();
-  if (trimmed) writeToken(trimmed);
-  else clearToken();
-  emitChange();
+  client.set(value);
 }
 
 export function forgetPRsAdminToken(): void {
-  clearToken();
-  emitChange();
+  client.forget();
 }

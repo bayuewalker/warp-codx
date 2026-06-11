@@ -1,14 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
 import { requireUser } from "@/lib/roles";
+import { unauthorized } from "@/lib/route-helpers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-/** Standard 401 for unauthenticated callers (per-user isolation gate). */
-function unauthorized() {
-  return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-}
 
 /**
  * Task #37 — fetch a single session by id.

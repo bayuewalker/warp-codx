@@ -131,10 +131,12 @@ export async function extractAndStoreMemories(
     if (candidates.length === 0) return 0;
 
     // Dedup against everything we already track (case-insensitive).
+    const [active, pending] = await Promise.all([
+      listMemories("active"),
+      listMemories("pending"),
+    ]);
     const existing = new Set(
-      [...(await listMemories("active")), ...(await listMemories("pending"))].map(
-        (m) => m.content.trim().toLowerCase(),
-      ),
+      [...active, ...pending].map((m) => m.content.trim().toLowerCase()),
     );
     const fresh = candidates.filter(
       (c) => c && !existing.has(c.toLowerCase()),

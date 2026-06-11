@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/roles";
+import { adminGateResponse } from "@/lib/route-helpers";
 import {
   listProviderKeys,
   createProviderKey,
@@ -10,18 +11,9 @@ import {
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-function gate(result: Awaited<ReturnType<typeof requireAdmin>>) {
-  if ("error" in result) {
-    const status = result.error === "unauthenticated" ? 401 : 403;
-    return NextResponse.json({ error: result.error }, { status });
-  }
-  return null;
-}
-
 /** GET /api/admin/provider-keys → { keys } (masked, never raw). */
 export async function GET(req: Request) {
-  const auth = await requireAdmin(req);
-  const denied = gate(auth);
+  const denied = adminGateResponse(await requireAdmin(req));
   if (denied) return denied;
 
   const keys = (await listProviderKeys()).map(toPublic);
@@ -30,8 +22,7 @@ export async function GET(req: Request) {
 
 /** POST /api/admin/provider-keys { provider, apiKey, label?, priority? } */
 export async function POST(req: Request) {
-  const auth = await requireAdmin(req);
-  const denied = gate(auth);
+  const denied = adminGateResponse(await requireAdmin(req));
   if (denied) return denied;
 
   let body: {

@@ -25,9 +25,16 @@ import { NextResponse } from "next/server";
 import { getPRDetail, closePR } from "@/lib/github-prs";
 import { isAdminAllowed } from "@/lib/adminGate";
 import { statusFromAdapterError } from "@/lib/route-error";
-import { getServerSupabase } from "@/lib/supabase";
 import { sendPushToAll } from "@/lib/push-server";
 import { writeTaskCompleteMessage } from "@/lib/task-complete-write";
+import {
+  auditPRAction,
+  fireAndForget,
+  invalidPRNumberResponse,
+  parsePRNumber,
+  parseSessionId,
+  validateReason,
+} from "@/lib/pr-route-helpers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -37,34 +44,6 @@ type CloseBody = {
   reason?: string;
 };
 
-const MAX_REASON_LEN = 1000;
-
-async function audit(row: {
-  session_id: string | null;
-  pr_number: number;
-  reason: string;
-}) {
-  try {
-    const supabase = getServerSupabase();
-    const { error } = await supabase.from("pr_actions").insert({
-      ...row,
-      action: "close",
-      verdict: "ok",
-    });
-    if (error) {
-      console.error(
-        `[prs/close] audit insert failed (pr #${row.pr_number}): ${error.message}`,
-      );
-    }
-  } catch (err) {
-    console.error(
-      `[prs/close] audit insert threw (pr #${row.pr_number}): ${
-        err instanceof Error ? err.message : "unknown"
-      }`,
-    );
-  }
-}
-
 export async function POST(
   req: Request,
   ctx: { params: { number: string } },
@@ -73,13 +52,8 @@ export async function POST(
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const prNumber = Number.parseInt(ctx.params.number, 10);
-  if (!Number.isInteger(prNumber) || prNumber <= 0) {
-    return NextResponse.json(
-      { error: "pr number must be a positive integer" },
-      { status: 400 },
-    );
-  }
+  const prNumber = parsePRNumber(ctx.params.number);
+  if (prNumber === null) return invalidPRNumberResponse();
 
   let parsed: CloseBody;
   try {
@@ -88,24 +62,10 @@ export async function POST(
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
 
-  const reason = (parsed.reason ?? "").trim();
-  const sessionId =
-    typeof parsed.sessionId === "string" && parsed.sessionId.length > 0
-      ? parsed.sessionId
-      : null;
-
-  if (reason.length === 0) {
-    return NextResponse.json(
-      { error: "reason is required" },
-      { status: 400 },
-    );
-  }
-  if (reason.length > MAX_REASON_LEN) {
-    return NextResponse.json(
-      { error: `reason must be ≤ ${MAX_REASON_LEN} chars` },
-      { status: 400 },
-    );
-  }
+  const sessionId = parseSessionId(parsed.sessionId);
+  const reasonResult = validateReason(parsed.reason);
+  if (!reasonResult.ok) return reasonResult.response;
+  const { reason } = reasonResult;
 
   // Quick sanity check — refuse to close an already-closed/merged PR.
   let pr;
@@ -141,36 +101,33 @@ export async function POST(
     );
   }
 
-  await audit({ session_id: sessionId, pr_number: prNumber, reason });
+  await auditPRAction("close", {
+    session_id: sessionId,
+    pr_number: prNumber,
+    action: "close",
+    verdict: "ok",
+    reason,
+  });
 
-  // Phase 4 — fire-and-forget push notification. Detached (`void`)
-  // so the response is never blocked on Supabase select + push fanout.
-  // `sendPushToAll` swallows every error internally; the `.catch` here
-  // is a defensive guard against any future regression.
-  void sendPushToAll({
-    title: "❌ PR closed",
-    body: `${pr.branch} — ${reason.slice(0, 60)}`,
-    tag: `pr-${prNumber}`,
-    url: pr.url,
-  }).catch((err) =>
-    console.error(
-      `[push] close dispatch escaped: ${
-        err instanceof Error ? err.message : "unknown"
-      }`,
-    ),
+  // Phase 4 — fire-and-forget push notification, and Phase 3.5
+  // (option a) — fire-and-forget TASK_COMPLETE marker. Both detached
+  // so the response is never blocked. See issues/create/route.ts for
+  // the marker contract.
+  fireAndForget(
+    "[push] close dispatch",
+    sendPushToAll({
+      title: "❌ PR closed",
+      body: `${pr.branch} — ${reason.slice(0, 60)}`,
+      tag: `pr-${prNumber}`,
+      url: pr.url,
+    }),
   );
-
-  // Phase 3.5 (option a) — fire-and-forget TASK_COMPLETE marker.
-  // See issues/create/route.ts for the contract.
-  void writeTaskCompleteMessage(sessionId, {
-    kind: "pr_closed",
-    pr: { number: prNumber, reason, url: pr.url },
-  }).catch((err) =>
-    console.error(
-      `[task-complete-write] close dispatch escaped: ${
-        err instanceof Error ? err.message : "unknown"
-      }`,
-    ),
+  fireAndForget(
+    "[task-complete-write] close dispatch",
+    writeTaskCompleteMessage(sessionId, {
+      kind: "pr_closed",
+      pr: { number: prNumber, reason, url: pr.url },
+    }),
   );
 
   return NextResponse.json({

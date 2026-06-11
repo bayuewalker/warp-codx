@@ -83,6 +83,22 @@ export async function listEnabledProviderKeys(): Promise<ProviderKey[]> {
   return (await listProviderKeys()).filter((k) => k.enabled);
 }
 
+/** Single key by id, or null when missing / on failure. */
+export async function getProviderKey(id: string): Promise<ProviderKey | null> {
+  try {
+    const supabase = getServerSupabase();
+    const { data, error } = await supabase
+      .from("provider_keys")
+      .select(SELECT)
+      .eq("id", id)
+      .maybeSingle();
+    if (error || !data) return null;
+    return data as ProviderKey;
+  } catch {
+    return null;
+  }
+}
+
 export async function createProviderKey(input: {
   provider: Provider;
   apiKey: string;
