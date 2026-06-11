@@ -1573,6 +1573,84 @@ textarea, input {
   padding: 6px 2px;
 }
 
+/* ── Provider-key credit / balance line ── */
+.ws-credit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
+  font-size: 11px;
+}
+.ws-credit-label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 9px;
+  color: var(--warp-text-mute);
+}
+.ws-credit-value {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  color: var(--warp-accent, #4ea1ff);
+  font-weight: 600;
+}
+.ws-credit-value.is-muted {
+  color: var(--warp-text-mute);
+  font-weight: 400;
+}
+.ws-credit-refresh {
+  background: none;
+  border: none;
+  color: var(--warp-text-mute);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0 2px;
+  border-radius: 4px;
+}
+.ws-credit-refresh:hover:not(:disabled) {
+  color: var(--warp-text);
+}
+.ws-credit-refresh:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* ── On/off switch (provider keys) ── */
+.ws-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  flex: 0 0 auto;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  background: var(--warp-bg-1);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.ws-switch.is-on {
+  background: var(--warp-accent, #2f6bff);
+  border-color: var(--warp-accent, #2f6bff);
+}
+.ws-switch-knob {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--warp-text-dim, #cfd3dc);
+  transform: translateY(-50%);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.ws-switch.is-on .ws-switch-knob {
+  transform: translate(16px, -50%);
+  background: #fff;
+}
+.ws-switch:focus-visible {
+  outline: 2px solid var(--warp-accent, #4ea1ff);
+  outline-offset: 2px;
+}
+
 /* ─────────────────────────────────────────────────────────────────
    ATTACHMENT PILL — sits above .input-zone when a file is staged.
    Shows the paperclip icon, name, size, and a × clear button. The

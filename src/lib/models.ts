@@ -86,7 +86,13 @@ export function formatModelSlug(slug: string): string {
 // — while explicit picks pin one model. Each logical choice maps to the right
 // per-provider slug so it works whichever provider the failover chain uses.
 
-export type SelectableModelId = "auto" | "sonnet" | "gpt-4o" | "gpt-4o-mini";
+export type SelectableModelId =
+  | "auto"
+  | "sonnet"
+  | "opus"
+  | "gpt-5"
+  | "gpt-4o"
+  | "gpt-4o-mini";
 
 export type SelectableModel = {
   id: SelectableModelId;
@@ -115,6 +121,30 @@ export const SELECTABLE_MODELS: SelectableModel[] = [
       openrouter: "anthropic/claude-sonnet-4-6",
       blackbox: "blackboxai/anthropic/claude-sonnet-4.6",
       openai: "gpt-4o", // no Claude on OpenAI — closest capable fallback
+    },
+  },
+  {
+    id: "opus",
+    label: "Claude Opus 4.6",
+    short: "Opus",
+    hint: "Most capable — deep reasoning",
+    // "If available": where a provider lacks Opus the slug is omitted and the
+    // failover resolves the provider's cmd default instead of erroring.
+    slugs: {
+      openrouter: "anthropic/claude-opus-4-6",
+      blackbox: "blackboxai/anthropic/claude-opus-4.6",
+      // no Claude on OpenAI — falls back to the provider cmd default
+    },
+  },
+  {
+    id: "gpt-5",
+    label: "GPT-5",
+    short: "GPT-5",
+    hint: "OpenAI flagship",
+    slugs: {
+      openrouter: "openai/gpt-5",
+      openai: "gpt-5",
+      blackbox: "blackboxai/openai/gpt-5.5",
     },
   },
   {
@@ -147,7 +177,12 @@ export function modelShort(id: SelectableModelId): string {
 
 export function isSelectableModelId(v: unknown): v is SelectableModelId {
   return (
-    v === "auto" || v === "sonnet" || v === "gpt-4o" || v === "gpt-4o-mini"
+    v === "auto" ||
+    v === "sonnet" ||
+    v === "opus" ||
+    v === "gpt-5" ||
+    v === "gpt-4o" ||
+    v === "gpt-4o-mini"
   );
 }
 

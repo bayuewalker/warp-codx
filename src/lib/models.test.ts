@@ -86,11 +86,28 @@ describe("model selection (picker + auto)", () => {
   it("falls back to the provider cmd default for an unmapped model", () => {
     // Sonnet has no native OpenAI slug → falls back to the OpenAI cmd default.
     expect(resolveSelectedModel("sonnet", "openai")).toBe("gpt-4o");
+    // Opus has no OpenAI slug either → same graceful fallback.
+    expect(resolveSelectedModel("opus", "openai")).toBe("gpt-4o");
+  });
+
+  it("resolves the newly added opus + gpt-5 models", () => {
+    expect(resolveSelectedModel("opus", "openrouter")).toBe(
+      "anthropic/claude-opus-4-6",
+    );
+    expect(resolveSelectedModel("opus", "blackbox")).toBe(
+      "blackboxai/anthropic/claude-opus-4.6",
+    );
+    expect(resolveSelectedModel("gpt-5", "openai")).toBe("gpt-5");
+    expect(resolveSelectedModel("gpt-5", "blackbox")).toBe(
+      "blackboxai/openai/gpt-5.5",
+    );
   });
 
   it("validates selectable ids", () => {
     expect(isSelectableModelId("auto")).toBe(true);
     expect(isSelectableModelId("sonnet")).toBe(true);
+    expect(isSelectableModelId("opus")).toBe(true);
+    expect(isSelectableModelId("gpt-5")).toBe(true);
     expect(isSelectableModelId("nope")).toBe(false);
     expect(isSelectableModelId(null)).toBe(false);
   });
