@@ -159,13 +159,17 @@
   border-top: none;
 }
 
-/* Header row gets a subtle tint so it reads as the column legend
-   rather than a data row. */
+/* Header row reads as the column legend (mono uppercase, muted) per the
+   mockup's def-table chrome — distinct from the bold white data rows. */
 .message-content .md-table-kv-row--header .md-table-kv-key,
 .message-content .md-table-kv-row--header .md-table-kv-val {
   background: var(--warp-bg-2);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
   font-weight: 600;
-  color: var(--warp-text);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--warp-text-mute);
 }
 
 /* Pattern B — status table. Same vertical-flow contract as the
