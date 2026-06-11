@@ -9,6 +9,8 @@ type Props = {
   streaming?: boolean;
   /** Phase 3b — passed through to MessageContent for IssueCard create POST. */
   sessionId?: string | null;
+  /** Active model short label (e.g. "Sonnet 4.6") shown in card/section headers. */
+  modelLabel?: string;
 };
 
 /**
@@ -30,6 +32,7 @@ export default function MessageBubble({
   message,
   streaming = false,
   sessionId = null,
+  modelLabel,
 }: Props) {
   const hasContent = message.content.length > 0;
   const isUser = message.role === "user";
@@ -54,6 +57,7 @@ export default function MessageBubble({
             content={message.content}
             role={message.role}
             sessionId={sessionId}
+            modelLabel={modelLabel}
           />
         ) : (
           <span aria-hidden="true">&nbsp;</span>

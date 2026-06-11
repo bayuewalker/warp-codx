@@ -51,6 +51,8 @@ interface MessageContentProps {
   role: "user" | "assistant" | "system";
   /** Phase 3b — required for IssueCard.create POST. */
   sessionId?: string | null;
+  /** Active model short label (e.g. "Sonnet 4.6") for section/card header badges. */
+  modelLabel?: string;
 }
 
 /**
@@ -154,6 +156,7 @@ export default function MessageContent({
   content,
   role,
   sessionId = null,
+  modelLabel,
 }: MessageContentProps) {
   const roleClass = role === "user" ? "user" : "assistant";
 
@@ -325,6 +328,7 @@ export default function MessageContent({
                   icon={sec.icon}
                   title={sec.title}
                   rows={sec.rows}
+                  badge={modelLabel}
                 />
               );
             case "status-table":
@@ -334,6 +338,7 @@ export default function MessageContent({
                   icon={sec.icon}
                   title={sec.title}
                   rows={sec.rows}
+                  badge={modelLabel}
                 />
               );
             case "todos":

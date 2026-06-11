@@ -11,8 +11,11 @@
    ───────────────────────────────────────────────────────────────── */
 .message-content {
   font-family: var(--font-sans), system-ui, sans-serif;
-  font-size: 13px;
-  line-height: 1.65;
+  /* Main-response tier — the agent's narration reads large + near-white
+     so it sits clearly above the muted sub-response rows (action/tool
+     summaries). See the type scale in globals.css :root. */
+  font-size: var(--fs-prose);
+  line-height: var(--lh-prose);
   color: var(--warp-text);
   word-wrap: break-word;
   overflow-wrap: anywhere;
@@ -34,9 +37,9 @@
   line-height: 1.3;
   color: var(--text-primary, var(--warp-text));
 }
-.message-content h1 { font-size: 16px; font-weight: 700; }
-.message-content h2 { font-size: 15px; font-weight: 600; }
-.message-content h3 { font-size: 14px; font-weight: 600; }
+.message-content h1 { font-size: 18px; font-weight: 700; }
+.message-content h2 { font-size: 16.5px; font-weight: 600; }
+.message-content h3 { font-size: 15.5px; font-weight: 600; }
 
 /* Lists — generous breathing room, ordered markers feel calm.
    Padding-left holds continuation lines under the text rather than
@@ -306,7 +309,9 @@
    custom code card. */
 .message-content .md-inline-code {
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.88em;
+  /* Pinned (not em-relative) so code stays mono-small even as the prose
+     body grew to --fs-prose. */
+  font-size: 12.5px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--warp-text);
   padding: 0.25em 0.45em;
@@ -332,7 +337,8 @@
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.88em;
+  /* Pinned so fenced code stays mono-small under the larger prose body. */
+  font-size: 12.5px;
   line-height: 1.55;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
@@ -375,13 +381,13 @@
   align-items: baseline;
   gap: 6px;
   margin: 0.45em 0;
-  font-size: 13px;
+  font-size: var(--fs-prose);
   line-height: 1.6;
 }
 
 .message-content .md-task-check {
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: var(--fs-prose);
   line-height: 1.6;
 }
 
@@ -402,7 +408,7 @@
 .message-content .directive-block {
   position: relative;
   background: var(--warp-blue-soft);
-  border: 1px solid rgba(91, 164, 255, 0.20);
+  border: 1px solid rgba(55, 138, 221, 0.20);
   border-radius: var(--radius-sm);
   padding: 1.6em 0.9em 0.7em;
   margin: 0.6em 0;
@@ -564,7 +570,7 @@
    13 → 13.5 ratio after the WARP/ui-fix-r2 base reduction (was
    15 → 15.5 before). */
 .message-content--user {
-  font-size: 13.5px;
+  font-size: var(--fs-prose-user);
   line-height: 1.6;
   color: var(--warp-text);
   font-weight: 500;

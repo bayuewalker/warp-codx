@@ -206,7 +206,7 @@
 .todosPillDone {
   color: var(--warp-teal);
   background: var(--warp-teal-bg);
-  border-color: rgba(61, 223, 168, 0.25);
+  border-color: rgba(29, 158, 117, 0.25);
 }
 .todosCount {
   font-family: var(--font-mono), ui-monospace, monospace;
@@ -227,7 +227,7 @@
 }
 .todosItem:last-child { border-bottom: none; }
 .todosItemActive {
-  background: rgba(91, 164, 255, 0.05);
+  background: rgba(55, 138, 221, 0.05);
 }
 
 /* 20 × 20 circle */

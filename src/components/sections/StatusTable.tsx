@@ -7,6 +7,8 @@ interface StatusTableProps {
   icon: string;
   title: string;
   rows: StatusRow[];
+  /** Active model label shown top-right (falls back to "WARP•CMD"). */
+  badge?: string;
 }
 
 /**
@@ -18,6 +20,7 @@ export default function SectionsStatusTable({
   icon,
   title,
   rows,
+  badge,
 }: StatusTableProps) {
   return (
     <div className={`${styles.card} ${styles.cardBlue}`}>
@@ -28,7 +31,7 @@ export default function SectionsStatusTable({
           </span>
           <span className={styles.cardTitle}>{title || "STATUS"}</span>
         </div>
-        <span className={styles.agentBadge}>WARP•CMD</span>
+        <span className={styles.agentBadge}>{badge || "WARP•CMD"}</span>
       </div>
 
       <div>
@@ -37,9 +40,9 @@ export default function SectionsStatusTable({
           <span>Last Signal</span>
         </div>
         {rows.map((row, i) => {
-          const badge = detectBadge(row.signal);
+          const sigBadge = detectBadge(row.signal);
           // Strip badge keyword from signal text to avoid duplication
-          const signalText = badge
+          const signalText = sigBadge
             ? row.signal
                 .replace(
                   /\b(COMPLETE|DONE|PENDING|NOT READ|ERROR|FAILED?|FAIL)\b/gi,
@@ -54,17 +57,17 @@ export default function SectionsStatusTable({
               <div className={styles.statusFile}>{row.file}</div>
               <div className={styles.statusSignal}>
                 {signalText}
-                {badge && (
+                {sigBadge && (
                   <span
                     className={
-                      badge.kind === "green"
+                      sigBadge.kind === "green"
                         ? styles.badgeGreen
-                        : badge.kind === "red"
+                        : sigBadge.kind === "red"
                           ? styles.badgeRed
                           : styles.badgeMuted
                     }
                   >
-                    {badge.label}
+                    {sigBadge.label}
                   </span>
                 )}
               </div>

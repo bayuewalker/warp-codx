@@ -56,8 +56,14 @@ export default function CollapsibleSection({
         aria-controls={bodyId}
         className="w-full flex items-center justify-between gap-2 px-4 py-2.5 text-left hover:bg-white/5 transition-colors"
       >
-        <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-white/65 min-w-0">
-          <span aria-hidden="true">⚙</span>
+        <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em] text-white/60 min-w-0">
+          <span
+            aria-hidden="true"
+            className="inline-block text-[14px] leading-none transition-transform duration-200"
+            style={{ transform: expanded ? "rotate(90deg)" : "none" }}
+          >
+            ›
+          </span>
           <span className="truncate">
             {verb} — {count} action{count === 1 ? "" : "s"}
           </span>
