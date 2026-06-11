@@ -396,6 +396,7 @@ function MemoryTab() {
 function SkillsTab() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [markdown, setMarkdown] = useState("");
+  const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -449,6 +450,34 @@ function SkillsTab() {
 
   const install = () => installMarkdown(markdown);
 
+  // Install from a public GitHub link to a SKILL.md / *.md file.
+  const installFromUrl = useCallback(async () => {
+    const link = url.trim();
+    if (!link) return;
+    setBusy(true);
+    setError(null);
+    setFlash(null);
+    try {
+      const res = await fetch("/api/skills/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: link }),
+      });
+      const j = (await res.json().catch(() => ({}))) as {
+        skill?: Skill;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+      setUrl("");
+      setFlash(`Installed "${j.skill?.name ?? "skill"}" from GitHub.`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "import failed");
+    } finally {
+      setBusy(false);
+    }
+  }, [url, load]);
+
   // One-tap install from a SKILL.md file — read it client-side and install.
   const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -483,8 +512,8 @@ function SkillsTab() {
     <div>
       <p className="ws-help">
         Install SKILL.md modules to extend the assistant. Upload a{" "}
-        <code>.md</code> file in one tap, or paste a skill with optional{" "}
-        <code>---</code> frontmatter (<code>name</code>,{" "}
+        <code>.md</code> file, paste a GitHub link, or paste a skill with
+        optional <code>---</code> frontmatter (<code>name</code>,{" "}
         <code>description</code>, <code>triggers</code>).
       </p>
 
@@ -503,6 +532,29 @@ function SkillsTab() {
           disabled={busy}
         >
           {busy ? "Installing…" : "⬆ UPLOAD .md"}
+        </button>
+      </div>
+
+      <div className="ws-add-row">
+        <input
+          className="ws-input"
+          value={url}
+          placeholder="GitHub link to SKILL.md"
+          inputMode="url"
+          autoComplete="off"
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void installFromUrl();
+          }}
+          style={{ flex: "1 1 auto" }}
+        />
+        <button
+          type="button"
+          className="cs-action"
+          onClick={() => void installFromUrl()}
+          disabled={busy || !url.trim()}
+        >
+          {busy ? "Installing…" : "INSTALL FROM URL"}
         </button>
       </div>
 
