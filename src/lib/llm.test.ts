@@ -27,6 +27,7 @@ vi.mock("./models", () => ({ getModelForProvider: () => "test-model" }));
 
 import {
   isCreditError,
+  isInvalidModelError,
   openChatStreamWithFailover,
   createCompletionWithFailover,
   NO_PROVIDER_MESSAGE,
@@ -68,6 +69,26 @@ describe("isCreditError", () => {
   });
 });
 
+describe("isInvalidModelError", () => {
+  it("is true for Blackbox's 400 invalid-model rejection", () => {
+    expect(
+      isInvalidModelError({
+        status: 400,
+        error: { message: "Invalid model name passed in model=blackboxai/openai/gpt-4o." },
+      }),
+    ).toBe(true);
+  });
+  it("is true for 404 model-not-found variants", () => {
+    expect(isInvalidModelError({ status: 404, message: "The model does not exist" })).toBe(true);
+    expect(isInvalidModelError({ status: 400, message: "unknown model" })).toBe(true);
+  });
+  it("is false for credit errors and generic 400s", () => {
+    expect(isInvalidModelError({ status: 402, message: "insufficient credit" })).toBe(false);
+    expect(isInvalidModelError({ status: 400, message: "missing field content" })).toBe(false);
+    expect(isInvalidModelError({ status: 500, message: "invalid model" })).toBe(false);
+  });
+});
+
 describe("openChatStreamWithFailover", () => {
   it("throws a clear message when no provider is configured", async () => {
     resolveProviderChain.mockResolvedValueOnce([]);
@@ -93,6 +114,27 @@ describe("openChatStreamWithFailover", () => {
     expect(res.stream).toBe(fakeStream);
     // The exhausted key's error was recorded.
     expect(markProviderKeyError).toHaveBeenCalledWith("key-1", expect.any(String));
+  });
+
+  it("fails over to the next provider on an invalid-model error (no key marked)", async () => {
+    resolveProviderChain.mockResolvedValueOnce([
+      cand("blackbox", "key-1"),
+      cand("openrouter", "key-2"),
+    ]);
+    const fakeStream = { async *[Symbol.asyncIterator]() {} };
+    createMock
+      .mockRejectedValueOnce({
+        status: 400,
+        error: { message: "Invalid model name passed in model=blackboxai/openai/gpt-4o." },
+      })
+      .mockResolvedValueOnce(fakeStream);
+
+    const res = await openChatStreamWithFailover({ messages: [] });
+
+    expect(createMock).toHaveBeenCalledTimes(2);
+    expect(res.provider).toBe("openrouter");
+    // A stale slug is not the key's fault — don't record it as a key error.
+    expect(markProviderKeyError).not.toHaveBeenCalled();
   });
 
   it("surfaces a non-credit error immediately without trying the next key", async () => {

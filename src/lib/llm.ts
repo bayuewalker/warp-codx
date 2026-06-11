@@ -36,6 +36,25 @@ function errMessage(err: unknown): string {
   return e?.error?.message ?? e?.message ?? "unknown error";
 }
 
+/**
+ * True when an error means "this provider doesn't have the requested model"
+ * (a 400/404 invalid-model rejection — e.g. Blackbox returns 400 "Invalid
+ * model name" for a slug it no longer serves). Unlike a credit error this is a
+ * *slug* problem, not a *key* problem, so the failover loop should try the next
+ * provider (which may map the model to a valid slug) WITHOUT marking the key as
+ * failing. Without this, one stale slug on the first provider kills the whole
+ * request instead of falling over.
+ */
+export function isInvalidModelError(err: unknown): boolean {
+  const e = err as { status?: number; message?: string; error?: { message?: string } };
+  const status = typeof e?.status === "number" ? e.status : undefined;
+  if (status !== 400 && status !== 404) return false;
+  const msg = `${e?.message ?? ""} ${e?.error?.message ?? ""}`.toLowerCase();
+  return /invalid model|unknown model|model[^.]*(not found|does ?not ?exist|unavailable)|no such model/.test(
+    msg,
+  );
+}
+
 function clientFor(cand: ProviderCandidate): OpenAI {
   return new OpenAI({
     apiKey: cand.apiKey,
@@ -96,6 +115,12 @@ export async function openChatStreamWithFailover(
         if (cand.keyId) await markProviderKeyError(cand.keyId, errMessage(err));
         continue; // try the next provider/key
       }
+      if (isInvalidModelError(err)) {
+        console.warn(
+          `[llm] ${cand.provider} rejected model "${model}", trying next provider: ${errMessage(err)}`,
+        );
+        continue; // a stale slug here — another provider may serve the model
+      }
       throw err; // non-credit error — don't mask it
     }
   }
@@ -132,6 +157,12 @@ export async function createCompletionWithFailover(
       lastErr = err;
       if (isCreditError(err)) {
         if (cand.keyId) await markProviderKeyError(cand.keyId, errMessage(err));
+        continue;
+      }
+      if (isInvalidModelError(err)) {
+        console.warn(
+          `[llm] ${cand.provider} rejected model "${model}", trying next provider: ${errMessage(err)}`,
+        );
         continue;
       }
       throw err;
