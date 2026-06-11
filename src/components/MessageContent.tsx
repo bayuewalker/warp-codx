@@ -699,12 +699,28 @@ function MarkdownTable({ children }: { children?: ReactNode }) {
             <dd className="md-table-status-val">{headers[1]}</dd>
           </div>
           {rows.map((row, i) => {
-            const badge = detectStatusBadge(nodeText(row[1]));
+            const rawText = nodeText(row[1]);
+            const badge = detectStatusBadge(rawText);
+            // Strip the matching badge keyword from the cell text so we
+            // don't render "COMPLETE COMPLETE" / "PENDING PENDING" — the
+            // badge already conveys the state, the prose carries the
+            // remaining context. When the cell is *only* the keyword,
+            // residual text is empty and only the badge shows.
+            const residualText = badge
+              ? rawText
+                  .replace(
+                    /\b(COMPLETE|DONE|PENDING|NOT READ|ERROR|FAILED?|FAIL)\b/gi,
+                    "",
+                  )
+                  .trim()
+                  .replace(/\s{2,}/g, " ")
+              : null;
+            const hideOriginal = badge && residualText === "";
             return (
               <div className="md-table-status-row" key={i}>
                 <dt className="md-table-status-key">{row[0]}</dt>
                 <dd className="md-table-status-val">
-                  {row[1] ?? ""}
+                  {!hideOriginal && (residualText ?? row[1] ?? "")}
                   {badge && (
                     <span className={`md-table-badge md-table-badge--${badge.kind}`}>
                       {badge.label}
