@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, type ReactNode } from "react";
+import { codeBlockFilename, downloadTextFile } from "@/lib/chat-export";
 
 type Props = {
   lang: string | undefined;
@@ -43,24 +44,6 @@ export default function CodeBlockWrapper({ lang, rawText, children }: Props) {
     }
   }, [rawText]);
 
-  // Pick a sensible filename extension per language so the saved file
-  // opens in the right viewer. Unknown langs fall back to `.txt`.
-  const handleDownload = useCallback(() => {
-    const ext = extensionFor(lang);
-    const filename = `snippet-${Date.now().toString(36)}.${ext}`;
-    const blob = new Blob([rawText.replace(/\n$/, "") + "\n"], {
-      type: "text/plain;charset=utf-8",
-    });
-    const href = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = href;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(href), 1000);
-  }, [lang, rawText]);
-
   const handleRun = useCallback(() => {
     setOutput(null);
     setOutputError(false);
@@ -89,6 +72,14 @@ export default function CodeBlockWrapper({ lang, rawText, children }: Props) {
     }
   }, [rawText]);
 
+  const filename = useMemo(
+    () => codeBlockFilename(lang, rawText),
+    [lang, rawText],
+  );
+  const handleDownload = useCallback(() => {
+    downloadTextFile(filename, rawText.replace(/\n$/, ""), "text/plain;charset=utf-8");
+  }, [filename, rawText]);
+
   return (
     <div className="cbw">
       <div className="cbw-header">
@@ -101,12 +92,11 @@ export default function CodeBlockWrapper({ lang, rawText, children }: Props) {
           )}
           <button
             type="button"
-            className="cbw-download"
+            className="cbw-copy"
             onClick={handleDownload}
-            title="Download as file"
-            aria-label="Download as file"
+            title={`Download ${filename}`}
           >
-            ↓ File
+            ⤓ File
           </button>
           <button type="button" className="cbw-copy" onClick={handleCopy}>
             {copied ? "✓ Copied" : "Copy"}
@@ -139,31 +129,6 @@ export default function CodeBlockWrapper({ lang, rawText, children }: Props) {
       )}
     </div>
   );
-}
-
-const LANG_EXT: Record<string, string> = {
-  js: "js", javascript: "js", jsx: "jsx",
-  ts: "ts", typescript: "ts", tsx: "tsx",
-  py: "py", python: "py",
-  rb: "rb", ruby: "rb",
-  go: "go", rs: "rs", rust: "rs",
-  java: "java", kt: "kt", kotlin: "kt",
-  c: "c", h: "h", cpp: "cpp", "c++": "cpp",
-  cs: "cs", "c#": "cs", csharp: "cs",
-  php: "php", swift: "swift",
-  sh: "sh", bash: "sh", zsh: "sh", shell: "sh",
-  yaml: "yml", yml: "yml",
-  json: "json", toml: "toml",
-  xml: "xml", html: "html", css: "css", scss: "scss",
-  md: "md", markdown: "md",
-  sql: "sql",
-  diff: "diff", patch: "patch",
-  env: "env", dockerfile: "Dockerfile",
-};
-
-function extensionFor(lang: string | undefined): string {
-  if (!lang) return "txt";
-  return LANG_EXT[lang.toLowerCase()] ?? "txt";
 }
 
 function fallbackCopy(text: string, setCopied: (v: boolean) => void) {
