@@ -155,7 +155,9 @@ export const SELECTABLE_MODELS: SelectableModel[] = [
     slugs: {
       openrouter: "openai/gpt-4o",
       openai: "gpt-4o",
-      blackbox: "blackboxai/openai/gpt-4o",
+      // Blackbox no longer serves `blackboxai/openai/gpt-4o` (returns 400
+      // "Invalid model name"); its closest live GPT chat model is gpt-5.5.
+      blackbox: "blackboxai/openai/gpt-5.5",
     },
   },
   {
