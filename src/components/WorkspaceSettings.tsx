@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import PushNotificationToggle from "@/components/PushNotificationToggle";
+import AgentRunsPanel from "@/components/AgentRunsPanel";
 import { authFetch } from "@/lib/api-fetch";
 
 /**
@@ -14,7 +15,7 @@ import { authFetch } from "@/lib/api-fetch";
  * Reuses the existing `cs-*` modal styling from globals.css.
  */
 
-type Tab = "instructions" | "memory" | "skills" | "admin";
+type Tab = "instructions" | "memory" | "skills" | "agent" | "admin";
 
 type Provider = "openrouter" | "openai" | "blackbox";
 
@@ -122,6 +123,11 @@ export default function WorkspaceSettings({
             Skills
           </TabButton>
           {isAdmin && (
+            <TabButton id="agent" tab={tab} setTab={setTab}>
+              Agent
+            </TabButton>
+          )}
+          {isAdmin && (
             <TabButton id="admin" tab={tab} setTab={setTab}>
               Admin
             </TabButton>
@@ -131,6 +137,7 @@ export default function WorkspaceSettings({
         {tab === "instructions" && <InstructionsTab />}
         {tab === "memory" && <MemoryTab />}
         {tab === "skills" && <SkillsTab />}
+        {tab === "agent" && isAdmin && <AgentRunsPanel />}
         {tab === "admin" && isAdmin && <AdminTab />}
 
         <PushNotificationToggle />
