@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, type ReactNode } from "react";
+import { useState, useCallback, useMemo, type ReactNode } from "react";
 
 type Props = {
   lang: string | undefined;
@@ -8,14 +8,28 @@ type Props = {
   children: ReactNode;
 };
 
-const JS_LANGS = new Set(["js", "javascript", "ts", "typescript"]);
+// Only true JS runs in `new Function` — TS (`type X`, `: string`) throws a
+// SyntaxError, so a "Run" on a TS snippet always failed. Offer Run for JS only.
+const RUNNABLE_LANGS = new Set(["js", "javascript"]);
+
+// Code blocks taller than this collapse behind a "Show more" toggle so a long
+// snippet doesn't bury the rest of the reply on mobile.
+const COLLAPSE_LINES = 14;
 
 export default function CodeBlockWrapper({ lang, rawText, children }: Props) {
   const [copied, setCopied] = useState(false);
   const [output, setOutput] = useState<string | null>(null);
   const [outputError, setOutputError] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
-  const isRunnable = !!lang && JS_LANGS.has(lang.toLowerCase());
+  const isRunnable = !!lang && RUNNABLE_LANGS.has(lang.toLowerCase());
+
+  const lineCount = useMemo(
+    () => rawText.replace(/\n$/, "").split("\n").length,
+    [rawText],
+  );
+  const collapsible = lineCount > COLLAPSE_LINES;
+  const clamped = collapsible && !expanded;
 
   const handleCopy = useCallback(() => {
     const text = rawText.replace(/\n$/, "");
@@ -72,11 +86,24 @@ export default function CodeBlockWrapper({ lang, rawText, children }: Props) {
           </button>
         </div>
       </div>
-      <div className="cbw-scroll">
+      <div className={`cbw-scroll${clamped ? " cbw-scroll--clamped" : ""}`}>
         <pre className="md-code-block cbw-pre">
           {children}
         </pre>
+        {clamped && <div className="cbw-fade" aria-hidden />}
       </div>
+      {collapsible && (
+        <button
+          type="button"
+          className="cbw-expand"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+        >
+          {expanded
+            ? "▴ Show less"
+            : `▾ Show ${lineCount - COLLAPSE_LINES} more lines`}
+        </button>
+      )}
       {output !== null && (
         <div className={`cbw-output${outputError ? " cbw-output--err" : ""}`}>
           <span className="cbw-output-label">OUTPUT</span>
