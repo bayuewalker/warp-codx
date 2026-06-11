@@ -1491,6 +1491,17 @@ textarea, input {
   outline: none;
   border-color: var(--warp-blue-dim, var(--border-medium));
 }
+/* Compact inline priority editor inside a key row's description line. */
+.ws-prio-input {
+  width: 44px;
+  display: inline-block;
+  padding: 1px 4px;
+  margin-left: 3px;
+  font-size: 11px;
+  line-height: 1.4;
+  vertical-align: baseline;
+  border-radius: 5px;
+}
 .ws-add-row {
   display: flex;
   gap: 8px;
