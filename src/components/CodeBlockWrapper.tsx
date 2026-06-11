@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useMemo, type ReactNode } from "react";
+import { codeBlockFilename, downloadTextFile } from "@/lib/chat-export";
 
 type Props = {
   lang: string | undefined;
@@ -71,6 +72,14 @@ export default function CodeBlockWrapper({ lang, rawText, children }: Props) {
     }
   }, [rawText]);
 
+  const filename = useMemo(
+    () => codeBlockFilename(lang, rawText),
+    [lang, rawText],
+  );
+  const handleDownload = useCallback(() => {
+    downloadTextFile(filename, rawText.replace(/\n$/, ""), "text/plain;charset=utf-8");
+  }, [filename, rawText]);
+
   return (
     <div className="cbw">
       <div className="cbw-header">
@@ -81,6 +90,14 @@ export default function CodeBlockWrapper({ lang, rawText, children }: Props) {
               ▶ Run
             </button>
           )}
+          <button
+            type="button"
+            className="cbw-copy"
+            onClick={handleDownload}
+            title={`Download ${filename}`}
+          >
+            ⤓ File
+          </button>
           <button type="button" className="cbw-copy" onClick={handleCopy}>
             {copied ? "✓ Copied" : "Copy"}
           </button>

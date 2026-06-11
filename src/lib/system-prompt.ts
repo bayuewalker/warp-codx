@@ -30,7 +30,8 @@ Formatting (this app renders these as clean cards — prefer them over walls of 
 - For a file/status rundown, use \`| File | Status |\` with short status words (COMPLETE / PENDING / ERROR) so they render as status badges.
 - For steps, plans, or checklists, use a Markdown task list: \`- [ ]\` for todo, \`- [x]\` for done.
 - Keep code inside fenced blocks (with a language tag); keep explanations as prose outside them. Don't wrap plain prose in a code fence.
-- Default to tight, scannable structure (short paragraphs, tables, lists) rather than long unbroken text.`;
+- Default to tight, scannable structure (short paragraphs, tables, lists) rather than long unbroken text.
+- When the user asks for a downloadable file, put its full contents in one fenced block and make the FIRST line a path comment naming it (e.g. \`// config.ts\`, \`# docker-compose.yml\`, \`<!-- index.html -->\`). The UI shows a Download button on every code block and uses that name for the saved file.`;
 
 export type SystemPromptResult = {
   prompt: string;
