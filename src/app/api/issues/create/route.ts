@@ -33,6 +33,7 @@ import { getServerSupabase } from "@/lib/supabase";
 import { isAdminAllowed } from "@/lib/adminGate";
 import { sendPushToAll } from "@/lib/push-server";
 import { writeTaskCompleteMessage } from "@/lib/task-complete-write";
+import { fireAndForget, parseSessionId } from "@/lib/pr-route-helpers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -89,10 +90,7 @@ export async function POST(req: Request) {
   const body = (parsed.body ?? "").trim();
   const branchSlug = (parsed.branchSlug ?? "").trim();
   const validationTier = parsed.validationTier;
-  const sessionId =
-    typeof parsed.sessionId === "string" && parsed.sessionId.length > 0
-      ? parsed.sessionId
-      : null;
+  const sessionId = parseSessionId(parsed.sessionId);
 
   if (title.length === 0 || title.length > 256) {
     return NextResponse.json(
@@ -161,41 +159,31 @@ export async function POST(req: Request) {
     );
   }
 
-  // Phase 4 — fire-and-forget push notification. Detached (`void`)
-  // so the response is never blocked on Supabase select + push fanout.
-  // `sendPushToAll` swallows every error internally; the `.catch` here
-  // is a defensive guard against any future regression.
-  void sendPushToAll({
-    title: "🔖 Issue created",
-    body: `#${created.number} — ${created.title.slice(0, 60)}`,
-    tag: `issue-${created.number}`,
-    url: created.url,
-  }).catch((err) =>
-    console.error(
-      `[push] issue dispatch escaped: ${
-        err instanceof Error ? err.message : "unknown"
-      }`,
-    ),
-  );
-
-  // Phase 3.5 (option a) — fire-and-forget TASK_COMPLETE marker into
-  // the originating chat session so `TaskCompleteCard` mounts the
-  // moment the row lands (Realtime publication on `public.messages`).
-  // Silent no-op when sessionId is null. Best-effort: failures are
-  // logged inside the helper; the route response is unaffected.
-  void writeTaskCompleteMessage(sessionId, {
-    kind: "issue_created",
-    issue: {
-      number: created.number,
-      title: created.title,
+  // Phase 4 — fire-and-forget push notification, and Phase 3.5
+  // (option a) — fire-and-forget TASK_COMPLETE marker into the
+  // originating chat session so `TaskCompleteCard` mounts the moment
+  // the row lands (Realtime publication on `public.messages`). Silent
+  // no-op when sessionId is null. Both detached so the response is
+  // never blocked on Supabase select + push fanout.
+  fireAndForget(
+    "[push] issue dispatch",
+    sendPushToAll({
+      title: "🔖 Issue created",
+      body: `#${created.number} — ${created.title.slice(0, 60)}`,
+      tag: `issue-${created.number}`,
       url: created.url,
-    },
-  }).catch((err) =>
-    console.error(
-      `[task-complete-write] issue dispatch escaped: ${
-        err instanceof Error ? err.message : "unknown"
-      }`,
-    ),
+    }),
+  );
+  fireAndForget(
+    "[task-complete-write] issue dispatch",
+    writeTaskCompleteMessage(sessionId, {
+      kind: "issue_created",
+      issue: {
+        number: created.number,
+        title: created.title,
+        url: created.url,
+      },
+    }),
   );
 
   return NextResponse.json({

@@ -228,14 +228,7 @@ export function modelShort(id: SelectableModelId): string {
 }
 
 export function isSelectableModelId(v: unknown): v is SelectableModelId {
-  return (
-    v === "auto" ||
-    v === "sonnet" ||
-    v === "opus" ||
-    v === "gpt-5" ||
-    v === "gpt-4o" ||
-    v === "gpt-4o-mini"
-  );
+  return SELECTABLE_MODELS.some((m) => m.id === v);
 }
 
 export function modelLabel(id: SelectableModelId): string {
@@ -257,16 +250,18 @@ export function resolveSelectedModel(
   return entry?.slugs[provider] ?? MODEL_MATRIX[provider].cmd;
 }
 
+// Hoisted so the (large) keyword pattern is compiled once, not per message.
+const CODE_FENCE_RE = /```/;
+const CODE_KEYWORD_RE =
+  /\b(code|coding|function|class|bug|debug|error|stack ?trace|refactor|implement|compile|api|endpoint|sql|query|regex|component|deploy|docker|build|test|npm|yarn|pnpm|git|typescript|javascript|python|java|rust|golang|react|next\.?js|node|css|html|terminal|command|script)\b/i;
+
 /**
  * Lightweight, transparent coding-vs-chat classifier for "Auto". Looks for a
  * code fence or common engineering keywords. Used only to pick the default
  * model; never hidden from the user (the strip still shows what's active).
  */
 export function isCodingMessage(text: string): boolean {
-  if (/```/.test(text)) return true;
-  return /\b(code|coding|function|class|bug|debug|error|stack ?trace|refactor|implement|compile|api|endpoint|sql|query|regex|component|deploy|docker|build|test|npm|yarn|pnpm|git|typescript|javascript|python|java|rust|golang|react|next\.?js|node|css|html|terminal|command|script)\b/i.test(
-    text,
-  );
+  return CODE_FENCE_RE.test(text) || CODE_KEYWORD_RE.test(text);
 }
 
 /** Auto-route a message to a concrete selectable model id. */

@@ -32,6 +32,7 @@
  */
 
 import type { TaskCompletePayload } from "@/lib/task-complete-extract";
+import { stripUrlScheme } from "@/lib/format";
 
 type Props = {
   payload: TaskCompletePayload;
@@ -207,9 +208,6 @@ function renderForKind(p: TaskCompletePayload): View {
   }
 }
 
-function stripUrlScheme(u: string): string {
-  return u.replace(/^https?:\/\//, "");
-}
 
 function formatLocalTime(iso: string): string {
   const d = new Date(iso);

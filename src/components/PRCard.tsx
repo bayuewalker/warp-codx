@@ -29,6 +29,7 @@
 
 import { useEffect, useState } from "react";
 import { prsFetch } from "@/lib/prs-fetch";
+import { formatRelative } from "@/lib/format";
 import type { GateResult } from "@/lib/pr-gates";
 
 export type PRInitialIntent = "detail" | "merge" | "close" | "hold";
@@ -1010,17 +1011,3 @@ function accentForState(
   return "blue";
 }
 
-function formatRelative(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (Number.isNaN(then)) return "";
-  const diffMs = Date.now() - then;
-  const m = Math.floor(diffMs / 60_000);
-  if (m < 1) return "now";
-  if (m < 60) return `${m}m`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h`;
-  const d = Math.floor(h / 24);
-  if (d < 30) return `${d}d`;
-  const mo = Math.floor(d / 30);
-  return `${mo}mo`;
-}

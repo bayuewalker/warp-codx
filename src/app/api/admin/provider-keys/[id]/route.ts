@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/roles";
+import { adminGateResponse } from "@/lib/route-helpers";
 import { updateProviderKey, deleteProviderKey } from "@/lib/provider-keys";
 
 export const dynamic = "force-dynamic";
@@ -7,17 +8,9 @@ export const runtime = "nodejs";
 
 type Ctx = { params: { id: string } };
 
-function gate(result: Awaited<ReturnType<typeof requireAdmin>>) {
-  if ("error" in result) {
-    const status = result.error === "unauthenticated" ? 401 : 403;
-    return NextResponse.json({ error: result.error }, { status });
-  }
-  return null;
-}
-
 /** PATCH /api/admin/provider-keys/:id { enabled?, label?, priority?, apiKey? } */
 export async function PATCH(req: Request, { params }: Ctx) {
-  const denied = gate(await requireAdmin(req));
+  const denied = adminGateResponse(await requireAdmin(req));
   if (denied) return denied;
   if (!params.id) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
@@ -85,7 +78,7 @@ export async function PATCH(req: Request, { params }: Ctx) {
 
 /** DELETE /api/admin/provider-keys/:id */
 export async function DELETE(req: Request, { params }: Ctx) {
-  const denied = gate(await requireAdmin(req));
+  const denied = adminGateResponse(await requireAdmin(req));
   if (denied) return denied;
   if (!params.id) {
     return NextResponse.json({ error: "id is required" }, { status: 400 });

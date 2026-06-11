@@ -150,6 +150,152 @@ function renderRichBlock(spec: RichBlockSpec, key: number): ReactNode {
 // Phase 3c — `extractPRAction` lives in `src/lib/pr-action-extract.ts`
 // so it can be unit-tested without standing up a JSX environment.
 
+/**
+ * Markdown renderer config. References only module-level helpers (no
+ * props/state), so it lives at module scope — a stable identity keeps
+ * ReactMarkdown from re-running its component mapping on every
+ * streamed chunk re-render.
+ */
+const mdComponents: Components = {
+  pre({ children }) {
+    return <>{children}</>;
+  },
+  p({ children }) {
+    return <p>{withInlinePills(children)}</p>;
+  },
+  li({ children, className, ...props }) {
+    // GFM task list — remark-gfm injects an input[type=checkbox]
+    // as the first child of each task-list item. Replace it with
+    // ☐ / ☑ so we control the visual on mobile (no native
+    // disabled widget, consistent colour vs var(--warp-teal)).
+    const arr = Children.toArray(children);
+    const first = arr[0];
+    if (
+      isValidElement(first) &&
+      first.type === "input" &&
+      (first.props as { type?: string }).type === "checkbox"
+    ) {
+      const checked = Boolean(
+        (first.props as { checked?: boolean }).checked,
+      );
+      return (
+        <li
+          className={`md-task-item${className ? ` ${className}` : ""}`}
+          {...props}
+        >
+          <span
+            className={`md-task-check ${checked ? "md-task-check--done" : "md-task-check--todo"}`}
+            aria-hidden="true"
+          >
+            {checked ? "\u2611" : "\u2610"}
+          </span>
+          <span className="md-task-text">
+            {withInlinePills(arr.slice(1) as ReactNode)}
+          </span>
+        </li>
+      );
+    }
+    return (
+      <li className={className} {...props}>
+        {withInlinePills(children)}
+      </li>
+    );
+  },
+  strong({ children }) {
+    return (
+      <strong className="markdown-strong">
+        {withInlinePills(children)}
+      </strong>
+    );
+  },
+  em({ children }) {
+    return <em>{withInlinePills(children)}</em>;
+  },
+  code({ className, children, ...props }) {
+    const match = /language-([^\s]+)/.exec(className || "");
+    const lang = match?.[1];
+    const rawText =
+      typeof children === "string"
+        ? children
+        : Array.isArray(children)
+          ? children
+              .map((c) => (typeof c === "string" ? c : ""))
+              .join("")
+          : "";
+    const isBlock = !!match || rawText.includes("\n");
+
+    if (!isBlock) {
+      return (
+        <code className="md-inline-code" {...props}>
+          {children}
+        </code>
+      );
+    }
+
+    // Defensive fallback — rich-block fences are normally
+    // pre-extracted by `extractRichBlocks`. If a malformed one
+    // slips through (e.g. broken closing fence), still render
+    // something useful instead of leaking JSON.
+    if (lang === "warp-action") {
+      const payload = parseJson<ActionPayload>(rawText);
+      if (payload) return <ActionCard payload={payload} />;
+    }
+    if (lang === "warp-diff") {
+      const payload = parseJson<DiffPayload>(rawText);
+      if (payload) return <DiffBlock payload={payload} />;
+    }
+    if (lang === "warp-todos") {
+      const payload = parseJson<TodosPayload>(rawText);
+      if (payload) return <TodoBlock payload={payload} />;
+    }
+    if (lang === "warp-status") {
+      const payload = parseJson<StatusPayload>(rawText);
+      if (payload) return <StatusTable payload={payload} />;
+    }
+
+    if (lang === "directive") {
+      return (
+        <div className="directive-block">
+          <span className="directive-label">DISPATCH READY</span>
+          <pre className="directive-pre">
+            <code>{rawText.replace(/\n$/, "")}</code>
+          </pre>
+        </div>
+      );
+    }
+
+    return (
+      <CodeBlockWrapper lang={lang} rawText={rawText}>
+        <code className={className} {...props}>
+          {children}
+        </code>
+      </CodeBlockWrapper>
+    );
+  },
+  a({ children, ...props }) {
+    return (
+      <a target="_blank" rel="noopener noreferrer" {...props}>
+        {children}
+      </a>
+    );
+  },
+  table({ children }) {
+    // WARP/ui-fix-r3 — render markdown tables as a vertical
+    // definition list (2-col → key/value pairs) or stacked
+    // cards (3+ col), never as a horizontally scrolling
+    // <table>. Mobile (375px) operators were losing the
+    // right edge on every status report; vertical reflow
+    // wraps freely and removes the need for swipe-to-scroll.
+    return <MarkdownTable>{children}</MarkdownTable>;
+  },
+};
+
+const AGENT_LABELS: Record<AgentReplyName, string> = {
+  forge: "Planner",
+  sentinel: "Reviewer",
+  echo: "Reporter",
+};
+
 export default function MessageContent({
   content,
   role,
@@ -279,7 +425,6 @@ export default function MessageContent({
    * rendering (task-list items, inline code, fenced blocks, etc.)
    * is fully preserved.
    *
-   * Defined after `mdComponents` so it closes over it.
    */
   function renderProseContent(markdown: string, keyPrefix: string): ReactNode {
     // Guard: only run section splitting for assistant turns.
@@ -374,145 +519,6 @@ export default function MessageContent({
     );
   }
 
-  const mdComponents: Components = {
-          pre({ children }) {
-            return <>{children}</>;
-          },
-          p({ children }) {
-            return <p>{withInlinePills(children)}</p>;
-          },
-          li({ children, className, ...props }) {
-            // GFM task list — remark-gfm injects an input[type=checkbox]
-            // as the first child of each task-list item. Replace it with
-            // ☐ / ☑ so we control the visual on mobile (no native
-            // disabled widget, consistent colour vs var(--warp-teal)).
-            const arr = Children.toArray(children);
-            const first = arr[0];
-            if (
-              isValidElement(first) &&
-              first.type === "input" &&
-              (first.props as { type?: string }).type === "checkbox"
-            ) {
-              const checked = Boolean(
-                (first.props as { checked?: boolean }).checked,
-              );
-              return (
-                <li
-                  className={`md-task-item${className ? ` ${className}` : ""}`}
-                  {...props}
-                >
-                  <span
-                    className={`md-task-check ${checked ? "md-task-check--done" : "md-task-check--todo"}`}
-                    aria-hidden="true"
-                  >
-                    {checked ? "\u2611" : "\u2610"}
-                  </span>
-                  <span className="md-task-text">
-                    {withInlinePills(arr.slice(1) as ReactNode)}
-                  </span>
-                </li>
-              );
-            }
-            return (
-              <li className={className} {...props}>
-                {withInlinePills(children)}
-              </li>
-            );
-          },
-          strong({ children }) {
-            return (
-              <strong className="markdown-strong">
-                {withInlinePills(children)}
-              </strong>
-            );
-          },
-          em({ children }) {
-            return <em>{withInlinePills(children)}</em>;
-          },
-          code({ className, children, ...props }) {
-            const match = /language-([^\s]+)/.exec(className || "");
-            const lang = match?.[1];
-            const rawText =
-              typeof children === "string"
-                ? children
-                : Array.isArray(children)
-                  ? children
-                      .map((c) => (typeof c === "string" ? c : ""))
-                      .join("")
-                  : "";
-            const isBlock = !!match || rawText.includes("\n");
-
-            if (!isBlock) {
-              return (
-                <code className="md-inline-code" {...props}>
-                  {children}
-                </code>
-              );
-            }
-
-            // Defensive fallback — rich-block fences are normally
-            // pre-extracted by `extractRichBlocks`. If a malformed one
-            // slips through (e.g. broken closing fence), still render
-            // something useful instead of leaking JSON.
-            if (lang === "warp-action") {
-              const payload = parseJson<ActionPayload>(rawText);
-              if (payload) return <ActionCard payload={payload} />;
-            }
-            if (lang === "warp-diff") {
-              const payload = parseJson<DiffPayload>(rawText);
-              if (payload) return <DiffBlock payload={payload} />;
-            }
-            if (lang === "warp-todos") {
-              const payload = parseJson<TodosPayload>(rawText);
-              if (payload) return <TodoBlock payload={payload} />;
-            }
-            if (lang === "warp-status") {
-              const payload = parseJson<StatusPayload>(rawText);
-              if (payload) return <StatusTable payload={payload} />;
-            }
-
-            if (lang === "directive") {
-              return (
-                <div className="directive-block">
-                  <span className="directive-label">DISPATCH READY</span>
-                  <pre className="directive-pre">
-                    <code>{rawText.replace(/\n$/, "")}</code>
-                  </pre>
-                </div>
-              );
-            }
-
-            return (
-              <CodeBlockWrapper lang={lang} rawText={rawText}>
-                <code className={className} {...props}>
-                  {children}
-                </code>
-              </CodeBlockWrapper>
-            );
-          },
-          a({ children, ...props }) {
-            return (
-              <a target="_blank" rel="noopener noreferrer" {...props}>
-                {children}
-              </a>
-            );
-          },
-          table({ children }) {
-            // WARP/ui-fix-r3 — render markdown tables as a vertical
-            // definition list (2-col → key/value pairs) or stacked
-            // cards (3+ col), never as a horizontally scrolling
-            // <table>. Mobile (375px) operators were losing the
-            // right edge on every status report; vertical reflow
-            // wraps freely and removes the need for swipe-to-scroll.
-            return <MarkdownTable>{children}</MarkdownTable>;
-          },
-        };
-
-  const AGENT_LABELS: Record<AgentReplyName, string> = {
-    forge: "Planner",
-    sentinel: "Reviewer",
-    echo: "Reporter",
-  };
 
   return (
     <div className={`message-content message-content--${roleClass}`}>
