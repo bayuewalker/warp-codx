@@ -519,6 +519,38 @@
   border-radius: 2px;
 }
 
+/* Collapsed long code — clamp height + fade the cut edge, with a toggle. */
+.message-content .cbw-scroll--clamped {
+  position: relative;
+  max-height: 19em;
+  overflow-y: hidden;
+}
+.message-content .cbw-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3.2em;
+  pointer-events: none;
+  background: linear-gradient(to bottom, rgba(0,0,0,0), var(--warp-bg));
+}
+.message-content .cbw-expand {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.03);
+  border: none;
+  border-top: 1px solid var(--border-soft);
+  color: var(--warp-blue, #6ea8fe);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.message-content .cbw-expand:hover { background: rgba(255,255,255,0.07); }
+
 /* Override md-code-block margin/border when inside cbw — the wrapper
    provides both via its own border. */
 .message-content .cbw-pre {
