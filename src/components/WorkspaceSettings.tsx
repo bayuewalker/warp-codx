@@ -28,6 +28,18 @@ type ProviderKeyPublic = {
   keyPreview: string;
 };
 
+type BalanceResult = {
+  supported: boolean;
+  credits: number | null;
+  usage: number | null;
+  remaining: number | null;
+  currency: string;
+  note?: string;
+  error?: string;
+};
+
+type BalanceState = { loading: boolean; data?: BalanceResult };
+
 type Memory = {
   id: string;
   content: string;
@@ -120,7 +132,6 @@ export default function WorkspaceSettings({
         {tab === "skills" && <SkillsTab />}
         {tab === "admin" && isAdmin && <AdminTab />}
 
-        <div className="cs-section-title">Notifications</div>
         <PushNotificationToggle />
       </div>
     </div>
@@ -385,6 +396,7 @@ function MemoryTab() {
 function SkillsTab() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [markdown, setMarkdown] = useState("");
+  const [url, setUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -438,6 +450,34 @@ function SkillsTab() {
 
   const install = () => installMarkdown(markdown);
 
+  // Install from a public GitHub link to a SKILL.md / *.md file.
+  const installFromUrl = useCallback(async () => {
+    const link = url.trim();
+    if (!link) return;
+    setBusy(true);
+    setError(null);
+    setFlash(null);
+    try {
+      const res = await fetch("/api/skills/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: link }),
+      });
+      const j = (await res.json().catch(() => ({}))) as {
+        skill?: Skill;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+      setUrl("");
+      setFlash(`Installed "${j.skill?.name ?? "skill"}" from GitHub.`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "import failed");
+    } finally {
+      setBusy(false);
+    }
+  }, [url, load]);
+
   // One-tap install from a SKILL.md file — read it client-side and install.
   const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -472,8 +512,8 @@ function SkillsTab() {
     <div>
       <p className="ws-help">
         Install SKILL.md modules to extend the assistant. Upload a{" "}
-        <code>.md</code> file in one tap, or paste a skill with optional{" "}
-        <code>---</code> frontmatter (<code>name</code>,{" "}
+        <code>.md</code> file, paste a GitHub link, or paste a skill with
+        optional <code>---</code> frontmatter (<code>name</code>,{" "}
         <code>description</code>, <code>triggers</code>).
       </p>
 
@@ -495,6 +535,29 @@ function SkillsTab() {
         </button>
       </div>
 
+      <div className="ws-add-row">
+        <input
+          className="ws-input"
+          value={url}
+          placeholder="GitHub link to SKILL.md"
+          inputMode="url"
+          autoComplete="off"
+          onChange={(e) => setUrl(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void installFromUrl();
+          }}
+          style={{ flex: "1 1 auto" }}
+        />
+        <button
+          type="button"
+          className="cs-action"
+          onClick={() => void installFromUrl()}
+          disabled={busy || !url.trim()}
+        >
+          {busy ? "Installing…" : "INSTALL FROM URL"}
+        </button>
+      </div>
+
       <ul className="ws-list">
         {skills.length === 0 && (
           <li className="ws-empty">No skills installed.</li>
@@ -508,11 +571,13 @@ function SkillsTab() {
             <span className="ws-item-actions">
               <button
                 type="button"
-                className="ws-mini"
-                title={s.enabled ? "Disable" : "Enable"}
+                role="switch"
+                aria-checked={s.enabled}
+                className={`ws-switch${s.enabled ? " is-on" : ""}`}
+                title={s.enabled ? "Active — tap to remove" : "Tap to add skill"}
                 onClick={() => toggle(s)}
               >
-                {s.enabled ? "ON" : "OFF"}
+                <span className="ws-switch-knob" />
               </button>
               <button
                 type="button"
@@ -555,8 +620,45 @@ function SkillsTab() {
 
 const PROVIDERS: Provider[] = ["openrouter", "openai", "blackbox"];
 
+function formatCredits(n: number, currency: string): string {
+  const sym = currency === "USD" ? "$" : "";
+  const suffix = currency && currency !== "USD" ? ` ${currency}` : "";
+  return `${sym}${n.toFixed(2)}${suffix}`;
+}
+
+/** Render a key's balance: remaining (with used/total tooltip) or a graceful n/a. */
+function CreditValue({ bal }: { bal?: BalanceState }) {
+  if (!bal || bal.loading) {
+    return <span className="ws-credit-value is-muted">…</span>;
+  }
+  const d = bal.data;
+  if (!d || !d.supported) {
+    return (
+      <span className="ws-credit-value is-muted" title={d?.note ?? d?.error ?? "Not available"}>
+        n/a
+      </span>
+    );
+  }
+  const main =
+    d.remaining !== null
+      ? formatCredits(d.remaining, d.currency)
+      : d.credits !== null
+        ? formatCredits(d.credits, d.currency)
+        : "—";
+  const detail =
+    d.credits !== null && d.usage !== null
+      ? `${formatCredits(d.usage, d.currency)} used of ${formatCredits(d.credits, d.currency)}`
+      : undefined;
+  return (
+    <span className="ws-credit-value" title={detail}>
+      {main} left
+    </span>
+  );
+}
+
 function AdminTab() {
   const [keys, setKeys] = useState<ProviderKeyPublic[]>([]);
+  const [balances, setBalances] = useState<Record<string, BalanceState>>({});
   const [provider, setProvider] = useState<Provider>("blackbox");
   const [apiKey, setApiKey] = useState("");
   const [label, setLabel] = useState("");
@@ -576,9 +678,28 @@ function AdminTab() {
     }
   }, []);
 
+  const loadBalance = useCallback(async (id: string) => {
+    setBalances((b) => ({ ...b, [id]: { loading: true, data: b[id]?.data } }));
+    try {
+      const res = await authFetch(`/api/admin/provider-keys/${id}/balance`);
+      const d = (await res.json().catch(() => ({}))) as { balance?: BalanceResult };
+      setBalances((b) => ({ ...b, [id]: { loading: false, data: d.balance } }));
+    } catch {
+      setBalances((b) => ({ ...b, [id]: { loading: false, data: b[id]?.data } }));
+    }
+  }, []);
+
   useEffect(() => {
     void load();
   }, [load]);
+
+  // Lazily fetch each key's balance once it appears in the list.
+  useEffect(() => {
+    for (const k of keys) {
+      if (!(k.id in balances)) void loadBalance(k.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [keys]);
 
   const add = async () => {
     const key = apiKey.trim();
@@ -633,36 +754,55 @@ function AdminTab() {
             No provider keys yet — env keys (if any) are used as a fallback.
           </li>
         )}
-        {keys.map((k) => (
-          <li key={k.id} className="ws-item">
-            <span className="ws-item-text">
-              <strong>{k.provider}</strong>
-              <span className="ws-item-desc">
-                {k.keyPreview}
-                {k.label ? ` · ${k.label}` : ""} · p{k.priority}
-                {k.last_error ? ` · ⚠ ${k.last_error}` : ""}
+        {keys.map((k) => {
+          const bal = balances[k.id];
+          return (
+            <li key={k.id} className="ws-item">
+              <span className="ws-item-text">
+                <strong>{k.provider}</strong>
+                <span className="ws-item-desc">
+                  {k.keyPreview}
+                  {k.label ? ` · ${k.label}` : ""} · p{k.priority}
+                  {k.last_error ? ` · ⚠ ${k.last_error}` : ""}
+                </span>
+                <span className="ws-credit">
+                  <span className="ws-credit-label">credit</span>
+                  <CreditValue bal={bal} />
+                  <button
+                    type="button"
+                    className="ws-credit-refresh"
+                    title="Refresh balance"
+                    aria-label="Refresh balance"
+                    onClick={() => loadBalance(k.id)}
+                    disabled={bal?.loading}
+                  >
+                    ↻
+                  </button>
+                </span>
               </span>
-            </span>
-            <span className="ws-item-actions">
-              <button
-                type="button"
-                className="ws-mini"
-                title={k.enabled ? "Disable" : "Enable"}
-                onClick={() => toggle(k)}
-              >
-                {k.enabled ? "ON" : "OFF"}
-              </button>
-              <button
-                type="button"
-                className="ws-mini"
-                title="Delete"
-                onClick={() => remove(k.id)}
-              >
-                🗑
-              </button>
-            </span>
-          </li>
-        ))}
+              <span className="ws-item-actions">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={k.enabled}
+                  className={`ws-switch${k.enabled ? " is-on" : ""}`}
+                  title={k.enabled ? "Enabled — tap to disable" : "Disabled — tap to enable"}
+                  onClick={() => toggle(k)}
+                >
+                  <span className="ws-switch-knob" />
+                </button>
+                <button
+                  type="button"
+                  className="ws-mini"
+                  title="Delete"
+                  onClick={() => remove(k.id)}
+                >
+                  🗑
+                </button>
+              </span>
+            </li>
+          );
+        })}
       </ul>
 
       <div className="cs-section-title">Add a key</div>
