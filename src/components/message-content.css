@@ -35,8 +35,18 @@
   color: var(--text-primary, var(--warp-text));
 }
 .message-content h1 { font-size: 16px; font-weight: 700; }
-.message-content h2 { font-size: 15px; font-weight: 600; }
+.message-content h2 {
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 1.3em;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border-soft);
+}
 .message-content h3 { font-size: 14px; font-weight: 600; }
+/* First heading hugs the top — no oversized gap above the reply. */
+.message-content > h1:first-child,
+.message-content > h2:first-child,
+.message-content > h3:first-child { margin-top: 0; }
 
 /* Lists — generous breathing room, ordered markers feel calm.
    Padding-left holds continuation lines under the text rather than
