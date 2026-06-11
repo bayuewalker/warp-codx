@@ -1573,6 +1573,41 @@ textarea, input {
   padding: 6px 2px;
 }
 
+/* ── Provider-key validity dot (sits before the provider name) ── */
+.ws-key-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 7px;
+  vertical-align: middle;
+  background: var(--warp-text-mute);
+}
+.ws-key-dot.is-valid {
+  background: #2fbf71;
+  box-shadow: 0 0 0 2px rgba(47, 191, 113, 0.18);
+}
+.ws-key-dot.is-invalid {
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.18);
+}
+.ws-key-dot.is-unknown {
+  background: var(--warp-text-mute);
+}
+.ws-key-dot.is-checking {
+  background: #eab308;
+  animation: ws-dot-pulse 1s ease-in-out infinite;
+}
+@keyframes ws-dot-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
 /* ── Provider-key credit / balance line ── */
 .ws-credit {
   display: inline-flex;

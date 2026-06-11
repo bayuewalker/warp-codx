@@ -30,6 +30,7 @@ type ProviderKeyPublic = {
 
 type BalanceResult = {
   supported: boolean;
+  valid: "valid" | "invalid" | "unknown";
   credits: number | null;
   usage: number | null;
   remaining: number | null;
@@ -626,6 +627,20 @@ function formatCredits(n: number, currency: string): string {
   return `${sym}${n.toFixed(2)}${suffix}`;
 }
 
+/** Coloured dot showing whether the key authenticates: valid / invalid / unknown. */
+function KeyStatusDot({ bal }: { bal?: BalanceState }) {
+  const v = bal?.loading ? "checking" : (bal?.data?.valid ?? "unknown");
+  const title =
+    v === "valid"
+      ? "API key valid"
+      : v === "invalid"
+        ? "API key invalid or rejected"
+        : v === "checking"
+          ? "Checking key…"
+          : "Validity unknown";
+  return <span className={`ws-key-dot is-${v}`} title={title} aria-label={title} />;
+}
+
 /** Render a key's balance: remaining (with used/total tooltip) or a graceful n/a. */
 function CreditValue({ bal }: { bal?: BalanceState }) {
   if (!bal || bal.loading) {
@@ -759,7 +774,10 @@ function AdminTab() {
           return (
             <li key={k.id} className="ws-item">
               <span className="ws-item-text">
-                <strong>{k.provider}</strong>
+                <strong>
+                  <KeyStatusDot bal={bal} />
+                  {k.provider}
+                </strong>
                 <span className="ws-item-desc">
                   {k.keyPreview}
                   {k.label ? ` · ${k.label}` : ""} · p{k.priority}
