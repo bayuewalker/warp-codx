@@ -1,23 +1,32 @@
 /**
- * Best-effort provider credit / balance lookup (server-only).
+ * Best-effort provider credit / balance + key-validity lookup (server-only).
  *
  * Providers don't share a balance API, so this is a per-provider strategy with
  * graceful degradation: when a provider doesn't expose balance over its API (or
  * the call fails) we return `supported: false` with a short note rather than
  * throwing — the admin UI shows "n/a" instead of breaking.
  *
+ * Validity is determined independently of balance by probing an authenticated
+ * endpoint and reading the HTTP status: 200 → valid, 401/403 → invalid,
+ * anything else → unknown. A provider can be `valid` while its balance is `n/a`
+ * (e.g. OpenAI / Blackbox expose no balance endpoint).
+ *
  *   - openrouter — GET /credits → { data: { total_credits, total_usage } }
  *   - blackbox   — best-effort probe of a few likely endpoints (undocumented)
- *   - openai     — no public per-key balance endpoint → unsupported
+ *   - openai     — no public per-key balance endpoint → balance unsupported
  *
  * The raw key never leaves the server; this module is called from an
  * admin-gated route with the stored key.
  */
 import type { Provider } from "./provider";
 
+export type KeyValidity = "valid" | "invalid" | "unknown";
+
 export type BalanceResult = {
   /** True when the provider exposed a usable balance figure. */
   supported: boolean;
+  /** Whether the key authenticates against the provider. */
+  valid: KeyValidity;
   /** Total credits granted/purchased (provider units, usually USD). */
   credits: number | null;
   /** Total credits consumed. */
@@ -34,14 +43,15 @@ export type BalanceResult = {
 
 const TIMEOUT_MS = 8000;
 
-function unsupported(note: string): BalanceResult {
+function base(result: Partial<BalanceResult>): BalanceResult {
   return {
     supported: false,
+    valid: "unknown",
     credits: null,
     usage: null,
     remaining: null,
     currency: "USD",
-    note,
+    ...result,
   };
 }
 
@@ -49,11 +59,22 @@ function num(v: unknown): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-/** GET JSON with a bearer token and a hard timeout. Returns null on any failure. */
-async function getJson(
-  url: string,
-  apiKey: string,
-): Promise<Record<string, unknown> | null> {
+type Probe = {
+  /** HTTP status, or 0 when the request never completed (network/timeout). */
+  status: number;
+  /** Parsed JSON object when the body was JSON, else null. */
+  json: Record<string, unknown> | null;
+};
+
+/** Map an HTTP status to a key-validity verdict. */
+function validityFromStatus(status: number): KeyValidity {
+  if (status === 401 || status === 403) return "invalid";
+  if (status >= 200 && status < 300) return "valid";
+  return "unknown";
+}
+
+/** GET with a bearer token + hard timeout. Never throws; status 0 on failure. */
+async function probe(url: string, apiKey: string): Promise<Probe> {
   try {
     const res = await fetch(url, {
       method: "GET",
@@ -64,13 +85,18 @@ async function getJson(
       signal: AbortSignal.timeout(TIMEOUT_MS),
       cache: "no-store",
     });
-    if (!res.ok) return null;
-    const json = (await res.json()) as unknown;
-    return json && typeof json === "object"
-      ? (json as Record<string, unknown>)
-      : null;
+    let json: Record<string, unknown> | null = null;
+    try {
+      const parsed = (await res.json()) as unknown;
+      if (parsed && typeof parsed === "object") {
+        json = parsed as Record<string, unknown>;
+      }
+    } catch {
+      /* non-JSON body — validity still comes from the status */
+    }
+    return { status: res.status, json };
   } catch {
-    return null;
+    return { status: 0, json: null };
   }
 }
 
@@ -79,46 +105,82 @@ async function openrouterBalance(
   apiKey: string,
   baseURL: string,
 ): Promise<BalanceResult> {
-  const json = await getJson(`${baseURL.replace(/\/$/, "")}/credits`, apiKey);
+  const { status, json } = await probe(
+    `${baseURL.replace(/\/$/, "")}/credits`,
+    apiKey,
+  );
+  const valid = validityFromStatus(status);
   const data = (json?.data ?? null) as Record<string, unknown> | null;
   if (!data) {
-    return {
-      ...unsupported("OpenRouter balance unavailable (check the key)."),
+    return base({
+      valid,
+      note:
+        valid === "invalid"
+          ? "Key rejected by OpenRouter."
+          : "OpenRouter balance unavailable.",
       error: "lookup failed",
-    };
+    });
   }
   const credits = num(data.total_credits);
   const usage = num(data.total_usage);
-  const remaining =
-    credits !== null && usage !== null ? credits - usage : null;
-  return {
+  const remaining = credits !== null && usage !== null ? credits - usage : null;
+  return base({
     supported: credits !== null || usage !== null,
+    valid: "valid",
     credits,
     usage,
     remaining,
     currency: "USD",
-  };
+  });
+}
+
+/**
+ * OpenAI: no per-key balance endpoint, but GET {base}/models is authenticated,
+ * so it doubles as a clean validity check.
+ */
+async function openaiBalance(
+  apiKey: string,
+  baseURL: string,
+): Promise<BalanceResult> {
+  const { status } = await probe(`${baseURL.replace(/\/$/, "")}/models`, apiKey);
+  return base({
+    valid: validityFromStatus(status),
+    note: "OpenAI exposes no per-key balance — see platform billing.",
+  });
 }
 
 /**
  * Blackbox: undocumented balance API. Probe a few plausible OpenAI-style
- * endpoints and parse common shapes; fall back to unsupported when none answer.
+ * endpoints for a balance; separately hit /models to judge key validity.
  */
 async function blackboxBalance(
   apiKey: string,
   baseURL: string,
 ): Promise<BalanceResult> {
-  const base = baseURL.replace(/\/$/, "");
+  const root = baseURL.replace(/\/$/, "");
+
+  // Validity: /models is the most likely authenticated, cheap endpoint.
+  let valid: KeyValidity = "unknown";
+  for (const url of [`${root}/v1/models`, `${root}/models`]) {
+    const { status } = await probe(url, apiKey);
+    const v = validityFromStatus(status);
+    if (v !== "unknown") {
+      valid = v;
+      break;
+    }
+  }
+
+  // Balance: best-effort across a handful of shapes.
   const candidates = [
-    `${base}/v1/credits`,
-    `${base}/credits`,
-    `${base}/v1/dashboard/billing/credit_grants`,
-    `${base}/user/info`,
+    `${root}/v1/credits`,
+    `${root}/credits`,
+    `${root}/v1/dashboard/billing/credit_grants`,
+    `${root}/user/info`,
   ];
   for (const url of candidates) {
-    const json = await getJson(url, apiKey);
+    const { status, json } = await probe(url, apiKey);
+    if (valid === "unknown") valid = validityFromStatus(status);
     if (!json) continue;
-    // Accept a handful of shapes seen across OpenAI-compatible billing APIs.
     const data = (json.data ?? json) as Record<string, unknown>;
     const credits =
       num(data.total_credits) ??
@@ -131,21 +193,25 @@ async function blackboxBalance(
       num(data.remaining) ??
       (credits !== null && usage !== null ? credits - usage : credits);
     if (credits !== null || usage !== null || remaining !== null) {
-      return {
+      return base({
         supported: true,
+        valid: "valid",
         credits,
         usage,
         remaining,
         currency: typeof data.currency === "string" ? data.currency : "USD",
-      };
+      });
     }
   }
-  return unsupported("Blackbox API doesn't expose balance — see dashboard.");
+  return base({
+    valid,
+    note: "Blackbox API doesn't expose balance — see dashboard.",
+  });
 }
 
 /**
- * Resolve a provider key's balance. Always resolves (never throws) so the admin
- * UI can render a result or a graceful "n/a".
+ * Resolve a provider key's balance + validity. Always resolves (never throws)
+ * so the admin UI can render a result or a graceful "n/a".
  */
 export async function fetchProviderBalance(
   provider: Provider,
@@ -159,16 +225,14 @@ export async function fetchProviderBalance(
       case "blackbox":
         return await blackboxBalance(apiKey, baseURL);
       case "openai":
-        return unsupported(
-          "OpenAI has no per-key balance endpoint — see platform billing.",
-        );
+        return await openaiBalance(apiKey, baseURL);
       default:
-        return unsupported("Balance not supported for this provider.");
+        return base({ note: "Balance not supported for this provider." });
     }
   } catch (err) {
-    return {
-      ...unsupported("Balance lookup failed."),
+    return base({
+      note: "Balance lookup failed.",
       error: err instanceof Error ? err.message : "unknown error",
-    };
+    });
   }
 }
