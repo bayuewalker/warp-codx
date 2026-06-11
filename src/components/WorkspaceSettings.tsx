@@ -132,7 +132,6 @@ export default function WorkspaceSettings({
         {tab === "skills" && <SkillsTab />}
         {tab === "admin" && isAdmin && <AdminTab />}
 
-        <div className="cs-section-title">Notifications</div>
         <PushNotificationToggle />
       </div>
     </div>
@@ -520,11 +519,13 @@ function SkillsTab() {
             <span className="ws-item-actions">
               <button
                 type="button"
-                className="ws-mini"
-                title={s.enabled ? "Disable" : "Enable"}
+                role="switch"
+                aria-checked={s.enabled}
+                className={`ws-switch${s.enabled ? " is-on" : ""}`}
+                title={s.enabled ? "Active — tap to remove" : "Tap to add skill"}
                 onClick={() => toggle(s)}
               >
-                {s.enabled ? "ON" : "OFF"}
+                <span className="ws-switch-knob" />
               </button>
               <button
                 type="button"

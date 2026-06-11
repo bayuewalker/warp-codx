@@ -115,7 +115,7 @@ export const SELECTABLE_MODELS: SelectableModel[] = [
   {
     id: "sonnet",
     label: "Claude Sonnet 4.6",
-    short: "Sonnet",
+    short: "Sonnet 4.6",
     hint: "Best for coding & reasoning",
     slugs: {
       openrouter: "anthropic/claude-sonnet-4-6",
@@ -126,7 +126,7 @@ export const SELECTABLE_MODELS: SelectableModel[] = [
   {
     id: "opus",
     label: "Claude Opus 4.6",
-    short: "Opus",
+    short: "Opus 4.6",
     hint: "Most capable — deep reasoning",
     // "If available": where a provider lacks Opus the slug is omitted and the
     // failover resolves the provider's cmd default instead of erroring.
