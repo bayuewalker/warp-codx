@@ -7,7 +7,6 @@ import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
 import SessionBar from "./SessionBar";
 import WarningBanner from "./WarningBanner";
-import ThinkingIndicator from "./ThinkingIndicator";
 import EmptyStateView from "./EmptyState";
 import { cn } from "@/lib/cn";
 import { adminFetch } from "@/lib/admin-fetch";
@@ -16,6 +15,7 @@ import { summarizeRefresh, type RefreshBody } from "@/lib/refresh-summary";
 import { emitAssistantActivity } from "@/lib/assistant-activity";
 import { getSelectedModelId, useSelectedModel } from "@/lib/selected-model";
 import { modelShort } from "@/lib/models";
+import { SHOWCASE_CONTENT } from "@/lib/showcase";
 import ChatActionsMenu from "./ChatActionsMenu";
 
 const GUEST_MSG_KEY = "warp_guest_msg_count"; // kept for localStorage cleanup only
@@ -361,6 +361,24 @@ export default function ChatArea({
   const handleSlashCommand = useCallback(
     async (raw: string): Promise<boolean> => {
       const cmd = raw.trim().toLowerCase().replace(/\s+/g, " ");
+
+      // /test (alias /showcase, /demo) — inject a synthetic assistant turn
+      // that renders every response style. Local-only: never hits the API.
+      if (cmd === "/test" || cmd === "/showcase" || cmd === "/demo") {
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `temp-showcase-${Date.now()}`,
+            session_id: sessionId ?? "",
+            role: "assistant",
+            content: SHOWCASE_CONTENT,
+            created_at: new Date().toISOString(),
+          },
+        ]);
+        setTimeout(scrollToBottom, 0);
+        return true;
+      }
+
       if (cmd !== "/refresh constitution") return false;
 
       // Optimistic transcript echo so the operator can see the
@@ -596,15 +614,6 @@ export default function ChatArea({
           </ul>
         )}
       </div>
-
-      {/* Thinking pill — anchored just above the input so it's always at
-          the bottom of the viewport, never floating mid-scroll. Only shown
-          before the first streamed token arrives. */}
-      {streaming && streamingText.length === 0 && (
-        <div className="warp-thinking-anchor">
-          <ThinkingIndicator />
-        </div>
-      )}
 
       {/* Input */}
       <div className="bg-warp-bg kb-inset">

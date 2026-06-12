@@ -419,7 +419,20 @@ export default function ChatInput({
       <div className="input-footer" data-streaming={isStreaming ? "true" : "false"}>
         {isStreaming && (
           <span className="footer-thinking" role="status" aria-live="polite">
-            <span className="footer-thinking-orb" aria-hidden="true" />
+            <span className="footer-thinking-icon" aria-hidden="true">
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.7}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="12" cy="12" r="9.5" />
+                <polyline points="8 9 11 12 8 15" />
+                <line x1="13" y1="15" x2="16.5" y2="15" />
+              </svg>
+            </span>
             <span className="footer-thinking-label">
               {thinkingLabel || "thinking"}
             </span>
