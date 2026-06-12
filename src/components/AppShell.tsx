@@ -57,7 +57,11 @@ export default function AppShell() {
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<
+    "instructions" | "memory" | "skills" | "display" | "agent" | "admin" | undefined
+  >(undefined);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -118,6 +122,15 @@ export default function AppShell() {
     return () => cleanup?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Resolve admin role once auth is ready (needed to show admin palette items).
+  useEffect(() => {
+    if (auth.kind !== "ready") { setIsAdmin(false); return; }
+    authFetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { role?: string } | null) => { setIsAdmin(d?.role === "admin"); })
+      .catch(() => { setIsAdmin(false); });
+  }, [auth.kind]);
 
   const handleSignOut = useCallback(async () => {
     try { await getBrowserSupabase().auth.signOut(); } catch { /* ignore */ }
@@ -306,6 +319,11 @@ export default function AppShell() {
           handleSelect(action.sessionId);
           return;
         case "open-settings":
+          setSettingsInitialTab(undefined);
+          setSettingsOpen(true);
+          return;
+        case "open-agent-panel":
+          setSettingsInitialTab("agent");
           setSettingsOpen(true);
           return;
         case "select-model":
@@ -408,10 +426,12 @@ export default function AppShell() {
       <WorkspaceSettings
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        initialTab={settingsInitialTab}
       />
       <CommandPalette
         sessions={sessions}
         activeSessionId={activeId}
+        isAdmin={isAdmin}
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
         onAction={(a) => void handlePaletteAction(a)}

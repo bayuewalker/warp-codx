@@ -69,12 +69,32 @@ type Skill = {
 export default function WorkspaceSettings({
   open,
   onClose,
+  initialTab,
 }: {
   open: boolean;
   onClose: () => void;
+  /** If provided, the panel opens to this tab directly (e.g. "agent" from ⌘K). */
+  initialTab?: Tab;
 }) {
-  const [tab, setTab] = useState<Tab>("instructions");
+  const [tab, setTab] = useState<Tab>(initialTab ?? "instructions");
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // When the panel is opened with a specific tab (e.g. via ⌘K "Launch agent"),
+  // jump to that tab. Using a ref to track the previous value avoids re-running
+  // when tab changes from the user clicking a tab button.
+  const prevInitialTab = useRef(initialTab);
+  useEffect(() => {
+    if (initialTab && initialTab !== prevInitialTab.current) {
+      setTab(initialTab);
+    }
+    prevInitialTab.current = initialTab;
+  }, [initialTab]);
+
+  // Reset to initialTab (or default) each time the panel opens.
+  useEffect(() => {
+    if (open) setTab(initialTab ?? "instructions");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   // Resolve the signed-in user's role so the Admin tab only shows for admins.
   useEffect(() => {

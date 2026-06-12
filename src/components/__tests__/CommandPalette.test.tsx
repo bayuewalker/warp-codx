@@ -31,13 +31,14 @@ const sessions = [
   },
 ];
 
-function renderPalette(opts: { open?: boolean } = {}) {
+function renderPalette(opts: { open?: boolean; isAdmin?: boolean } = {}) {
   const onAction = vi.fn<(a: PaletteAction) => void>();
   const onClose = vi.fn();
   const utils = render(
     <CommandPalette
       sessions={sessions}
       activeSessionId="sess-1"
+      isAdmin={opts.isAdmin ?? false}
       onAction={onAction}
       open={opts.open ?? true}
       onClose={onClose}
@@ -58,12 +59,19 @@ afterEach(() => {
 describe("CommandPalette", () => {
   it("renders the default action rows and the supplied sessions", () => {
     renderPalette();
-    // Wait for animation frame to flip data-state.
     expect(screen.getByLabelText("Command palette")).toBeTruthy();
     expect(screen.getByText("New directive")).toBeTruthy();
-    expect(screen.getByText("Refresh constitution")).toBeTruthy();
+    expect(screen.getByText("Open settings")).toBeTruthy();
+    // Admin-only items are hidden by default.
+    expect(screen.queryByText("Refresh constitution")).toBeNull();
     expect(screen.getByText("Refactor billing flow")).toBeTruthy();
     expect(screen.getByText("Plan onboarding redesign")).toBeTruthy();
+  });
+
+  it("shows admin-only actions when isAdmin=true", () => {
+    renderPalette({ isAdmin: true });
+    expect(screen.getByText("Refresh constitution")).toBeTruthy();
+    expect(screen.getByText("Launch agent")).toBeTruthy();
   });
 
   it("fuzzy-filters rows by the search input", () => {
@@ -89,10 +97,10 @@ describe("CommandPalette", () => {
   it("ArrowDown + Enter activates the next row", () => {
     const { onAction } = renderPalette();
     const search = screen.getByLabelText("Command palette search");
-    // First row is "New directive". One ArrowDown → "Refresh constitution".
+    // First row is "New directive". One ArrowDown → "Open settings".
     fireEvent.keyDown(search, { key: "ArrowDown" });
     fireEvent.keyDown(search, { key: "Enter" });
-    expect(onAction).toHaveBeenCalledWith({ kind: "refresh-constitution" });
+    expect(onAction).toHaveBeenCalledWith({ kind: "open-settings" });
   });
 
   it("opens via the ⌘K shortcut when the parent listens to OPEN_PALETTE_EVENT", () => {
