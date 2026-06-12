@@ -103,7 +103,9 @@ export async function fetchSkillMarkdownFromUrl(input: string): Promise<string> 
   const text = await res.text();
   if (!text.trim()) throw new Error("The file is empty.");
   if (text.length > MAX_FETCH_BYTES) {
-    throw new Error("File too large to install as a skill.");
+    throw new Error(
+      `File is ${Math.ceil(text.length / 1024)} KB — the skill cap is ${Math.floor(MAX_FETCH_BYTES / 1024)} KB.`,
+    );
   }
   return text;
 }
@@ -173,7 +175,9 @@ export async function fetchSkillMarkdownFromRepo(
     const text = await res.text();
     if (!text.trim()) continue;
     if (text.length > MAX_FETCH_BYTES) {
-      throw new Error("File too large to install as a skill.");
+      throw new Error(
+      `File is ${Math.ceil(text.length / 1024)} KB — the skill cap is ${Math.floor(MAX_FETCH_BYTES / 1024)} KB.`,
+    );
     }
     return text;
   }

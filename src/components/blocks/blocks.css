@@ -119,7 +119,7 @@
   border: 1px solid var(--border-faint);
   border-radius: var(--radius-md);
   overflow: hidden;
-  margin: 0.4em 0;
+  margin: 0.75em 0;
 }
 .action-icon {
   color: var(--warp-text-mute);
@@ -194,7 +194,7 @@
   border: 1px solid var(--border-faint);
   border-radius: var(--radius-md);
   overflow: hidden;
-  margin: 0.4em 0;
+  margin: 0.75em 0;
 }
 .diff-block .block-body { border-top: 1px solid var(--border-faint); }
 .diff-icon {
@@ -275,7 +275,7 @@
   border: 1px solid var(--border-faint);
   border-radius: var(--radius-md);
   overflow: hidden;
-  margin: 0.4em 0;
+  margin: 0.75em 0;
 }
 .todo-block .block-body { border-top: 1px solid var(--border-faint); }
 .todo-tag {
@@ -388,7 +388,7 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   font-size: 12px;
-  margin: 0.4em 0;
+  margin: 0.75em 0;
 }
 .status-table .block-body { border-top: 1px solid var(--border-faint); }
 .status-tag {

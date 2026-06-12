@@ -25,7 +25,14 @@ export type Skill = {
   updated_at: string;
 };
 
-export const MAX_SKILL_CONTENT = 20000;
+/**
+ * Hard cap on a skill body. Bodies are only injected into the system
+ * prompt on a trigger match, so the cost of a large skill is per-match,
+ * not per-turn. 64 KB comfortably fits the bigger real-world SKILL.md
+ * files (e.g. anthropics/skills' skill-creator) that the old 20 KB cap
+ * rejected at install time.
+ */
+export const MAX_SKILL_CONTENT = 65536;
 const SELECT =
   "id, slug, name, description, content, triggers, enabled, created_at, updated_at";
 
