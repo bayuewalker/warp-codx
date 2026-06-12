@@ -115,6 +115,37 @@ class DaytonaWorkspace implements Sandbox {
       // backstop if the API call fails (e.g. the box is already gone).
     }
   }
+
+  /** Resume a stopped box so file/exec/preview calls hit a running runner. */
+  async start(): Promise<void> {
+    try {
+      await this.box.refreshData();
+      if (this.box.state === "started") return;
+    } catch {
+      // refreshData is best-effort; fall through and attempt start anyway.
+    }
+    await this.box.start();
+  }
+
+  /** Stop the box but keep its filesystem so the IDE can resume it later. */
+  async stop(): Promise<void> {
+    await this.box.stop();
+  }
+
+  async getState(): Promise<string | undefined> {
+    try {
+      await this.box.refreshData();
+    } catch {
+      /* return the last-known state if the refresh fails */
+    }
+    return this.box.state;
+  }
+
+  /** Map a sandbox port to a public preview URL (the Replit webview). */
+  async getPreviewUrl(port: number): Promise<{ url: string; token?: string }> {
+    const link = await this.box.getPreviewLink(port);
+    return { url: link.url, token: link.token };
+  }
 }
 
 /**
@@ -147,10 +178,16 @@ async function createDaytonaSandbox(
   daytona: Daytona,
   opts: CreateSandboxOptions | undefined,
 ): Promise<Sandbox> {
+  // A persistent IDE workspace must outlive the request that creates it: no
+  // ephemeral flag (which forces auto-delete on stop) and auto-delete disabled,
+  // so a reconnect later finds the filesystem intact. Auto-stop still applies
+  // as an idle cost backstop — the IDE resumes the box on the next request.
   const box = await daytona.create({
     language: "typescript",
     autoStopInterval: AUTO_STOP_MINUTES,
-    ephemeral: true,
+    ...(opts?.persistent
+      ? { ephemeral: false, autoDeleteInterval: -1 }
+      : { ephemeral: true }),
   });
 
   try {
@@ -168,6 +205,10 @@ async function createDaytonaSandbox(
         opts.gitToken ? "x-access-token" : undefined,
         opts.gitToken,
       );
+    } else {
+      // Bare workspace: still anchor everything under repo/ so the path model
+      // (and a later reconnect, which assumes repo/) stays consistent.
+      await box.process.executeCommand(`mkdir -p ${WORKSPACE_SUBDIR}`);
     }
 
     return new DaytonaWorkspace(box, repoDir);
@@ -182,20 +223,44 @@ async function createDaytonaSandbox(
 }
 
 /**
+ * Reattach to an existing Daytona box by id (the persistent IDE workspace
+ * stores the id and reconnects per request). The repo lives at the deterministic
+ * `<root>/repo` path the create path established, so we recompute it rather than
+ * persisting it. The box is resumed if it had been auto-stopped.
+ */
+async function connectDaytonaSandbox(
+  daytona: Daytona,
+  id: string,
+): Promise<Sandbox> {
+  const box = await daytona.get(id);
+  const root = (await box.getUserRootDir()) ?? "";
+  const repoDir = joinPath(root, WORKSPACE_SUBDIR);
+  const ws = new DaytonaWorkspace(box, repoDir);
+  await ws.start();
+  return ws;
+}
+
+function getDaytona(): Daytona {
+  const config = readDaytonaConfig();
+  if (!config) {
+    throw new Error(
+      "Daytona is not configured. Set DAYTONA_API_KEY (and optionally " +
+        "DAYTONA_API_URL) to enable the coding agent's sandbox.",
+    );
+  }
+  return new Daytona({ apiKey: config.apiKey, apiUrl: config.apiUrl });
+}
+
+/**
  * The Daytona {@link SandboxProvider}. Reads credentials from the environment
- * on each `create()`; throws a clear error when Daytona isn't configured.
+ * on each call; throws a clear error when Daytona isn't configured.
  */
 export const daytonaSandboxProvider: SandboxProvider = {
   name: "daytona",
   async create(opts) {
-    const config = readDaytonaConfig();
-    if (!config) {
-      throw new Error(
-        "Daytona is not configured. Set DAYTONA_API_KEY (and optionally " +
-          "DAYTONA_API_URL) to enable the coding agent's sandbox.",
-      );
-    }
-    const daytona = new Daytona({ apiKey: config.apiKey, apiUrl: config.apiUrl });
-    return createDaytonaSandbox(daytona, opts);
+    return createDaytonaSandbox(getDaytona(), opts);
+  },
+  async connect(id) {
+    return connectDaytonaSandbox(getDaytona(), id);
   },
 };

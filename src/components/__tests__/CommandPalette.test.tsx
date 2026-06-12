@@ -97,10 +97,10 @@ describe("CommandPalette", () => {
   it("ArrowDown + Enter activates the next row", () => {
     const { onAction } = renderPalette();
     const search = screen.getByLabelText("Command palette search");
-    // First row is "New directive". One ArrowDown → "Open settings".
+    // First row is "New directive". One ArrowDown → "Open workspace".
     fireEvent.keyDown(search, { key: "ArrowDown" });
     fireEvent.keyDown(search, { key: "Enter" });
-    expect(onAction).toHaveBeenCalledWith({ kind: "open-settings" });
+    expect(onAction).toHaveBeenCalledWith({ kind: "open-workspace" });
   });
 
   it("opens via the ⌘K shortcut when the parent listens to OPEN_PALETTE_EVENT", () => {
