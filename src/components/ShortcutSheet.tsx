@@ -76,6 +76,13 @@ const SHORTCUTS: Shortcut[] = [
     },
   },
   {
+    id: "test-responses",
+    icon: <span aria-hidden="true">🎨</span>,
+    title: "Test responses",
+    subtitle: "Preview every render style — code, todos, terminal, cards, diffs",
+    action: { kind: "send", text: "/test" },
+  },
+  {
     id: "new-chat",
     icon: <span aria-hidden="true">✦</span>,
     title: "New chat",

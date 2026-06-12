@@ -481,6 +481,38 @@ body {
 
 .input-toolbar-spacer { flex: 1; }
 
+/* ── Chat ⇆ Code surface toggle (composer toolbar + workspace header) ── */
+.view-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 26px;
+  padding: 2px;
+  background: var(--warp-bg-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+.view-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 9px;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--warp-text-mute);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.view-toggle-btn:hover { color: var(--warp-text); }
+.view-toggle-btn[data-active="true"] {
+  background: var(--warp-blue);
+  color: #fff;
+}
+
 /* ── Model picker (composer) ─────────────────────────────────────── */
 .model-picker {
   position: relative;
@@ -727,35 +759,58 @@ body {
   font-weight: 500;
 }
 
-/* Live "thinking" indicator below the chat input — no box/pill, just an orb
-   and text (per the Warp reference). The orb is a constant circle whose inner
-   glyph crossfades between the terminal prompt `>_` and pause bars ❚❚, with a
-   gentle breathing pulse. Shown while the assistant is actually streaming, so
+/* Live "thinking" indicator below the chat input — no box/pill, just a
+   colorful animated orb and text (per the Warp reference). The orb has a
+   spinning multi-color dashed ring, a hue-cycling glow, a gentle breathing
+   pulse, and an inner glyph that crossfades between the terminal prompt `>_`
+   and pause bars ❚❚. Shown only while the assistant is actually streaming, so
    it reflects real generation state (not decorative). */
 .footer-thinking {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  color: rgba(255, 255, 255, 0.78);
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.85);
 }
 .footer-thinking-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 17px;
-  height: 17px;
+  width: 18px;
+  height: 18px;
   flex-shrink: 0;
-  color: rgba(255, 255, 255, 0.85);
-  animation: footer-think-orb 1.8s ease-in-out infinite;
+  /* Hue-cycling color drives both the stroke (currentColor) and the glow,
+     so the whole orb shifts through blue → cyan → violet → magenta. */
+  animation: footer-think-breathe 1.8s ease-in-out infinite,
+             footer-think-hue 4s linear infinite;
 }
 .footer-thinking-icon svg {
   width: 100%;
   height: 100%;
+  filter: drop-shadow(0 0 4px currentColor);
 }
-/* Breathing orb — gentle scale + opacity pulse; the circle never changes. */
-@keyframes footer-think-orb {
-  0%, 100% { transform: scale(0.94); opacity: 0.7; }
-  50%      { transform: scale(1.06); opacity: 1; }
+/* Breathing orb — gentle scale + opacity pulse. */
+@keyframes footer-think-breathe {
+  0%, 100% { transform: scale(0.92); opacity: 0.8; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+/* Color cycle — vivid, looping hue rotation. */
+@keyframes footer-think-hue {
+  0%   { color: #5ba4ff; }  /* blue   */
+  25%  { color: #38e8d0; }  /* teal   */
+  50%  { color: #a98bff; }  /* violet */
+  75%  { color: #ff7ad1; }  /* magenta*/
+  100% { color: #5ba4ff; }
+}
+/* Spinning dashed ring — a broken arc that rotates so the orb reads as a live
+   loader, not a static circle. */
+.footer-think-ring {
+  stroke-dasharray: 30 18;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: footer-think-spin 1.5s linear infinite;
+}
+@keyframes footer-think-spin {
+  to { transform: rotate(360deg); }
 }
 /* Inner glyph swap — the two glyphs crossfade in counter-phase, so the orb
    "gonta-ganti" between `>_` and ❚❚ (3.2s per full cycle). */
@@ -773,7 +828,13 @@ body {
 .footer-thinking-label {
   font-size: 11px;
   letter-spacing: 0.04em;
-  color: rgba(255, 255, 255, 0.66);
+  color: rgba(255, 255, 255, 0.72);
+  /* Subtle shimmer so the label feels alive alongside the orb. */
+  animation: footer-think-label 2.4s ease-in-out infinite;
+}
+@keyframes footer-think-label {
+  0%, 100% { opacity: 0.6; }
+  50%      { opacity: 1; }
 }
 .footer-thinking-time {
   margin-left: 1px;
@@ -782,13 +843,16 @@ body {
   font-variant-numeric: tabular-nums;
 }
 @media (prefers-reduced-motion: reduce) {
-  .footer-thinking,
   .footer-thinking-icon,
-  .footer-think-glyph { animation: none; }
-  .footer-thinking-icon { transform: none; opacity: 1; }
+  .footer-think-ring,
+  .footer-think-glyph,
+  .footer-thinking-label { animation: none; }
+  .footer-thinking-icon { transform: none; opacity: 1; color: #5ba4ff; }
+  .footer-think-ring { stroke-dasharray: none; }
   /* Without motion, pin to the prompt glyph and hide the alternate. */
   .footer-think-glyph-a { opacity: 1; }
   .footer-think-glyph-b { opacity: 0; }
+  .footer-thinking-label { opacity: 0.85; }
 }
 
 /* ─────────────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import {
 } from "react";
 import ShortcutSheet from "./ShortcutSheet";
 import ModelPicker from "./ModelPicker";
+import ViewToggle, { type AppView } from "./ViewToggle";
 
 type Props = {
   disabled?: boolean;
@@ -34,6 +35,10 @@ type Props = {
   onShortcutSend?: (text: string) => void;
   /** Mirrors the `+` header button — open a brand-new session. */
   onNewDirective?: () => void;
+  /** Current top-level surface — drives the inline Chat ⇆ Code toggle. */
+  view?: AppView;
+  /** Switch the top-level surface from the composer toolbar. */
+  onViewChange?: (v: AppView) => void;
 };
 
 /** Format elapsed seconds as m:ss for the thinking remark. */
@@ -74,6 +79,8 @@ export default function ChatInput({
   onSlashCommand,
   onShortcutSend,
   onNewDirective,
+  view,
+  onViewChange,
 }: Props) {
   const [value, setValue] = useState("");
   const [focused, setFocused] = useState(false);
@@ -370,6 +377,10 @@ export default function ChatInput({
 
           <ModelPicker disabled={toolBtnDisabled} />
 
+          {view && onViewChange && (
+            <ViewToggle view={view} onChange={onViewChange} />
+          )}
+
           <span className="input-toolbar-spacer" aria-hidden="true" />
 
           <button
@@ -430,7 +441,8 @@ export default function ChatInput({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <circle cx="12" cy="12" r="9.5" />
+                {/* Colorful spinning ring (rotating dashed arc). */}
+                <circle className="footer-think-ring" cx="12" cy="12" r="9.5" />
                 {/* Glyph A — terminal prompt `>_` */}
                 <g className="footer-think-glyph footer-think-glyph-a">
                   <polyline points="8 9 11 12 8 15" />

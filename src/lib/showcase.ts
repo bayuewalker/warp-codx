@@ -7,7 +7,7 @@
  * rich blocks (todos, action, diff, status). Injected locally (never sent to
  * the model) so an operator can eyeball the full UI/UX in one shot.
  */
-export const SHOWCASE_CONTENT = `Here's a live tour of every response style WARP CodX can render. 👇
+export const SHOWCASE_CONTENT = `Here's a live tour of every response style the assistant can render. 👇
 
 ## Key / value card
 
@@ -50,7 +50,7 @@ export function greet(name: string): string {
   return \`Hello, \${name}!\`;
 }
 
-console.log(greet("WARP"));
+console.log(greet("world"));
 \`\`\`
 
 ## Terminal output
@@ -73,7 +73,7 @@ These four are emitted as \`warp-*\` fences and render as interactive cards.
 \`\`\`warp-todos
 {
   "items": [
-    { "text": "Validate branch slug", "subtext": "passed: WARP/dashboard-ui", "state": "done" },
+    { "text": "Validate branch slug", "subtext": "passed: feature/dashboard-ui", "state": "done" },
     { "text": "Check open PRs", "subtext": "0 conflicts", "state": "done" },
     { "text": "Awaiting dispatch", "subtext": "tap DISPATCH to proceed", "state": "active" }
   ]
@@ -108,8 +108,8 @@ These four are emitted as \`warp-*\` fences and render as interactive cards.
 \`\`\`warp-status
 {
   "rows": [
-    { "name": "Branch", "note": "WARP/dashboard-ui", "state": "ok" },
-    { "name": "FORGE agent", "state": "ok" },
+    { "name": "Branch", "note": "feature/dashboard-ui", "state": "ok" },
+    { "name": "Build agent", "state": "ok" },
     { "name": "Test suite", "state": "warn" }
   ]
 }
