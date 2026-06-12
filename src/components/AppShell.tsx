@@ -8,6 +8,12 @@ import ChatArea from "./ChatArea";
 import ConstitutionWarningBanner from "./ConstitutionWarningBanner";
 import WorkspaceSettings from "./WorkspaceSettings";
 import ProviderStatusBar from "./ProviderStatusBar";
+import CommandPalette, {
+  OPEN_PALETTE_EVENT,
+  type PaletteAction,
+} from "./CommandPalette";
+import { setSelectedModelId } from "@/lib/selected-model";
+import { adminFetch } from "@/lib/admin-fetch";
 import type { Session } from "@/lib/types";
 import { cn } from "@/lib/cn";
 import { getBrowserSupabase, setBrowserSupabaseConfig } from "@/lib/supabase";
@@ -51,6 +57,7 @@ export default function AppShell() {
   const [sessionsError, setSessionsError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -277,6 +284,49 @@ export default function AppShell() {
     });
   }, []);
 
+  // ⌘K / Ctrl+K palette — listen for the open event the palette also
+  // emits, so ANY component can summon it via window.dispatchEvent. The
+  // palette manages its own ⌘K shortcut internally but uplifts the
+  // open state here so AppShell can decide what each action does.
+  useEffect(() => {
+    function onOpen() {
+      setPaletteOpen(true);
+    }
+    window.addEventListener(OPEN_PALETTE_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_PALETTE_EVENT, onOpen);
+  }, []);
+
+  const handlePaletteAction = useCallback(
+    async (action: PaletteAction) => {
+      switch (action.kind) {
+        case "new-directive":
+          await handleNewDirective();
+          return;
+        case "open-session":
+          handleSelect(action.sessionId);
+          return;
+        case "open-settings":
+          setSettingsOpen(true);
+          return;
+        case "select-model":
+          setSelectedModelId(action.modelId);
+          return;
+        case "sign-out":
+          await handleSignOut();
+          return;
+        case "refresh-constitution":
+          // Same endpoint the /refresh constitution slash command hits.
+          // Fire-and-forget — the WarningBanner will surface the result.
+          try {
+            await adminFetch("/api/constitution/refresh", { method: "POST" });
+          } catch {
+            /* the banner shows the next chat warning row */
+          }
+          return;
+      }
+    },
+    [handleNewDirective, handleSelect, handleSignOut],
+  );
 
   // Before mount or while checking auth: show minimal shell (no hydration mismatch).
   if (!mounted || auth.kind === "checking") {
@@ -358,6 +408,13 @@ export default function AppShell() {
       <WorkspaceSettings
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+      />
+      <CommandPalette
+        sessions={sessions}
+        activeSessionId={activeId}
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        onAction={(a) => void handlePaletteAction(a)}
       />
       </div>
     </div>
