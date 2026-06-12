@@ -1,5 +1,10 @@
 import MessageContent from "@/components/MessageContent";
 
+// Dev playground — skip static generation. MessageContent is a client
+// component with React hooks (useState in CollapsibleSection etc.);
+// trying to prerender it on the server fails with `useContext` of null.
+export const dynamic = "force-dynamic";
+
 const FIXTURE = `Routing ke WARP•FORGE di WARP/dashboard-ui. Pre-flight checks dulu sebelum dispatch.
 
 \`\`\`warp-todos

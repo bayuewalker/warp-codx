@@ -9,6 +9,8 @@ interface DefTableProps {
   icon: string;
   title: string;
   rows: KVRow[];
+  /** Active model label shown top-right (falls back to "WARP•CMD"). */
+  badge?: string;
 }
 
 /**
@@ -16,7 +18,13 @@ interface DefTableProps {
  * Left col: 38% fixed key (semibold, dim). Right col: value wraps freely.
  * Inline backtick spans render as styled <code>. Never overflows mobile.
  */
-export default function DefTable({ accent, icon, title, rows }: DefTableProps) {
+export default function DefTable({
+  accent,
+  icon,
+  title,
+  rows,
+  badge,
+}: DefTableProps) {
   const accentClass =
     accent === "teal"
       ? styles.cardTeal
@@ -33,7 +41,7 @@ export default function DefTable({ accent, icon, title, rows }: DefTableProps) {
           </span>
           <span className={styles.cardTitle}>{title || "OUTPUT"}</span>
         </div>
-        <span className={styles.agentBadge}>WARP•CMD</span>
+        <span className={styles.agentBadge}>{badge || "WARP•CMD"}</span>
       </div>
 
       <div>

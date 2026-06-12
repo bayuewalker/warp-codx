@@ -36,6 +36,21 @@
 }
 .block-summary--static:hover { background: transparent; }
 
+/* Leading chevron affordance — scannable "expand me" cue on collapsible
+   sub-headers. Rotates 90° (points down) when the row is expanded. Static
+   (always-open) headers are skipped since they aren't togglable. */
+.block-summary:not(.block-summary--static)::before {
+  content: "›";
+  flex-shrink: 0;
+  color: var(--color-sub-dim);
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 0.2s;
+}
+.block-summary[aria-expanded="true"]:not(.block-summary--static)::before {
+  transform: rotate(90deg);
+}
+
 .block-pill {
   flex-shrink: 0;
   margin-left: auto;
@@ -109,13 +124,14 @@
 .action-icon {
   color: var(--warp-text-mute);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 13px;
+  font-size: var(--fs-sub);
   flex-shrink: 0;
 }
 .action-summary-text {
   flex: 1;
-  font-size: 13px;
-  color: var(--warp-text);
+  /* Sub-response tier — muted, smaller than the main narration prose. */
+  font-size: var(--fs-sub);
+  color: var(--color-sub);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -143,14 +159,14 @@
 .action-detail-icon {
   color: var(--warp-text-mute);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 13px;
+  font-size: var(--fs-sub);
   flex-shrink: 0;
   margin-top: 1px;
 }
 .action-detail-text {
   flex: 1;
-  font-size: 13px;
-  color: var(--warp-text);
+  font-size: var(--fs-sub);
+  color: var(--color-sub);
   line-height: 1.45;
   overflow: hidden;
   word-break: break-word;
@@ -184,13 +200,13 @@
 .diff-icon {
   color: var(--warp-text-mute);
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 13px;
+  font-size: var(--fs-sub);
   flex-shrink: 0;
 }
 .diff-path {
   flex: 1;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 12px;
+  font-size: var(--fs-sub-mono);
   color: var(--warp-text-dim);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -246,12 +262,12 @@
 .diff-line.rem .lcontent { color: var(--warp-text-dim); opacity: 0.8; }
 
 /* Inline syntax tokens */
-.syn-kw  { color: #FF7AB6; }
-.syn-str { color: #65D484; }
+.syn-kw  { color: #5B9BD5; }
+.syn-str { color: #4FB286; }
 .syn-com { color: #5C6473; font-style: italic; }
-.syn-num { color: #C99FFF; }
-.syn-var { color: #7DD3FC; }
-.syn-fn  { color: #F2B946; }
+.syn-num { color: #9B86E0; }
+.syn-var { color: #8FB4D9; }
+.syn-fn  { color: #C98A2E; }
 
 /* ───────────── Todo block ───────────── */
 .todo-block {
@@ -461,9 +477,9 @@
   line-height: 1.5;
   white-space: nowrap;
 }
-.agent-pill.cmd      { background: var(--warp-blue-bg);  color: var(--warp-blue);  border-color: rgba(91, 164, 255, 0.30); }
-.agent-pill.forge    { background: var(--warp-teal-bg);  color: var(--warp-teal);  border-color: rgba(61, 223, 168, 0.30); }
-.agent-pill.sentinel { background: var(--warp-amber-bg); color: var(--warp-amber); border-color: rgba(242, 185, 70, 0.30); }
+.agent-pill.cmd      { background: var(--warp-blue-bg);  color: var(--warp-blue);  border-color: rgba(55, 138, 221, 0.30); }
+.agent-pill.forge    { background: var(--warp-teal-bg);  color: var(--warp-teal);  border-color: rgba(29, 158, 117, 0.30); }
+.agent-pill.sentinel { background: var(--warp-amber-bg); color: var(--warp-amber); border-color: rgba(186, 117, 23, 0.30); }
 .agent-pill.echo     { background: rgba(255, 255, 255, 0.04); color: var(--warp-text-dim); border-color: var(--border-soft); }
 
 .branch-badge {
@@ -473,7 +489,7 @@
   padding: 1px 7px;
   background: var(--warp-blue-soft);
   color: var(--warp-blue);
-  border: 1px solid rgba(91, 164, 255, 0.20);
+  border: 1px solid rgba(55, 138, 221, 0.20);
   border-radius: 4px;
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 12px;
