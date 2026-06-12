@@ -727,20 +727,16 @@ body {
   font-weight: 500;
 }
 
-/* Live "thinking" indicator below the chat input — a rounded pill with a
-   terminal `>_` glyph, the live phase label, and three breathing round dots
-   (the "emot bulet" pulse). Shown while the assistant is actually streaming,
-   so it reflects real generation state (not decorative). */
+/* Live "thinking" indicator below the chat input — no box/pill, just an orb
+   and text (per the Warp reference). The orb is a constant circle whose inner
+   glyph crossfades between the terminal prompt `>_` and pause bars ❚❚, with a
+   gentle breathing pulse. Shown while the assistant is actually streaming, so
+   it reflects real generation state (not decorative). */
 .footer-thinking {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  padding: 5px 11px 5px 9px;
-  border-radius: 999px;
-  border: 1px solid rgba(91, 164, 255, 0.30);
-  background: var(--warp-bg-2, #161618);
   color: rgba(255, 255, 255, 0.78);
-  animation: footer-think-border 2s ease-in-out infinite;
 }
 .footer-thinking-icon {
   display: inline-flex;
@@ -749,46 +745,35 @@ body {
   width: 17px;
   height: 17px;
   flex-shrink: 0;
-  color: var(--warp-blue, #5ba4ff);
+  color: rgba(255, 255, 255, 0.85);
   animation: footer-think-orb 1.8s ease-in-out infinite;
 }
 .footer-thinking-icon svg {
   width: 100%;
   height: 100%;
-  filter: drop-shadow(0 0 3px rgba(91, 164, 255, 0.6));
 }
-/* Breathing round orb — gentle scale + glow pulse, like the reference. */
+/* Breathing orb — gentle scale + opacity pulse; the circle never changes. */
 @keyframes footer-think-orb {
-  0%, 100% { transform: scale(0.92); opacity: 0.75; }
+  0%, 100% { transform: scale(0.94); opacity: 0.7; }
   50%      { transform: scale(1.06); opacity: 1; }
 }
-@keyframes footer-think-border {
-  0%, 100% { border-color: rgba(91, 164, 255, 0.22); }
-  50%      { border-color: rgba(91, 164, 255, 0.55); }
+/* Inner glyph swap — the two glyphs crossfade in counter-phase, so the orb
+   "gonta-ganti" between `>_` and ❚❚ (3.2s per full cycle). */
+.footer-think-glyph {
+  animation: footer-think-glyph 3.2s ease-in-out infinite;
+}
+.footer-think-glyph-b {
+  animation-delay: -1.6s; /* counter-phase: B is visible while A is hidden */
+}
+@keyframes footer-think-glyph {
+  0%, 38%   { opacity: 1; }
+  46%, 88%  { opacity: 0; }
+  96%, 100% { opacity: 1; }
 }
 .footer-thinking-label {
   font-size: 11px;
   letter-spacing: 0.04em;
   color: rgba(255, 255, 255, 0.66);
-}
-.footer-thinking-dots {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-.footer-thinking-dots i {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--warp-blue, #5ba4ff);
-  opacity: 0.4;
-  animation: footer-think-dot 1.4s ease-in-out infinite;
-}
-.footer-thinking-dots i:nth-child(2) { animation-delay: 0.2s; }
-.footer-thinking-dots i:nth-child(3) { animation-delay: 0.4s; }
-@keyframes footer-think-dot {
-  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-  40%           { opacity: 1;   transform: scale(1.25); }
 }
 .footer-thinking-time {
   margin-left: 1px;
@@ -799,9 +784,11 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .footer-thinking,
   .footer-thinking-icon,
-  .footer-thinking-dots i { animation: none; }
+  .footer-think-glyph { animation: none; }
   .footer-thinking-icon { transform: none; opacity: 1; }
-  .footer-thinking-dots i { opacity: 0.7; }
+  /* Without motion, pin to the prompt glyph and hide the alternate. */
+  .footer-think-glyph-a { opacity: 1; }
+  .footer-think-glyph-b { opacity: 0; }
 }
 
 /* ─────────────────────────────────────────────────────────────────

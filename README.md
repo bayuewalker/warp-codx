@@ -24,6 +24,15 @@ Live: **https://warp-codx.fly.dev**
   matches its name or triggers.
 - **Streaming chat** with rich markdown/code rendering, sessions, and optional
   Web Push notifications.
+- **IDE workspace (Replit-style)** — a persistent per-user sandbox you can see
+  and touch: a lazy file-tree explorer, a code editor (save with ⌘/Ctrl-S), a
+  terminal, and a **live preview webview** that proxies your dev server's port
+  into an iframe. Toggle between **Chat** and **Code** in the top bar (or via
+  ⌘K → *Open workspace*). Built on the same Daytona backend as the coding agent,
+  but the box is kept alive and reconnectable across sessions instead of being
+  torn down. Requires `DAYTONA_API_KEY`; admin-gated while it's cost-metered.
+  Routes live under `src/app/api/workspace/*`; the lifecycle service is
+  `src/lib/agent/workspace.ts`.
 
 The chat system prompt is composed at runtime from a neutral base identity plus
 your custom instructions, active memory, and enabled skills

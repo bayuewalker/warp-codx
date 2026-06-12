@@ -36,6 +36,8 @@ export type PaletteAction =
   | { kind: "open-session"; sessionId: string }
   | { kind: "open-settings" }
   | { kind: "open-agent-panel" }
+  | { kind: "open-workspace" }
+  | { kind: "open-chat" }
   | { kind: "refresh-constitution" }
   | { kind: "sign-out" }
   | { kind: "select-model"; modelId: SelectableModelId };
@@ -184,6 +186,24 @@ export default function CommandPalette({
         hint: "⌘N",
         searchHay: "new directive chat session start fresh",
         action: { kind: "new-directive" },
+      },
+      {
+        id: "action:workspace",
+        group: "Actions",
+        icon: <Icon name="agent" />,
+        title: "Open workspace",
+        subtitle: "Replit-style IDE: files, editor, terminal, preview",
+        searchHay: "workspace ide code editor terminal preview replit files",
+        action: { kind: "open-workspace" },
+      },
+      {
+        id: "action:chat",
+        group: "Actions",
+        icon: <Icon name="plus" />,
+        title: "Open chat",
+        subtitle: "Switch back to the chat assistant",
+        searchHay: "chat assistant conversation switch",
+        action: { kind: "open-chat" },
       },
       {
         id: "action:settings",

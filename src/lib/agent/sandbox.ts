@@ -26,6 +26,11 @@ export type ExecOptions = {
 /**
  * A live, isolated workspace. All paths are relative to the workspace root.
  * Implementations must be safe to call `destroy()` on more than once.
+ *
+ * The core read/write/exec surface is shared by both the ephemeral coding-agent
+ * run (create → loop → destroy) and the persistent, browsable IDE workspace.
+ * The lifecycle + preview methods are optional so a backend that can't keep a
+ * box alive (or expose a port) still satisfies the agent contract.
  */
 export interface Sandbox {
   /** Backend-assigned id (used in the run record + logs). */
@@ -37,6 +42,19 @@ export interface Sandbox {
   listDir(path: string): Promise<string[]>;
   /** Tear down the workspace. Idempotent; never throws on a double call. */
   destroy(): Promise<void>;
+
+  // ── Persistent-workspace extensions (optional) ─────────────────────────────
+  /** Ensure the box is running (resume if stopped). No-op if already up. */
+  start?(): Promise<void>;
+  /** Stop the box but keep its filesystem so it can be resumed later. */
+  stop?(): Promise<void>;
+  /** Current backend lifecycle state (e.g. "started", "stopped"), if known. */
+  getState?(): Promise<string | undefined>;
+  /**
+   * Public URL that proxies `port` inside the sandbox to the browser — the
+   * Replit "webview". `token` is the access token some backends require.
+   */
+  getPreviewUrl?(port: number): Promise<{ url: string; token?: string }>;
 }
 
 export type CreateSandboxOptions = {
@@ -49,10 +67,23 @@ export type CreateSandboxOptions = {
    * logged. Callers source this from a server-side secret.
    */
   gitToken?: string;
+  /**
+   * Persistent workspace: the box must survive teardown of the request that
+   * created it (no `ephemeral`, no auto-delete) so the IDE can reconnect to it
+   * across sessions. The ephemeral agent run leaves this false.
+   */
+  persistent?: boolean;
 };
 
 /** Factory for {@link Sandbox} instances — one provider per backend. */
 export interface SandboxProvider {
   readonly name: string;
   create(opts?: CreateSandboxOptions): Promise<Sandbox>;
+  /**
+   * Reattach to an already-running (or stopped) box by id — the foundation of
+   * the persistent IDE workspace, which stores the id and reconnects on each
+   * request rather than holding the handle in memory. Optional: a backend with
+   * no durable boxes omits it.
+   */
+  connect?(id: string): Promise<Sandbox>;
 }

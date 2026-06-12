@@ -5,6 +5,7 @@ import { applyDisplayPrefs } from "@/lib/display-prefs";
 import { useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import ChatArea from "./ChatArea";
+import WorkspaceView from "./workspace/WorkspaceView";
 import ConstitutionWarningBanner from "./ConstitutionWarningBanner";
 import WorkspaceSettings from "./WorkspaceSettings";
 import ProviderStatusBar from "./ProviderStatusBar";
@@ -62,6 +63,8 @@ export default function AppShell() {
   >(undefined);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  // Top-level surface: the chat assistant or the Replit-style IDE workspace.
+  const [view, setView] = useState<"chat" | "workspace">("chat");
 
   useEffect(() => {
     setMounted(true);
@@ -326,6 +329,12 @@ export default function AppShell() {
           setSettingsInitialTab("agent");
           setSettingsOpen(true);
           return;
+        case "open-workspace":
+          setView("workspace");
+          return;
+        case "open-chat":
+          setView("chat");
+          return;
         case "select-model":
           setSelectedModelId(action.modelId);
           return;
@@ -411,17 +420,32 @@ export default function AppShell() {
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col relative">
-        <ConstitutionWarningBanner sessionId={activeId} />
-        <ChatArea
-          sessionId={activeId}
-          sessionLabel={
-            sessions.find((s) => s.id === activeId)?.label ?? null
-          }
-          onOpenDrawer={() => setDrawerOpen(true)}
-          onNewDirective={handleNewDirective}
-          onSessionUpdated={handleSessionUpdated}
-          isGuest={auth.kind === "guest"}
-        />
+        {/* Chat ⇆ Code surface toggle (also reachable via ⌘K). */}
+        <div className="flex items-center gap-1 px-3 py-1.5 border-b border-hair">
+          <ViewTab active={view === "chat"} onClick={() => setView("chat")}>
+            Chat
+          </ViewTab>
+          <ViewTab active={view === "workspace"} onClick={() => setView("workspace")}>
+            Code
+          </ViewTab>
+        </div>
+        {view === "chat" ? (
+          <>
+            <ConstitutionWarningBanner sessionId={activeId} />
+            <ChatArea
+              sessionId={activeId}
+              sessionLabel={
+                sessions.find((s) => s.id === activeId)?.label ?? null
+              }
+              onOpenDrawer={() => setDrawerOpen(true)}
+              onNewDirective={handleNewDirective}
+              onSessionUpdated={handleSessionUpdated}
+              isGuest={auth.kind === "guest"}
+            />
+          </>
+        ) : (
+          <WorkspaceView onOpenDrawer={() => setDrawerOpen(true)} isAdmin={isAdmin} />
+        )}
       </main>
       <WorkspaceSettings
         open={settingsOpen}
@@ -438,5 +462,29 @@ export default function AppShell() {
       />
       </div>
     </div>
+  );
+}
+
+/** Segmented tab for the Chat ⇆ Code surface toggle. */
+function ViewTab({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "px-3 py-1 rounded text-xs font-medium transition-colors",
+        active ? "bg-white/10 text-white" : "text-white/50 hover:text-white/80",
+      )}
+    >
+      {children}
+    </button>
   );
 }
