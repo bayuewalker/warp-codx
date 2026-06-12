@@ -19,24 +19,23 @@
  * Dev / preview is permissive; production requires `x-warp-admin-token`.
  *
  * The gate result is computed server-side as the single source of
- * truth — the card displays exactly what the merge route will enforce.
+ * truth — the card displays exactly what the merge route will enforce
+ * (both call `evaluateGatesForPR`).
  */
 import { NextResponse } from "next/server";
-import {
-  getPRDetail,
-  findPairedForgePR,
-  getPRCheckStatus,
-} from "@/lib/github-prs";
-import { evaluateMergeGates, isSentinelPR } from "@/lib/pr-gates";
+import { getPRDetail } from "@/lib/github-prs";
 import { isAdminAllowed } from "@/lib/adminGate";
 import { statusFromAdapterError } from "@/lib/route-error";
+import {
+  evaluateGatesForPR,
+  invalidPRNumberResponse,
+  parsePRNumber,
+  parseSlug,
+  postMergeReminder,
+} from "@/lib/pr-route-helpers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-function parseSlug(branch: string): string {
-  return branch.startsWith("WARP/") ? branch.slice("WARP/".length) : branch;
-}
 
 export async function GET(
   req: Request,
@@ -46,52 +45,21 @@ export async function GET(
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const prNumber = Number.parseInt(ctx.params.number, 10);
-  if (!Number.isInteger(prNumber) || prNumber <= 0) {
-    return NextResponse.json(
-      { error: "pr number must be a positive integer" },
-      { status: 400 },
-    );
-  }
+  const prNumber = parsePRNumber(ctx.params.number);
+  if (prNumber === null) return invalidPRNumberResponse();
 
   try {
     const pr = await getPRDetail(prNumber);
-    // Phase 3c gate hardening (G1) — if this PR is itself a SENTINEL
-    // PR, resolve its paired FORGE PR so the card mirrors what the
-    // merge route will enforce. Failures degrade to `null` (treated as
-    // unmerged with a distinct blocker by the evaluator).
-    let forgePRMerged: boolean | null = null;
-    if (isSentinelPR(pr.title, pr.body)) {
-      try {
-        const lookup = await findPairedForgePR({
-          branch: pr.branch,
-          body: pr.body,
-        });
-        forgePRMerged = lookup.resolved ? lookup.merged : null;
-      } catch {
-        forgePRMerged = null;
-      }
-    }
-    // Task #30 — resolve the CI status for the PR head SHA so the card
-    // and the merge route both consult the latest `test` check_run.
-    // Internal failures degrade to "missing" inside `getPRCheckStatus`
-    // — which surfaces as a blocker rather than silently passing.
-    const ciStatus = await getPRCheckStatus(pr.headSha);
-    const gates = evaluateMergeGates(
-      {
-        number: pr.number,
-        title: pr.title,
-        body: pr.body,
-        head: { ref: pr.branch },
-      },
-      pr.reviews.map((r) => ({ state: r.state, body: r.body })),
-      { forgePRMerged, ciStatus },
-    );
-    const slug = parseSlug(pr.branch);
+    // Gate evaluation — shared with the merge route so the card
+    // mirrors exactly what the server will enforce. Resolves the
+    // paired FORGE PR for SENTINEL PRs (G1; failures degrade to a
+    // distinct blocker) and the CI status for the head SHA (Task #30;
+    // internal failures surface as "missing" → blocker).
+    const gates = await evaluateGatesForPR(pr);
     return NextResponse.json({
       pr,
       gates,
-      postMergeReminder: `Post-merge sync required: update PROJECT_STATE.md + ROADMAP.md + WORKTODO.md + CHANGELOG.md for WARP/${slug}`,
+      postMergeReminder: postMergeReminder(parseSlug(pr.branch)),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "github detail failed";

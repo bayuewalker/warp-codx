@@ -13,6 +13,7 @@ import { extractAndStoreMemories } from "@/lib/memory";
 import { ISSUE_DRAFT_PROTOCOL } from "@/lib/issue-draft-protocol";
 import { PR_ACTION_PROTOCOL } from "@/lib/pr-action-protocol";
 import { TASK_COMPLETE_PROTOCOL } from "@/lib/task-complete-protocol";
+import { RICH_BLOCKS_PROTOCOL } from "@/lib/rich-blocks-protocol";
 import { NEUTRAL_IDENTITY_PROMPT } from "@/lib/multi-agent-protocol";
 
 export const dynamic = "force-dynamic";
@@ -100,20 +101,15 @@ export async function POST(req: Request) {
     );
   }
 
-  // Auto-derive a session label from the first user message if it's still
-  // the default placeholder.
+  // Bump the session's freshness; auto-derive a label from the first
+  // user message while it still carries the default placeholder.
+  const sessionPatch: { updated_at: string; label?: string } = {
+    updated_at: new Date().toISOString(),
+  };
   if (session.label.startsWith("New directive")) {
-    const newLabel = content.replace(/\s+/g, " ").slice(0, 60);
-    await supabase
-      .from("sessions")
-      .update({ label: newLabel, updated_at: new Date().toISOString() })
-      .eq("id", sessionId);
-  } else {
-    await supabase
-      .from("sessions")
-      .update({ updated_at: new Date().toISOString() })
-      .eq("id", sessionId);
+    sessionPatch.label = content.replace(/\s+/g, " ").slice(0, 60);
   }
+  await supabase.from("sessions").update(sessionPatch).eq("id", sessionId);
 
   // Load the full conversation history so the model has context.
   const { data: history, error: historyErr } = await supabase
@@ -166,6 +162,13 @@ export async function POST(req: Request) {
   // outcome. Same additive pattern as the two protocols above; no
   // changes to constitution-fetch or any execution route.
   systemPrompt = `${systemPrompt}\n${TASK_COMPLETE_PROTOCOL}`;
+
+  // Rich blocks — teaches CMD the four `warp-*` fenced JSON blocks
+  // (action / diff / todos / status) that the client renders as
+  // Ona-style cards. The render pipeline (rich-blocks-extract.ts +
+  // components/blocks/*) predates this protocol; without it the model
+  // never emitted the fences, so replies rendered as plain markdown.
+  systemPrompt = `${systemPrompt}\n${RICH_BLOCKS_PROTOCOL}`;
 
   // Neutral identity — appended last so it wins over any branding the model
   // might infer from custom instructions or skills.
@@ -252,14 +255,13 @@ export async function POST(req: Request) {
         }
 
         // Auto-memory — extract durable facts from this turn and store them
-        // as `pending` for operator review. Best-effort: never blocks or
-        // breaks the reply (already streamed and persisted above).
+        // as `pending` for operator review. Best-effort and detached: the
+        // reply is already streamed and persisted above, so the stream must
+        // not stay open while a second LLM round-trip completes.
         if (assembled.trim().length > 0) {
-          try {
-            await extractAndStoreMemories(content, assembled);
-          } catch {
+          void extractAndStoreMemories(content, assembled).catch(() => {
             /* best-effort */
-          }
+          });
         }
 
         controller.close();

@@ -1,8 +1,15 @@
 /**
  * Phase 3.5 — Pre-pass extractor that pulls every "rich-block" fenced
  * code block (`warp-action`, `warp-diff`, `warp-todos`, `warp-status`)
- * out of the raw markdown so they can be rendered as a discrete
- * cluster (and wrapped in `<CollapsibleSection>` when 2+).
+ * out of the raw markdown so they can be rendered as React cards.
+ *
+ * Each well-formed fence is replaced IN PLACE with an invisible slot
+ * marker (`RICH_SLOT_<index>`, index into `blocks`) so the
+ * renderer (`MessageContent.tsx`) can mount each card exactly where
+ * the fence sat in the narration — the Ona/agent-transcript pattern of
+ * prose → action row → prose → diff → prose. Consecutive runs of 2+
+ * blocks (nothing but whitespace between markers) are grouped behind
+ * one `<CollapsibleSection>` by the renderer.
  *
  * The fence regex is line-anchored on both ends — both the opening
  * fence (` ```warp-* ` at start of line) and the closing fence
@@ -13,10 +20,11 @@
  * marker).
  *
  * Malformed fences (invalid JSON body) are stripped — the body is
- * dropped from the prose AND no block is emitted. This matches the
- * defensive philosophy of the marker extractors (`extractIssueDraft`,
- * `extractPRAction`, `extractTaskComplete`): never leak raw JSON into
- * the user-facing bubble, never mount a card with bad data.
+ * dropped from the prose AND no block (or slot) is emitted. This
+ * matches the defensive philosophy of the marker extractors
+ * (`extractIssueDraft`, `extractPRAction`, `extractTaskComplete`):
+ * never leak raw JSON into the user-facing bubble, never mount a card
+ * with bad data.
  *
  * Lives in `src/lib` (rather than co-located in `MessageContent.tsx`)
  * so it can be unit-tested without standing up a JSX environment.
@@ -38,7 +46,16 @@ export type RichBlockSpec =
 const RICH_FENCE_RE =
   /^```(warp-action|warp-diff|warp-todos|warp-status)[ \t]*\n([\s\S]*?)\n```[ \t]*(?=\n|$)/gm;
 
+/** Slot marker for block `i` —  never occurs in model output. */
+export function richSlotMarker(i: number): string {
+  return `RICH_SLOT_${i}`;
+}
+
+/** Matches any slot marker; capture group 1 is the block index. */
+export const RICH_SLOT_RE = /RICH_SLOT_(\d+)/g;
+
 export function extractRichBlocks(raw: string): {
+  /** Prose with each extracted fence replaced by its slot marker. */
   proseOnly: string;
   blocks: RichBlockSpec[];
 } {
@@ -56,19 +73,20 @@ export function extractRichBlocks(raw: string): {
       switch (lang) {
         case "warp-action":
           blocks.push({ kind: "action", payload: parsed as ActionPayload });
-          return "";
+          break;
         case "warp-diff":
           blocks.push({ kind: "diff", payload: parsed as DiffPayload });
-          return "";
+          break;
         case "warp-todos":
           blocks.push({ kind: "todos", payload: parsed as TodosPayload });
-          return "";
+          break;
         case "warp-status":
           blocks.push({ kind: "status", payload: parsed as StatusPayload });
-          return "";
+          break;
         default:
           return "";
       }
+      return richSlotMarker(blocks.length - 1);
     },
   );
   return { proseOnly: proseOnly.replace(/\n{3,}/g, "\n\n").trim(), blocks };

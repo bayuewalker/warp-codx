@@ -16,6 +16,7 @@ import { summarizeRefresh, type RefreshBody } from "@/lib/refresh-summary";
 import { emitAssistantActivity } from "@/lib/assistant-activity";
 import { getSelectedModelId, useSelectedModel } from "@/lib/selected-model";
 import { modelShort } from "@/lib/models";
+import ChatActionsMenu from "./ChatActionsMenu";
 
 const GUEST_MSG_KEY = "warp_guest_msg_count"; // kept for localStorage cleanup only
 
@@ -471,26 +472,29 @@ export default function ChatArea({
         <span className="brand-wordmark">
           <span className="brand-warp">WARP</span> CodX
         </span>
-        <button
-          type="button"
-          className="header-icon-btn"
-          onClick={onNewDirective}
-          aria-label="New directive"
-          title="New directive"
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
+        <div className="header-actions">
+          <ChatActionsMenu messages={messages} title={sessionLabel} />
+          <button
+            type="button"
+            className="header-icon-btn"
+            onClick={onNewDirective}
+            aria-label="New directive"
+            title="New directive"
           >
-            <line x1="12" y1="5" x2="12" y2="19" />
-            <line x1="5" y1="12" x2="19" y2="12" />
-          </svg>
-        </button>
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Session bar — appears when a session is active. */}

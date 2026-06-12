@@ -8,8 +8,11 @@ import {
   getModel,
   MODELS,
   autoPickModelId,
+  availableSelectableModels,
   isCodingMessage,
+  isModelAvailable,
   isSelectableModelId,
+  providersForModel,
   resolveSelectedModel,
 } from "./models";
 
@@ -110,6 +113,35 @@ describe("model selection (picker + auto)", () => {
     expect(isSelectableModelId("gpt-5")).toBe(true);
     expect(isSelectableModelId("nope")).toBe(false);
     expect(isSelectableModelId(null)).toBe(false);
+  });
+});
+
+describe("availability (composer picker)", () => {
+  it("providersForModel lists mapped providers; null for auto", () => {
+    expect(providersForModel("auto")).toBeNull();
+    expect(providersForModel("opus")).toEqual(["openrouter", "blackbox"]);
+    // Sonnet maps all three (OpenAI via the gpt-4o fallback slug).
+    expect(providersForModel("sonnet")).toEqual(["openrouter", "blackbox", "openai"]);
+  });
+
+  it("isModelAvailable needs an active provider that maps the model", () => {
+    expect(isModelAvailable("auto", [])).toBe(false); // nothing active
+    expect(isModelAvailable("auto", ["blackbox"])).toBe(true); // any active works
+    expect(isModelAvailable("opus", ["openai"])).toBe(false); // OpenAI lacks opus
+    expect(isModelAvailable("opus", ["openrouter"])).toBe(true);
+    expect(isModelAvailable("gpt-5", ["blackbox"])).toBe(true);
+  });
+
+  it("availableSelectableModels filters to what an active provider can serve", () => {
+    // Only OpenAI active → auto + GPT models (opus drops; sonnet stays via fallback).
+    const ids = availableSelectableModels(["openai"]).map((m) => m.id);
+    expect(ids).toContain("auto");
+    expect(ids).toContain("gpt-4o");
+    expect(ids).toContain("sonnet");
+    expect(ids).not.toContain("opus");
+
+    // No active provider → empty (picker shows the "no provider" state).
+    expect(availableSelectableModels([])).toEqual([]);
   });
 });
 

@@ -11,6 +11,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@daytonaio/sdk": "^0.186.0",
     "@octokit/rest": "^22.0.1",
     "@supabase/supabase-js": "^2.45.4",
     "geist": "^1.7.0",

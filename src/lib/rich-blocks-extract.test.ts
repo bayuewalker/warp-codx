@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { extractRichBlocks } from "./rich-blocks-extract";
+import { extractRichBlocks, richSlotMarker } from "./rich-blocks-extract";
 
 describe("extractRichBlocks", () => {
   it("returns empty blocks and untouched prose when no fences present", () => {
@@ -9,7 +9,7 @@ describe("extractRichBlocks", () => {
     expect(out.proseOnly).toBe(raw);
   });
 
-  it("extracts a single warp-action fence and strips it from prose", () => {
+  it("extracts a single warp-action fence, leaving a slot marker in place", () => {
     const raw = [
       "Before.",
       "",
@@ -22,7 +22,9 @@ describe("extractRichBlocks", () => {
     const out = extractRichBlocks(raw);
     expect(out.blocks).toHaveLength(1);
     expect(out.blocks[0].kind).toBe("action");
-    expect(out.proseOnly).toBe("Before.\n\nAfter.");
+    // The fence is replaced in place by an invisible slot marker so
+    // the renderer can mount the card exactly where the fence sat.
+    expect(out.proseOnly).toBe(`Before.\n\n${richSlotMarker(0)}\n\nAfter.`);
   });
 
   it("preserves order across multiple distinct rich-block kinds", () => {
@@ -49,7 +51,12 @@ describe("extractRichBlocks", () => {
       "todos",
       "status",
     ]);
-    expect(out.proseOnly).toBe("Top.\n\nBottom.");
+    // Slot markers preserve each block's original position; only
+    // whitespace sits between consecutive markers so the renderer can
+    // group this run behind one collapsible section.
+    expect(out.proseOnly).toBe(
+      `Top.\n\n${richSlotMarker(0)}\n\n${richSlotMarker(1)}\n\n${richSlotMarker(2)}\n\nBottom.`,
+    );
   });
 
   it("does NOT mis-fire on a warp-* string nested inside a regular code block", () => {
@@ -152,7 +159,7 @@ describe("extractRichBlocks", () => {
       "Bottom.",
     ].join("\n");
     const out = extractRichBlocks(raw);
-    expect(out.proseOnly).toBe("Top.\n\nBottom.");
+    expect(out.proseOnly).toBe(`Top.\n\n${richSlotMarker(0)}\n\nBottom.`);
   });
 
   it("parses warp-diff payloads as DiffPayload", () => {

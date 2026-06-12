@@ -33,18 +33,21 @@
  * undoes the GitHub merge. PAT is never logged or returned.
  */
 import { NextResponse } from "next/server";
-import {
-  getPRDetail,
-  mergePR,
-  findPairedForgePR,
-  getPRCheckStatus,
-} from "@/lib/github-prs";
-import { evaluateMergeGates, isSentinelPR } from "@/lib/pr-gates";
+import { getPRDetail, mergePR } from "@/lib/github-prs";
 import { isAdminAllowed } from "@/lib/adminGate";
 import { statusFromAdapterError } from "@/lib/route-error";
-import { getServerSupabase } from "@/lib/supabase";
 import { sendPushToAll } from "@/lib/push-server";
 import { writeTaskCompleteMessage } from "@/lib/task-complete-write";
+import {
+  auditPRAction,
+  evaluateGatesForPR,
+  fireAndForget,
+  invalidPRNumberResponse,
+  parsePRNumber,
+  parseSessionId,
+  parseSlug,
+  postMergeReminder,
+} from "@/lib/pr-route-helpers";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,34 +55,6 @@ export const runtime = "nodejs";
 type MergeBody = {
   sessionId?: string | null;
 };
-
-function parseSlug(branch: string): string {
-  return branch.startsWith("WARP/") ? branch.slice("WARP/".length) : branch;
-}
-
-async function audit(row: {
-  session_id: string | null;
-  pr_number: number;
-  action: "merge" | "hold";
-  verdict: "ok" | "blocked";
-  reason: string | null;
-}) {
-  try {
-    const supabase = getServerSupabase();
-    const { error } = await supabase.from("pr_actions").insert(row);
-    if (error) {
-      console.error(
-        `[prs/merge] audit insert failed (pr #${row.pr_number}, action=${row.action}): ${error.message}`,
-      );
-    }
-  } catch (err) {
-    console.error(
-      `[prs/merge] audit insert threw (pr #${row.pr_number}): ${
-        err instanceof Error ? err.message : "unknown"
-      }`,
-    );
-  }
-}
 
 export async function POST(
   req: Request,
@@ -89,13 +64,8 @@ export async function POST(
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
-  const prNumber = Number.parseInt(ctx.params.number, 10);
-  if (!Number.isInteger(prNumber) || prNumber <= 0) {
-    return NextResponse.json(
-      { error: "pr number must be a positive integer" },
-      { status: 400 },
-    );
-  }
+  const prNumber = parsePRNumber(ctx.params.number);
+  if (prNumber === null) return invalidPRNumberResponse();
 
   let body: MergeBody = {};
   try {
@@ -105,10 +75,7 @@ export async function POST(
   } catch {
     return NextResponse.json({ error: "invalid_json" }, { status: 400 });
   }
-  const sessionId =
-    typeof body.sessionId === "string" && body.sessionId.length > 0
-      ? body.sessionId
-      : null;
+  const sessionId = parseSessionId(body.sessionId);
 
   // 1) Fresh re-fetch from GitHub. The card may be stale; we trust
   //    nothing the client says about gate state.
@@ -140,43 +107,13 @@ export async function POST(
     );
   }
 
-  // 2a) Phase 3c gate hardening (G1) — if this PR is a SENTINEL PR,
-  //     resolve its paired FORGE PR. The evaluator stays pure; this
-  //     route does the I/O. Failures degrade to `null` so the
-  //     evaluator surfaces the distinct "could not be resolved"
-  //     blocker instead of false-positive merging.
-  let forgePRMerged: boolean | null = null;
-  if (isSentinelPR(pr.title, pr.body)) {
-    try {
-      const lookup = await findPairedForgePR({
-        branch: pr.branch,
-        body: pr.body,
-      });
-      forgePRMerged = lookup.resolved ? lookup.merged : null;
-    } catch {
-      forgePRMerged = null;
-    }
-  }
-
-  // 2c) Task #30 — fetch the CI status fresh on the merge call, NOT
-  //     trusting the card's snapshot. CI may have flipped from
-  //     pending → success between the card render and the operator
-  //     tapping MERGE.
-  const ciStatus = await getPRCheckStatus(pr.headSha);
-
-  // 2b) Gate evaluation — single source of truth. Same call the card made.
-  const gates = evaluateMergeGates(
-    {
-      number: pr.number,
-      title: pr.title,
-      body: pr.body,
-      head: { ref: pr.branch },
-    },
-    pr.reviews.map((r) => ({ state: r.state, body: r.body })),
-    { forgePRMerged, ciStatus },
-  );
+  // 2) Gate evaluation — single source of truth, shared with the
+  //    detail route the card renders from. Resolves the paired FORGE
+  //    PR for SENTINEL PRs (G1) and the fresh CI status for the head
+  //    SHA (Task #30) — never the card's snapshot.
+  const gates = await evaluateGatesForPR(pr);
   if (!gates.ok) {
-    await audit({
+    await auditPRAction("merge", {
       session_id: sessionId,
       pr_number: prNumber,
       action: "hold",
@@ -218,7 +155,7 @@ export async function POST(
   }
 
   // 4) Best-effort audit row.
-  await audit({
+  await auditPRAction("merge", {
     session_id: sessionId,
     pr_number: prNumber,
     action: "merge",
@@ -226,41 +163,31 @@ export async function POST(
     reason: null,
   });
 
-  // 5) Phase 4 — fire-and-forget push notification. `sendPushToAll`
-  //    swallows every error internally, but we still detach (`void`)
-  //    so the response is never blocked on Supabase select + push
-  //    fanout + GC. A defensive `.catch` guards against any future
-  //    regression where an error escapes the helper's internal try.
-  void sendPushToAll({
-    title: "✅ PR merged",
-    body: `${pr.branch} → ${pr.baseBranch}`,
-    tag: `pr-${prNumber}`,
-    url: pr.url,
-  }).catch((err) =>
-    console.error(
-      `[push] merge dispatch escaped: ${
-        err instanceof Error ? err.message : "unknown"
-      }`,
-    ),
-  );
-
-  // Phase 3.5 (option a) — fire-and-forget TASK_COMPLETE marker into
-  // the originating chat session. See issues/create/route.ts for the
-  // contract; same fail-isolated pattern as `sendPushToAll` above.
-  void writeTaskCompleteMessage(sessionId, {
-    kind: "pr_merged",
-    pr: {
-      number: prNumber,
-      branch: pr.branch,
-      mergeCommit: outcome.sha,
+  // 5) Phase 4 — fire-and-forget push notification, and Phase 3.5
+  //    (option a) — fire-and-forget TASK_COMPLETE marker into the
+  //    originating chat session. Both are detached so the response is
+  //    never blocked on Supabase select + push fanout. See
+  //    issues/create/route.ts for the marker contract.
+  fireAndForget(
+    "[push] merge dispatch",
+    sendPushToAll({
+      title: "✅ PR merged",
+      body: `${pr.branch} → ${pr.baseBranch}`,
+      tag: `pr-${prNumber}`,
       url: pr.url,
-    },
-  }).catch((err) =>
-    console.error(
-      `[task-complete-write] merge dispatch escaped: ${
-        err instanceof Error ? err.message : "unknown"
-      }`,
-    ),
+    }),
+  );
+  fireAndForget(
+    "[task-complete-write] merge dispatch",
+    writeTaskCompleteMessage(sessionId, {
+      kind: "pr_merged",
+      pr: {
+        number: prNumber,
+        branch: pr.branch,
+        mergeCommit: outcome.sha,
+        url: pr.url,
+      },
+    }),
   );
 
   return NextResponse.json({
@@ -268,6 +195,6 @@ export async function POST(
     sha: outcome.sha,
     prNumber,
     branch: pr.branch,
-    postMergeReminder: `Post-merge sync required: update PROJECT_STATE.md + ROADMAP.md + WORKTODO.md + CHANGELOG.md for WARP/${slug}`,
+    postMergeReminder: postMergeReminder(slug),
   });
 }

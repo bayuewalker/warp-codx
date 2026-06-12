@@ -34,6 +34,11 @@ export function setBrowserSupabaseConfig(url: string, anonKey: string) {
  * falls back to the service-role client so unauthenticated API requests
  * succeed without a bearer token. Real bearer tokens always win.
  */
+// Server-side fetch that opts out of Next.js fetch caching — API
+// queries must always see live data.
+const noStoreFetch: typeof fetch = (input, init) =>
+  fetch(input, { ...init, cache: "no-store" });
+
 export function getRequestSupabase(
   authHeader: string | null | undefined,
 ): SupabaseClient | null {
@@ -42,8 +47,6 @@ export function getRequestSupabase(
       ? authHeader.slice("Bearer ".length).trim()
       : authHeader.trim();
     if (token) {
-      const noStoreFetch: typeof fetch = (input, init) =>
-        fetch(input, { ...init, cache: "no-store" });
       return createClient(
         assertEnv("NEXT_PUBLIC_SUPABASE_URL", SUPABASE_URL),
         assertEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", SUPABASE_ANON_KEY),
@@ -128,12 +131,16 @@ export function getBrowserSupabase(): SupabaseClient {
 /**
  * Server-only Supabase client using the service-role key.
  * Bypasses RLS. Never import this from a client component.
+ *
+ * Memoized: the client is stateless (no session persistence; every
+ * query is an independent `noStoreFetch`), and this is the hottest
+ * helper in the codebase — most API routes call it several times per
+ * request, so constructing a fresh client each call was pure overhead.
  */
+let _serverClient: SupabaseClient | null = null;
 export function getServerSupabase(): SupabaseClient {
-  const noStoreFetch: typeof fetch = (input, init) =>
-    fetch(input, { ...init, cache: "no-store" });
-
-  return createClient(
+  if (_serverClient) return _serverClient;
+  _serverClient = createClient(
     assertEnv("NEXT_PUBLIC_SUPABASE_URL", SUPABASE_URL),
     assertEnv("SUPABASE_SERVICE_KEY", process.env.SUPABASE_SERVICE_KEY),
     {
@@ -141,4 +148,5 @@ export function getServerSupabase(): SupabaseClient {
       global: { fetch: noStoreFetch },
     },
   );
+  return _serverClient;
 }
