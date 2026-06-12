@@ -35,6 +35,7 @@ export type PaletteAction =
   | { kind: "new-directive" }
   | { kind: "open-session"; sessionId: string }
   | { kind: "open-settings" }
+  | { kind: "open-agent-panel" }
   | { kind: "refresh-constitution" }
   | { kind: "sign-out" }
   | { kind: "select-model"; modelId: SelectableModelId };
@@ -56,6 +57,8 @@ type Props = {
   sessions: Session[];
   activeSessionId: string | null;
   onAction: (action: PaletteAction) => void;
+  /** Show admin-only actions (e.g. Launch agent, Refresh constitution). */
+  isAdmin?: boolean;
   /** Open via uplifted prop (e.g. a header button); the ⌘K shortcut is wired internally. */
   open?: boolean;
   onClose?: () => void;
@@ -77,6 +80,7 @@ export default function CommandPalette({
   sessions,
   activeSessionId,
   onAction,
+  isAdmin = false,
   open: openProp,
   onClose,
 }: Props) {
@@ -182,15 +186,6 @@ export default function CommandPalette({
         action: { kind: "new-directive" },
       },
       {
-        id: "action:refresh-constitution",
-        group: "Actions",
-        icon: <Icon name="refresh" />,
-        title: "Refresh constitution",
-        subtitle: "Re-fetch AGENTS / COMMANDER / state from GitHub",
-        searchHay: "refresh constitution sync github pull update",
-        action: { kind: "refresh-constitution" },
-      },
-      {
         id: "action:settings",
         group: "Actions",
         icon: <Icon name="cog" />,
@@ -209,6 +204,29 @@ export default function CommandPalette({
         action: { kind: "sign-out" },
       },
     );
+
+    if (isAdmin) {
+      out.push(
+        {
+          id: "action:agent",
+          group: "Actions",
+          icon: <Icon name="agent" />,
+          title: "Launch agent",
+          subtitle: "Run an autonomous coding task in a sandbox",
+          searchHay: "launch agent code sandbox run autonomous task",
+          action: { kind: "open-agent-panel" },
+        },
+        {
+          id: "action:refresh-constitution",
+          group: "Actions",
+          icon: <Icon name="refresh" />,
+          title: "Refresh constitution",
+          subtitle: "Re-fetch AGENTS / COMMANDER / state from GitHub",
+          searchHay: "refresh constitution sync github pull update",
+          action: { kind: "refresh-constitution" },
+        },
+      );
+    }
 
     // Recent sessions (cap at 12 so the palette stays scannable; fuzzy filter
     // covers the rest).
@@ -241,7 +259,7 @@ export default function CommandPalette({
     }
 
     return out;
-  }, [sessions, activeSessionId, modelId]);
+  }, [sessions, activeSessionId, modelId, isAdmin]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -457,6 +475,15 @@ function Icon({ name }: { name: string }) {
           <polygon points="12 2 2 7 12 12 22 7 12 2" />
           <polyline points="2 17 12 22 22 17" />
           <polyline points="2 12 12 17 22 12" />
+        </svg>
+      );
+    case "agent":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <path d="M17.5 14v7M14 17.5h7" />
         </svg>
       );
     case "search":

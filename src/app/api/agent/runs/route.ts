@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { requireAdmin, requireUser } from "@/lib/roles";
+import { requireUser } from "@/lib/roles";
+import { canLaunchCodingAgent } from "@/lib/agent/access";
 import { listAgentRuns, type AgentRun } from "@/lib/agent/agent-runs";
 import { startAgentRun } from "@/lib/agent/run-service";
 
@@ -30,10 +31,13 @@ export async function GET(req: Request) {
  * GET /api/agent/runs/:id for progress.
  */
 export async function POST(req: Request) {
-  const auth = await requireAdmin(req);
-  if ("error" in auth) {
-    const status = auth.error === "unauthenticated" ? 401 : 403;
-    return NextResponse.json({ error: auth.error }, { status });
+  const user = await requireUser(req);
+  if (!user) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+  const access = canLaunchCodingAgent(user);
+  if (!access.allowed) {
+    return NextResponse.json({ error: access.reason }, { status: 403 });
   }
 
   let body: {
@@ -63,7 +67,7 @@ export async function POST(req: Request) {
       : undefined;
 
   const result = await startAgentRun({
-    userId: auth.user.id,
+    userId: user.id,
     task,
     repoUrl: repoUrl || undefined,
     branch: branch || undefined,

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { authFetch } from "@/lib/api-fetch";
+import { getBrowserSupabase } from "@/lib/supabase";
 
 /**
  * Coding-agent monitor (admin-only tab).
@@ -91,12 +92,36 @@ export default function AgentRunsPanel() {
     void loadRuns();
   }, [loadRuns]);
 
-  // Poll the list while any run is in progress.
+  // Realtime subscription: reload list whenever any agent_runs row changes.
+  // Falls back to a 5s poll if Supabase Realtime is unavailable.
   useEffect(() => {
-    if (!runs.some((r) => r.status === "running")) return;
-    const t = setInterval(() => void loadRuns(), 3000);
-    return () => clearInterval(t);
-  }, [runs, loadRuns]);
+    let channel: ReturnType<ReturnType<typeof getBrowserSupabase>["channel"]> | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    try {
+      const sb = getBrowserSupabase();
+      channel = sb
+        .channel("agent_runs_list")
+        .on(
+          "postgres_changes",
+          { event: "UPDATE", schema: "public", table: "agent_runs" },
+          () => { void loadRuns(); },
+        )
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            // Realtime unavailable — fall back to polling while runs are live.
+            pollTimer = setInterval(() => { void loadRuns(); }, 5000);
+          }
+        });
+    } catch {
+      pollTimer = setInterval(() => { void loadRuns(); }, 5000);
+    }
+    return () => {
+      if (channel) {
+        try { getBrowserSupabase().removeChannel(channel); } catch { /* ignore */ }
+      }
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [loadRuns]);
 
   const start = async () => {
     if (!task.trim()) return;
@@ -224,12 +249,40 @@ function RunDetailView({ id, onBack }: { id: string; onBack: () => void }) {
     void load();
   }, [load]);
 
-  // Poll while the run is in progress.
+  // Realtime subscription for this specific run — update transcript live.
+  // Falls back to 2s polling if Realtime is unavailable.
   useEffect(() => {
-    if (run && run.status !== "running") return;
-    const t = setInterval(() => void load(), 2000);
-    return () => clearInterval(t);
-  }, [run, load]);
+    let channel: ReturnType<ReturnType<typeof getBrowserSupabase>["channel"]> | null = null;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    try {
+      const sb = getBrowserSupabase();
+      channel = sb
+        .channel(`agent_run_detail:${id}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "agent_runs",
+            filter: `id=eq.${id}`,
+          },
+          () => { void load(); },
+        )
+        .subscribe((status) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            pollTimer = setInterval(() => { void load(); }, 2000);
+          }
+        });
+    } catch {
+      pollTimer = setInterval(() => { void load(); }, 2000);
+    }
+    return () => {
+      if (channel) {
+        try { getBrowserSupabase().removeChannel(channel); } catch { /* ignore */ }
+      }
+      if (pollTimer) clearInterval(pollTimer);
+    };
+  }, [id, load]);
 
   return (
     <div>
