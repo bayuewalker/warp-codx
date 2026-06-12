@@ -56,12 +56,15 @@
   --diff-rem-bg:     rgba(192, 57, 43, 0.14);
   --diff-rem-line:   rgba(192, 57, 43, 0.30);
 
-  /* ─── Type scale: main-response vs sub-response tiers ──────── */
-  --fs-prose:        15.5px;  /* main narration paragraphs */
-  --fs-prose-user:   16px;    /* user bubble */
-  --lh-prose:        1.7;
-  --fs-sub:          12.5px;  /* tool-call / action summaries (muted) */
-  --fs-sub-mono:     12px;    /* mono sub-rows: diff/file paths */
+  /* ─── Type scale: main-response vs sub-response tiers ────────
+     Compact pass (operator feedback: previous scale read oversized
+     on mobile). Prose matches the 12px message-content body; the
+     sub tier matches table-design-ref card chrome (11px mono). */
+  --fs-prose:        12px;    /* main narration paragraphs */
+  --fs-prose-user:   12.5px;  /* user bubble */
+  --lh-prose:        1.6;
+  --fs-sub:          11.5px;  /* tool-call / action summaries (muted) */
+  --fs-sub-mono:     11px;    /* mono sub-rows: diff/file paths */
   --color-sub:       var(--warp-text-dim);
   --color-sub-dim:   var(--warp-text-mute);
 
@@ -86,6 +89,12 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  /* Kill Chrome-Android font boosting ("text autosizing"): without this
+     the browser inflates wide text columns (chat prose, session title)
+     past their declared px sizes, so the UI reads oversized on mobile
+     no matter what the stylesheet says. */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* Sans-serif opt-in helper (kept for back-compat with components that
