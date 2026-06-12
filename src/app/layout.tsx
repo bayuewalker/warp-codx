@@ -48,6 +48,11 @@ export default function RootLayout({
       var root = document.documentElement;
       function update() {
         var kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+        // Ignore small deltas from the browser's collapsing toolbar / URL bar —
+        // only a real on-screen keyboard (always large) should pad the
+        // composer. Without this threshold the address bar leaves a phantom
+        // gap below the chat box on Android Chrome.
+        if (kb < 120) kb = 0;
         root.style.setProperty("--warp-kb-h", kb + "px");
       }
       vv.addEventListener("resize", update);

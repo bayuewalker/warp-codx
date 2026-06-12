@@ -299,7 +299,15 @@ body {
   outline-offset: 2px;
 }
 @media (max-width: 480px) {
-  .header-cmdk { padding: 0; width: 32px; justify-content: center; }
+  .header-cmdk {
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    justify-content: center;
+    background: transparent;
+    border-color: transparent;
+    border-radius: var(--radius-sm);
+  }
   .header-cmdk-kbd { display: none; }
 }
 
@@ -696,19 +704,6 @@ body {
   background: rgba(55, 138, 221, 0.12) !important;
 }
 
-.input-footer {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 8px 4px 0;
-  /* Reserve the row so the composer doesn't jump when the thinking
-     pill mounts/unmounts (the zone is dedicated to it). */
-  min-height: 30px;
-  font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 10px;
-  letter-spacing: 0.04em;
-}
-
 .footer-agent-badge {
   margin-left: auto;
   font-size: 9px;
@@ -769,7 +764,9 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  padding: 2px 0;
   color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-mono), ui-monospace, monospace;
 }
 .footer-thinking-icon {
   display: inline-flex;

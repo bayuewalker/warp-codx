@@ -31,6 +31,8 @@ type Props = {
   isAdmin: boolean;
   view?: AppView;
   onViewChange?: (v: AppView) => void;
+  /** The AI chat surface (a header-less ChatArea) embedded into the IDE. */
+  chatSlot?: React.ReactNode;
 };
 
 export default function WorkspaceView({
@@ -38,6 +40,7 @@ export default function WorkspaceView({
   isAdmin,
   view,
   onViewChange,
+  chatSlot,
 }: Props) {
   const [record, setRecord] = useState<WorkspaceRecord | null | undefined>(undefined);
   const [repoUrl, setRepoUrl] = useState("");
@@ -46,7 +49,7 @@ export default function WorkspaceView({
   const [error, setError] = useState<string | null>(null);
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [treeKey, setTreeKey] = useState(0);
-  const [rightTab, setRightTab] = useState<"preview" | "terminal">("terminal");
+  const [rightTab, setRightTab] = useState<"ai" | "preview" | "terminal">("ai");
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -123,7 +126,11 @@ export default function WorkspaceView({
       )}
 
       {!live ? (
-        <EmptyWorkspace status={record?.status} isAdmin={isAdmin} />
+        // No live sandbox yet — still give Code view a usable chatbox. The
+        // header carries the create/resume controls; the body is the AI chat.
+        <div className="flex-1 min-h-0 flex flex-col">
+          {chatSlot ?? <EmptyWorkspace status={record?.status} isAdmin={isAdmin} />}
+        </div>
       ) : (
         <div className="flex-1 min-h-0 flex">
           {/* Explorer */}
@@ -137,9 +144,14 @@ export default function WorkspaceView({
           <div className="flex-1 min-w-0 flex flex-col border-r border-hair">
             <CodeEditor path={activeFile} onSaved={() => setTreeKey((k) => k + 1)} />
           </div>
-          {/* Preview / Terminal */}
-          <div className="w-[42%] min-w-[320px] flex flex-col">
+          {/* AI / Preview / Terminal */}
+          <div className="w-[42%] min-w-[320px] flex flex-col border-l border-hair">
             <div className="flex items-center gap-1 px-2 py-1 border-b border-hair text-xs">
+              {chatSlot && (
+                <TabButton active={rightTab === "ai"} onClick={() => setRightTab("ai")}>
+                  AI
+                </TabButton>
+              )}
               <TabButton active={rightTab === "preview"} onClick={() => setRightTab("preview")}>
                 Preview
               </TabButton>
@@ -148,9 +160,15 @@ export default function WorkspaceView({
               </TabButton>
             </div>
             <div className="flex-1 min-h-0">
-              {rightTab === "preview" ? (
-                <PreviewPane />
-              ) : (
+              {/* Keep the chat mounted across tab switches so its transcript +
+                  stream survive; just toggle visibility. */}
+              {chatSlot && (
+                <div className={cn("h-full", rightTab === "ai" ? "flex flex-col" : "hidden")}>
+                  {chatSlot}
+                </div>
+              )}
+              {rightTab === "preview" && <PreviewPane />}
+              {rightTab === "terminal" && (
                 <TerminalPane onAfterCommand={() => setTreeKey((k) => k + 1)} />
               )}
             </div>

@@ -79,8 +79,19 @@ const SHORTCUTS: Shortcut[] = [
     id: "test-responses",
     icon: <span aria-hidden="true">🎨</span>,
     title: "Test responses",
-    subtitle: "Preview every render style — code, todos, terminal, cards, diffs",
-    action: { kind: "send", text: "/test" },
+    subtitle: "Ask the AI to demo every render style (live answer)",
+    action: {
+      kind: "send",
+      text:
+        "Demonstrate every response format you support, as a single answer. " +
+        "Use ONLY rich, structured blocks — no plain paragraphs between them. " +
+        "Include, in order: a 2-column key/value table; a Component/Status " +
+        "table; a task checklist (## ✅ TODO with - [ ] / - [x] items); a " +
+        "syntax-highlighted code block; a terminal/bash code block; and the " +
+        "rich blocks warp-todos, warp-action, warp-diff, and warp-status with " +
+        "realistic sample data. Keep prose to at most one short caption per " +
+        "section.",
+    },
   },
   {
     id: "new-chat",

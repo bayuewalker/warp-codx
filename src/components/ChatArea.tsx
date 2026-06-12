@@ -5,6 +5,7 @@ import { getBrowserSupabase } from "@/lib/supabase";
 import type { Message, Session, TodosPayload } from "@/lib/types";
 import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
+import ThinkingIndicator from "./ThinkingIndicator";
 import type { AppView } from "./ViewToggle";
 import SessionBar from "./SessionBar";
 import WarningBanner from "./WarningBanner";
@@ -32,6 +33,8 @@ type Props = {
   /** Current top-level surface + setter — for the composer's Chat ⇆ Code toggle. */
   view?: AppView;
   onViewChange?: (v: AppView) => void;
+  /** Hide the 44px app header — used when embedded as the IDE's AI tab. */
+  hideHeader?: boolean;
 };
 
 export default function ChatArea({
@@ -43,6 +46,7 @@ export default function ChatArea({
   isGuest = false,
   view,
   onViewChange,
+  hideHeader = false,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -498,7 +502,8 @@ export default function ChatArea({
     <div className="flex flex-col h-full min-h-0">
       {/* App header — 44px. Hamburger left (mobile only — drawer is the
           persistent sidebar on desktop), wordmark center, new-directive
-          plus right. */}
+          plus right. Hidden when embedded as the IDE's AI tab. */}
+      {!hideHeader && (
       <div className="app-header">
         <button
           type="button"
@@ -570,6 +575,7 @@ export default function ChatArea({
           </button>
         </div>
       </div>
+      )}
 
       {/* Session bar — appears when a session is active. */}
       <SessionBar
@@ -637,12 +643,17 @@ export default function ChatArea({
 
       {/* Input */}
       <div className="bg-warp-bg kb-inset">
-        <div className="max-w-3xl mx-auto w-full px-3 md:px-6 pt-3 pb-3">
+        {/* Thinking indicator sits ABOVE the composer (not below it), so there's
+            no reserved empty row under the chat box. */}
+        {streaming && (
+          <div className="max-w-3xl mx-auto w-full px-3 md:px-6 pt-1">
+            <ThinkingIndicator label={thinkingLabel} seconds={thinkingSeconds} />
+          </div>
+        )}
+        <div className="max-w-3xl mx-auto w-full px-3 md:px-6 pt-2 pb-3">
           <ChatInput
             disabled={!sessionId}
             isStreaming={streaming}
-            thinkingLabel={thinkingLabel}
-            thinkingSeconds={thinkingSeconds}
             onStopStream={handleStopStream}
             placeholder={
               !sessionId

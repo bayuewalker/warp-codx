@@ -14,10 +14,6 @@ import ViewToggle, { type AppView } from "./ViewToggle";
 type Props = {
   disabled?: boolean;
   isStreaming?: boolean;
-  /** Short, real remark of what the assistant is doing (e.g. "writing code"). */
-  thinkingLabel?: string;
-  /** Elapsed seconds since the current stream started. */
-  thinkingSeconds?: number;
   onStopStream?: () => void;
   placeholder?: string;
   onSend: (text: string) => void;
@@ -40,13 +36,6 @@ type Props = {
   /** Switch the top-level surface from the composer toolbar. */
   onViewChange?: (v: AppView) => void;
 };
-
-/** Format elapsed seconds as m:ss for the thinking remark. */
-function formatElapsed(total: number): string {
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${s.toString().padStart(2, "0")}`;
-}
 
 const MAX_HEIGHT_PX = 144;
 
@@ -71,8 +60,6 @@ type Attachment = {
 export default function ChatInput({
   disabled = false,
   isStreaming = false,
-  thinkingLabel = "",
-  thinkingSeconds = 0,
   onStopStream,
   placeholder = "Describe your task or type / for commands",
   onSend,
@@ -420,51 +407,6 @@ export default function ChatInput({
             )}
           </button>
         </div>
-      </div>
-
-      {/* Dedicated thinking zone — empty (but height-stable) when idle, the
-          live thinking animation when the assistant is actually streaming. The
-          model + connection moved to the top status strip. No box/pill — just
-          the orb (a constant circle whose inner glyph crossfades `>_` ⇆ ❚❚,
-          per the Warp reference) plus the phase label ("thinking" → "writing"
-          → "writing code") and the m:ss timer, all driven by real stream
-          state, not decorative. */}
-      <div className="input-footer" data-streaming={isStreaming ? "true" : "false"}>
-        {isStreaming && (
-          <span className="footer-thinking" role="status" aria-live="polite">
-            <span className="footer-thinking-icon" aria-hidden="true">
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={1.7}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                {/* Colorful spinning ring (rotating dashed arc). */}
-                <circle className="footer-think-ring" cx="12" cy="12" r="9.5" />
-                {/* Glyph A — terminal prompt `>_` */}
-                <g className="footer-think-glyph footer-think-glyph-a">
-                  <polyline points="8 9 11 12 8 15" />
-                  <line x1="13" y1="15" x2="16.5" y2="15" />
-                </g>
-                {/* Glyph B — pause bars ❚❚ */}
-                <g className="footer-think-glyph footer-think-glyph-b">
-                  <line x1="10" y1="9" x2="10" y2="15" />
-                  <line x1="14" y1="9" x2="14" y2="15" />
-                </g>
-              </svg>
-            </span>
-            <span className="footer-thinking-label">
-              {thinkingLabel || "thinking"}
-            </span>
-            {thinkingSeconds > 0 && (
-              <span className="footer-thinking-time">
-                {formatElapsed(thinkingSeconds)}
-              </span>
-            )}
-          </span>
-        )}
       </div>
 
       <ShortcutSheet
