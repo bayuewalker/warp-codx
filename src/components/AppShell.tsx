@@ -442,6 +442,21 @@ export default function AppShell() {
             isAdmin={isAdmin}
             view={view}
             onViewChange={setView}
+            chatSlot={
+              <ChatArea
+                sessionId={activeId}
+                sessionLabel={
+                  sessions.find((s) => s.id === activeId)?.label ?? null
+                }
+                onOpenDrawer={() => setDrawerOpen(true)}
+                onNewDirective={handleNewDirective}
+                onSessionUpdated={handleSessionUpdated}
+                isGuest={auth.kind === "guest"}
+                view={view}
+                onViewChange={setView}
+                hideHeader
+              />
+            }
           />
         )}
       </main>

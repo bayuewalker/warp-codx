@@ -101,8 +101,9 @@ describe("buildChatSystemPrompt", () => {
     expect(BASE_SYSTEM_PROMPT).toContain("warp-todos");
     expect(BASE_SYSTEM_PROMPT).toContain("warp-diff");
     expect(BASE_SYSTEM_PROMPT).toContain("## ✅ TODO");
-    // …and the value-gate sentence must remain so plain chat stays prose.
-    expect(BASE_SYSTEM_PROMPT).toContain("ONLY when they add real value");
-    expect(BASE_SYSTEM_PROMPT).toMatch(/NEVER wrap a normal conversational reply/);
+    // …and the rich-default guidance must remain so answers stay structured,
+    // while still not forcing code/terminal where they don't belong.
+    expect(BASE_SYSTEM_PROMPT).toContain("default to rich, structured output");
+    expect(BASE_SYSTEM_PROMPT).toMatch(/DON'T force a code or terminal block/);
   });
 });
