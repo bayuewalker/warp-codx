@@ -670,8 +670,8 @@ body {
   gap: 7px;
   padding: 8px 4px 0;
   /* Reserve the row so the composer doesn't jump when the thinking
-     animation mounts/unmounts (the zone is dedicated to it). */
-  min-height: 22px;
+     pill mounts/unmounts (the zone is dedicated to it). */
+  min-height: 30px;
   font-family: var(--font-mono), ui-monospace, monospace;
   font-size: 10px;
   letter-spacing: 0.04em;
@@ -727,82 +727,81 @@ body {
   font-weight: 500;
 }
 
-/* Live "thinking" indicator in the input footer — pulsing orb + shimmering
-   label + staggered dots. Mounted next to the model while the assistant is
-   actually streaming, so it reflects real generation state (not decorative). */
+/* Live "thinking" indicator below the chat input — a rounded pill with a
+   terminal `>_` glyph, the live phase label, and three breathing round dots
+   (the "emot bulet" pulse). Shown while the assistant is actually streaming,
+   so it reflects real generation state (not decorative). */
 .footer-thinking {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  margin-left: 8px;
-  color: var(--warp-teal);
+  gap: 7px;
+  padding: 5px 11px 5px 9px;
+  border-radius: 999px;
+  border: 1px solid rgba(91, 164, 255, 0.30);
+  background: var(--warp-bg-2, #161618);
+  color: rgba(255, 255, 255, 0.78);
+  animation: footer-think-border 2s ease-in-out infinite;
 }
-.footer-thinking-orb {
-  position: relative;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--warp-teal);
-  box-shadow: 0 0 6px var(--warp-teal);
+.footer-thinking-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  color: var(--warp-blue, #5ba4ff);
+  animation: footer-think-orb 1.8s ease-in-out infinite;
 }
-.footer-thinking-orb::after {
-  content: "";
-  position: absolute;
-  inset: -3px;
-  border-radius: 50%;
-  border: 1px solid var(--warp-teal);
-  animation: footer-think-ring 1.4s ease-out infinite;
+.footer-thinking-icon svg {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 3px rgba(91, 164, 255, 0.6));
 }
-@keyframes footer-think-ring {
-  0%   { transform: scale(0.6); opacity: 0.6; }
-  100% { transform: scale(1.85); opacity: 0; }
+/* Breathing round orb — gentle scale + glow pulse, like the reference. */
+@keyframes footer-think-orb {
+  0%, 100% { transform: scale(0.92); opacity: 0.75; }
+  50%      { transform: scale(1.06); opacity: 1; }
+}
+@keyframes footer-think-border {
+  0%, 100% { border-color: rgba(91, 164, 255, 0.22); }
+  50%      { border-color: rgba(91, 164, 255, 0.55); }
 }
 .footer-thinking-label {
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  background: linear-gradient(
-    90deg,
-    rgba(29, 158, 117, 0.30) 0%,
-    var(--warp-teal) 50%,
-    rgba(29, 158, 117, 0.30) 100%
-  );
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  animation: footer-think-shimmer 1.6s linear infinite;
-}
-@keyframes footer-think-shimmer {
-  0%   { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.66);
 }
 .footer-thinking-dots {
   display: inline-flex;
-  gap: 3px;
+  align-items: center;
+  gap: 4px;
 }
 .footer-thinking-dots i {
-  width: 3px;
-  height: 3px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: var(--warp-teal);
-  animation: footer-think-dot 1.2s ease-in-out infinite;
+  background: var(--warp-blue, #5ba4ff);
+  opacity: 0.4;
+  animation: footer-think-dot 1.4s ease-in-out infinite;
 }
 .footer-thinking-dots i:nth-child(2) { animation-delay: 0.2s; }
 .footer-thinking-dots i:nth-child(3) { animation-delay: 0.4s; }
 @keyframes footer-think-dot {
-  0%, 100% { opacity: 0.25; transform: translateY(0); }
-  50%      { opacity: 1;    transform: translateY(-2px); }
+  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
+  40%           { opacity: 1;   transform: scale(1.25); }
 }
 .footer-thinking-time {
-  margin-left: 2px;
+  margin-left: 1px;
+  font-size: 11px;
   color: var(--warp-text-mute);
   font-variant-numeric: tabular-nums;
 }
 @media (prefers-reduced-motion: reduce) {
-  .footer-thinking-orb::after,
-  .footer-thinking-label,
+  .footer-thinking,
+  .footer-thinking-icon,
   .footer-thinking-dots i { animation: none; }
-  .footer-thinking-label { color: var(--warp-teal); }
+  .footer-thinking-icon { transform: none; opacity: 1; }
+  .footer-thinking-dots i { opacity: 0.7; }
 }
 
 /* ─────────────────────────────────────────────────────────────────
@@ -1021,104 +1020,9 @@ body {
 /* Phase 3.5 — three-dot thinking indicator. Staggered opacity pulse so
    the eye reads dot 1 → 2 → 3 → repeat at ~400ms intervals. Color is
    var(--warp-blue) at 60% opacity per spec; the keyframes only animate
-   opacity so the color hits exactly the requested value at the peak. */
-.warp-thinking {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0;
-}
-.warp-thinking-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--warp-blue);
-  opacity: 0.2;
-  animation: warpThink 1.2s ease-in-out infinite;
-}
-.warp-thinking-dot:nth-child(1) { animation-delay: 0ms; }
-.warp-thinking-dot:nth-child(2) { animation-delay: 200ms; }
-.warp-thinking-dot:nth-child(3) { animation-delay: 400ms; }
-@keyframes warpThink {
-  0%, 80%, 100% { opacity: 0.2; }
-  40%           { opacity: 0.6; }
-}
-
-/* Animated "Thinking" pill — terminal glyph + gradient-sweep label +
-   `ThinkingIndicator` component; the `.warp-thinking*` classes are
-   kept for any stray callers. Anchored just above the input via
-   `.warp-thinking-anchor`, NOT inside the message list. */
-
-/* Anchor wrapper — sits between the message list and the chat input so
-   the pill is always at the bottom of the viewport. */
-.warp-thinking-anchor {
-  padding: 6px 16px 2px;
-  max-width: 48rem;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.warp-thinking-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 12px 6px 10px;
-  border-radius: 999px;
-  background: var(--warp-bg-2, #161618);
-  border: 1px solid rgba(55, 138, 221, 0.35);
-  color: rgba(255, 255, 255, 0.88);
-  font-size: 12.5px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  line-height: 1;
-  animation: warpThinkBorder 2s ease-in-out infinite;
-}
-.warp-thinking-pill__icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--warp-blue, #5ba4ff);
-  width: 15px;
-  height: 15px;
-  flex-shrink: 0;
-}
-.warp-thinking-pill__icon svg {
-  width: 100%;
-  height: 100%;
-}
-.warp-thinking-pill__label {
-  color: rgba(255, 255, 255, 0.72);
-}
-.warp-thinking-pill__dots {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  margin-left: 1px;
-}
-.warp-thinking-pill__dots i {
-  display: block;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--warp-blue, #5ba4ff);
-  opacity: 0.5;
-  animation: warpThinkDot 1.4s ease-in-out infinite;
-}
-.warp-thinking-pill__dots i:nth-child(2) { animation-delay: 0.2s; }
-.warp-thinking-pill__dots i:nth-child(3) { animation-delay: 0.4s; }
-@keyframes warpThinkDot {
-  0%, 80%, 100% { opacity: 0.3; transform: scale(0.85); }
-  40%           { opacity: 1;   transform: scale(1.15); }
-}
-@keyframes warpThinkBorder {
-  0%, 100% { border-color: rgba(55, 138, 221, 0.25); }
-  50%      { border-color: rgba(55, 138, 221, 0.55); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .warp-thinking-pill,
-  .warp-thinking-pill__dots i { animation: none; }
-  .warp-thinking-pill__dots i { opacity: 0.7; }
-}
+   opacity so the color hits exactly the requested value at the peak.
+   The live "thinking" indicator now lives in the input footer
+   (`.footer-thinking`, above) — anchored below the chat box. */
 
 .kb-inset {
   padding-bottom: max(
