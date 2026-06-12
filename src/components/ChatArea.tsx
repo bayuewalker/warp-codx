@@ -577,33 +577,34 @@ export default function ChatArea({
                 />
               </li>
             ))}
-            {streaming && (
+            {streaming && streamingText.length > 0 && (
               <li>
-                {streamingText.length === 0 ? (
-                  // Phase 3.5 — three-dot thinking indicator shown
-                  // immediately on submit. Disappears the moment the
-                  // first streamed chunk arrives (no transition: the
-                  // ternary swaps the node out instantly).
-                  <ThinkingIndicator />
-                ) : (
-                  <MessageBubble
-                    message={{
-                      id: "streaming",
-                      session_id: sessionId,
-                      role: "assistant",
-                      content: streamingText,
-                      created_at: new Date().toISOString(),
-                    }}
-                    streaming
-                    sessionId={sessionId}
-                    modelLabel={modelLabel}
-                  />
-                )}
+                <MessageBubble
+                  message={{
+                    id: "streaming",
+                    session_id: sessionId,
+                    role: "assistant",
+                    content: streamingText,
+                    created_at: new Date().toISOString(),
+                  }}
+                  streaming
+                  sessionId={sessionId}
+                  modelLabel={modelLabel}
+                />
               </li>
             )}
           </ul>
         )}
       </div>
+
+      {/* Thinking pill — anchored just above the input so it's always at
+          the bottom of the viewport, never floating mid-scroll. Only shown
+          before the first streamed token arrives. */}
+      {streaming && streamingText.length === 0 && (
+        <div className="warp-thinking-anchor">
+          <ThinkingIndicator />
+        </div>
+      )}
 
       {/* Input */}
       <div className="bg-warp-bg kb-inset">
