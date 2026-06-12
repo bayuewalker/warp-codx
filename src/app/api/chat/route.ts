@@ -9,6 +9,11 @@ import {
   type SelectableModelId,
 } from "@/lib/models";
 import { buildChatSystemPrompt, BASE_SYSTEM_PROMPT } from "@/lib/system-prompt";
+import {
+  budgetChatHistory,
+  HISTORY_OMITTED_NOTE,
+  MAX_HISTORY_MESSAGES,
+} from "@/lib/chat-history";
 import { extractAndStoreMemories } from "@/lib/memory";
 import { ISSUE_DRAFT_PROTOCOL } from "@/lib/issue-draft-protocol";
 import { PR_ACTION_PROTOCOL } from "@/lib/pr-action-protocol";
@@ -111,12 +116,17 @@ export async function POST(req: Request) {
   }
   await supabase.from("sessions").update(sessionPatch).eq("id", sessionId);
 
-  // Load the full conversation history so the model has context.
+  // Load a BOUNDED window of recent history so the model has context.
+  // Newest-first with a hard limit: an un-limited ascending select gets
+  // silently capped by PostgREST (default max-rows 1000) at the OLDEST
+  // rows — in a long session the model would stop seeing the message the
+  // user just sent. The window is re-ordered chronologically below.
   const { data: history, error: historyErr } = await supabase
     .from("messages")
     .select("role, content")
     .eq("session_id", sessionId)
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: false })
+    .limit(MAX_HISTORY_MESSAGES);
 
   if (historyErr) {
     return NextResponse.json(
@@ -174,9 +184,22 @@ export async function POST(req: Request) {
   // might infer from custom instructions or skills.
   systemPrompt = `${systemPrompt}\n${NEUTRAL_IDENTITY_PROMPT}`;
 
+  // Token-budget the window (chars as a cheap proxy) so the prompt can
+  // never outgrow the model's context window as a session ages. Without
+  // this, the first context-overflow permanently wedges the session: the
+  // user message is persisted above BEFORE the LLM call, so history only
+  // grows and every subsequent turn fails the same way.
+  const fetched = history ?? [];
+  const window = budgetChatHistory(fetched.slice().reverse());
+  const historyTrimmed =
+    window.dropped > 0 || fetched.length === MAX_HISTORY_MESSAGES;
+
   const messages = [
     { role: "system" as const, content: systemPrompt },
-    ...(history ?? []).map((m) => ({
+    ...(historyTrimmed
+      ? [{ role: "system" as const, content: HISTORY_OMITTED_NOTE }]
+      : []),
+    ...window.messages.map((m) => ({
       role: m.role as "user" | "assistant" | "system",
       content: m.content,
     })),
@@ -189,9 +212,53 @@ export async function POST(req: Request) {
 
   const encoder = new TextEncoder();
   let assembled = "";
+  // Flipped when the HTTP consumer goes away (Stop button, tab close,
+  // network drop). Checked by the pump loop so we stop pulling tokens,
+  // and by safeEnqueue so a late chunk never throws into a cancelled
+  // controller — that throw used to skip persistence entirely, losing
+  // the partial reply the user had already watched stream in.
+  let clientGone = false;
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      const safeEnqueue = (text: string) => {
+        if (clientGone) return;
+        try {
+          controller.enqueue(encoder.encode(text));
+        } catch {
+          clientGone = true;
+        }
+      };
+      const safeClose = () => {
+        if (clientGone) return;
+        try {
+          controller.close();
+        } catch {
+          /* already closed/cancelled */
+        }
+      };
+
+      // Persist the assistant turn + bump session freshness. Shared by
+      // the success, disconnect, and mid-stream-error paths so the saved
+      // transcript always matches what the user last saw.
+      const persistAssistant = async (text: string) => {
+        const { error: insertErr } = await supabase.from("messages").insert({
+          session_id: sessionId,
+          role: "assistant",
+          content: text,
+        });
+        if (insertErr) {
+          safeEnqueue(
+            `\n\n[system] Failed to persist assistant message: ${insertErr.message}`,
+          );
+          return;
+        }
+        await supabase
+          .from("sessions")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", sessionId);
+      };
+
       try {
         // Auto-switch across configured providers/keys — if one is out of
         // credit / rate-limited, the next available key is used. See
@@ -210,14 +277,18 @@ export async function POST(req: Request) {
           const delta = part.choices?.[0]?.delta?.content ?? "";
           if (delta) {
             assembled += delta;
-            controller.enqueue(encoder.encode(delta));
+            safeEnqueue(delta);
           }
           const fr = part.choices?.[0]?.finish_reason;
           if (fr) finishReason = fr;
+          // Consumer is gone — breaking out of the for-await aborts the
+          // SDK's underlying request, so we stop paying for tokens
+          // nobody will see, then fall through to persist the partial.
+          if (clientGone) break;
         }
 
         console.log(
-          `[chat] stream ended sessionId=${sessionId} finish_reason=${finishReason ?? "null"} assembled_length=${assembled.length}`,
+          `[chat] stream ended sessionId=${sessionId} finish_reason=${finishReason ?? "null"} assembled_length=${assembled.length} client_gone=${clientGone}`,
         );
 
         // Surface OpenRouter/Anthropic max-token truncation to the user
@@ -227,31 +298,20 @@ export async function POST(req: Request) {
         if (finishReason === "length") {
           const truncationNotice =
             "\n\n⚠️ Response truncated — reply with 'continue' to get the rest.";
-          controller.enqueue(encoder.encode(truncationNotice));
+          safeEnqueue(truncationNotice);
           assembled += truncationNotice;
         }
 
-        // Persist the assistant's final message.
+        // Disconnected before the model finished — mark the saved turn so
+        // the transcript (and the model, next turn) knows it was cut off.
+        if (clientGone && !finishReason && assembled.trim().length > 0) {
+          assembled +=
+            "\n\n⚠️ Response interrupted — stopped before completion.";
+        }
+
+        // Persist the assistant's final (or partial) message.
         if (assembled.trim().length > 0) {
-          const { error: insertErr } = await supabase
-            .from("messages")
-            .insert({
-              session_id: sessionId,
-              role: "assistant",
-              content: assembled,
-            });
-          if (insertErr) {
-            controller.enqueue(
-              encoder.encode(
-                `\n\n[system] Failed to persist assistant message: ${insertErr.message}`,
-              ),
-            );
-          } else {
-            await supabase
-              .from("sessions")
-              .update({ updated_at: new Date().toISOString() })
-              .eq("id", sessionId);
-          }
+          await persistAssistant(assembled);
         }
 
         // Auto-memory — extract durable facts from this turn and store them
@@ -264,18 +324,27 @@ export async function POST(req: Request) {
           });
         }
 
-        controller.close();
+        safeClose();
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
-        controller.enqueue(
-          encoder.encode(`\n\n[system] Stream error: ${message}`),
-        );
-        try {
-          controller.close();
-        } catch {
-          /* noop */
+        const notice = `\n\n[system] Stream error: ${message}`;
+        safeEnqueue(notice);
+        // Keep whatever already streamed: persist the partial with the
+        // same error notice the user saw, so a reload doesn't silently
+        // erase half a reply.
+        if (assembled.trim().length > 0) {
+          assembled += notice;
+          try {
+            await persistAssistant(assembled);
+          } catch {
+            /* best-effort */
+          }
         }
+        safeClose();
       }
+    },
+    cancel() {
+      clientGone = true;
     },
   });
 

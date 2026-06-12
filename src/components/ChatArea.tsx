@@ -94,6 +94,14 @@ export default function ChatArea({
 
     return () => {
       cancelled = true;
+      // Session changed (or unmounted) — kill any in-flight stream so
+      // its closures stop writing the PREVIOUS session's text into the
+      // newly selected session's view. Without this, the old send's
+      // finally() refetches the old session's messages and setMessages()
+      // replaces the new session's transcript with them. The aborted
+      // send sees signal.aborted and skips that refetch entirely.
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
     };
   }, [sessionId, scrollToBottom]);
 
@@ -253,7 +261,12 @@ export default function ChatArea({
         if (reader) {
           try { reader.cancel(); } catch { /* ignore */ }
         }
-        abortControllerRef.current = null;
+        // Only clear the ref if it still points at OUR controller — a
+        // newer send may have already replaced it, and nulling that one
+        // would disconnect the Stop button from the live stream.
+        if (abortControllerRef.current === controller) {
+          abortControllerRef.current = null;
+        }
         setStreaming(false);
 
         // Skip the post-stream state refresh when aborted. The refresh

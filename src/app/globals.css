@@ -1004,6 +1004,135 @@ body {
   40%           { opacity: 0.6; }
 }
 
+/* Animated "Thinking" pill — terminal glyph + gradient-sweep label +
+   chevron, wrapped in a slow conic glow that rotates through the WARP
+   accent palette. Replaces the dot-row predecessor above for the
+   `ThinkingIndicator` component; the `.warp-thinking*` classes are
+   kept for any stray callers. */
+.warp-thinking-pill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 12px;
+  border-radius: 999px;
+  background: linear-gradient(
+    180deg,
+    rgba(38, 38, 42, 0.85),
+    rgba(22, 22, 24, 0.95)
+  );
+  color: rgba(255, 255, 255, 0.92);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  line-height: 1;
+  isolation: isolate;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.warp-thinking-pill::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  padding: 1px;
+  background: conic-gradient(
+    from 0deg,
+    var(--warp-blue) 0deg,
+    var(--warp-purple) 110deg,
+    var(--warp-teal) 220deg,
+    var(--warp-blue) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  z-index: -1;
+  animation: warpThinkRing 4.5s linear infinite;
+  opacity: 0.85;
+}
+.warp-thinking-pill__glow {
+  position: absolute;
+  inset: -6px;
+  border-radius: inherit;
+  background: radial-gradient(
+    closest-side,
+    rgba(55, 138, 221, 0.28),
+    rgba(123, 97, 255, 0.18) 60%,
+    transparent 75%
+  );
+  filter: blur(10px);
+  z-index: -2;
+  animation: warpThinkGlow 2.4s ease-in-out infinite;
+}
+.warp-thinking-pill__icon,
+.warp-thinking-pill__chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.warp-thinking-pill__icon {
+  color: var(--warp-blue);
+  width: 16px;
+  height: 16px;
+  filter: drop-shadow(0 0 4px rgba(55, 138, 221, 0.55));
+}
+.warp-thinking-pill__icon svg,
+.warp-thinking-pill__chevron svg {
+  width: 100%;
+  height: 100%;
+}
+.warp-thinking-pill__chevron {
+  color: rgba(255, 255, 255, 0.55);
+  width: 14px;
+  height: 14px;
+  animation: warpThinkChevron 1.6s ease-in-out infinite;
+}
+.warp-thinking-pill__label {
+  background: linear-gradient(
+    90deg,
+    var(--warp-blue) 0%,
+    var(--warp-purple) 35%,
+    var(--warp-teal) 70%,
+    var(--warp-blue) 100%
+  );
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  animation: warpThinkSweep 3.2s linear infinite;
+}
+@keyframes warpThinkRing {
+  to { transform: rotate(360deg); }
+}
+@keyframes warpThinkSweep {
+  0%   { background-position: 0% 50%; }
+  100% { background-position: 220% 50%; }
+}
+@keyframes warpThinkGlow {
+  0%, 100% { opacity: 0.55; transform: scale(0.96); }
+  50%      { opacity: 0.95; transform: scale(1.04); }
+}
+@keyframes warpThinkChevron {
+  0%, 100% { transform: translateX(0);   opacity: 0.55; }
+  50%      { transform: translateX(2px); opacity: 0.95; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .warp-thinking-pill::before,
+  .warp-thinking-pill__glow,
+  .warp-thinking-pill__chevron,
+  .warp-thinking-pill__label {
+    animation: none;
+  }
+  .warp-thinking-pill__label {
+    background: none;
+    -webkit-text-fill-color: rgba(255, 255, 255, 0.92);
+            color: rgba(255, 255, 255, 0.92);
+  }
+}
+
 .kb-inset {
   padding-bottom: max(
     env(keyboard-inset-height, 0px),

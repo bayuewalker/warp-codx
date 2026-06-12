@@ -80,9 +80,13 @@ function makeSupabase() {
             inserts.push({ table, row });
             return Promise.resolve({ data: null, error: null });
           },
+          // History is now fetched newest-first with a hard limit
+          // (see src/lib/chat-history.ts), so the chain gained .limit().
           select: () => ({
             eq: () => ({
-              order: () => Promise.resolve({ data: [], error: null }),
+              order: () => ({
+                limit: () => Promise.resolve({ data: [], error: null }),
+              }),
             }),
           }),
         };
@@ -258,5 +262,51 @@ describe("POST /api/chat — stream truncation handling", () => {
       .find((r) => r.role === "assistant");
     expect(assistantInsert).toBeDefined();
     expect(assistantInsert!.content).toBe("partial reply" + TRUNCATION_NOTICE);
+  });
+
+  it("persists the partial reply (with an interruption notice) when the client disconnects mid-stream", async () => {
+    // Gate the second chunk behind a deferred so the test can cancel the
+    // response body BETWEEN chunks — the same shape as a user tapping
+    // Stop (client AbortController) or closing the tab mid-stream.
+    let releaseSecondChunk!: () => void;
+    const gate = new Promise<void>((r) => {
+      releaseSecondChunk = r;
+    });
+    const chunk = (content: string) => ({
+      choices: [{ delta: { content }, finish_reason: null }],
+    });
+    streamMock.mockResolvedValueOnce({
+      stream: {
+        async *[Symbol.asyncIterator]() {
+          yield chunk("first half ");
+          await gate;
+          yield chunk("second half");
+          // No terminal finish_reason frame — the disconnect wins first.
+        },
+      },
+      provider: "blackbox",
+      model: "blackboxai/anthropic/claude-sonnet-4.6",
+    });
+    const { POST } = await import("./route");
+
+    const res = await POST(makeReq({ sessionId: "sess-1", content: "hi" }));
+    const reader = res.body!.getReader();
+    const { value } = await reader.read();
+    expect(new TextDecoder().decode(value)).toBe("first half ");
+
+    // Client goes away, then the provider produces one more chunk.
+    await reader.cancel();
+    releaseSecondChunk();
+
+    // The route's pump notices the cancellation, breaks, and persists.
+    await vi.waitFor(() => {
+      const assistantInsert = inserts
+        .filter((i) => i.table === "messages")
+        .map((i) => i.row as { role: string; content: string })
+        .find((r) => r.role === "assistant");
+      expect(assistantInsert).toBeDefined();
+      expect(assistantInsert!.content).toContain("first half ");
+      expect(assistantInsert!.content).toContain("⚠️ Response interrupted");
+    });
   });
 });

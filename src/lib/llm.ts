@@ -17,11 +17,44 @@ export const NO_PROVIDER_MESSAGE =
   "No LLM provider is configured. An admin needs to add an API key " +
   "(Settings → Admin → Provider keys), or set a provider key in the environment.";
 
+export const CONTEXT_TOO_LONG_MESSAGE =
+  "The conversation no longer fits the model's context window. " +
+  "Start a new session, or shorten the message and try again.";
+
+/**
+ * True when the request was rejected because the prompt exceeds the model's
+ * context window (OpenAI `context_length_exceeded`, Anthropic "prompt is too
+ * long", OpenRouter "maximum context length", etc).
+ *
+ * This MUST be checked before {@link isCreditError}: OpenAI surfaces the
+ * condition as code "context_length_exceeded", whose "exceeded" substring
+ * matches the credit regex. Misclassifying it walked the whole failover chain
+ * with a request every provider rejects identically AND stamped a bogus
+ * `last_error` on healthy keys.
+ */
+export function isContextLengthError(err: unknown): boolean {
+  const e = err as {
+    status?: number;
+    code?: string;
+    message?: string;
+    error?: { message?: string; code?: string };
+  };
+  const code = `${e?.code ?? ""} ${e?.error?.code ?? ""}`.toLowerCase();
+  if (code.includes("context_length_exceeded")) return true;
+  const status = typeof e?.status === "number" ? e.status : undefined;
+  if (status !== undefined && status !== 400 && status !== 413) return false;
+  const msg = `${e?.message ?? ""} ${e?.error?.message ?? ""}`.toLowerCase();
+  return /maximum context length|context window|context length|prompt is too long|input is too long|too many tokens/.test(
+    msg,
+  );
+}
+
 /**
  * True when an error means "this key can't serve the request, try another":
  * out of credit, over quota, rate-limited, or an invalid/expired key.
  */
 export function isCreditError(err: unknown): boolean {
+  if (isContextLengthError(err)) return false; // request problem, not key problem
   const e = err as { status?: number; code?: string; message?: string; error?: { message?: string } };
   const status = typeof e?.status === "number" ? e.status : undefined;
   if (status === 401 || status === 402 || status === 429) return true;
@@ -108,6 +141,14 @@ export async function openChatStreamWithFailover(
       return { stream, provider: cand.provider, model };
     } catch (err) {
       lastErr = err;
+      if (isContextLengthError(err)) {
+        // Every candidate would reject the same oversized prompt — fail fast
+        // with an actionable message instead of walking the chain.
+        console.warn(
+          `[llm] ${cand.provider} context-length rejection: ${errMessage(err)}`,
+        );
+        throw new Error(CONTEXT_TOO_LONG_MESSAGE);
+      }
       if (isCreditError(err)) {
         console.warn(
           `[llm] ${cand.provider} (${cand.source}) failover: ${errMessage(err)}`,
@@ -155,6 +196,12 @@ export async function createCompletionWithFailover(
       };
     } catch (err) {
       lastErr = err;
+      if (isContextLengthError(err)) {
+        console.warn(
+          `[llm] ${cand.provider} context-length rejection: ${errMessage(err)}`,
+        );
+        throw new Error(CONTEXT_TOO_LONG_MESSAGE);
+      }
       if (isCreditError(err)) {
         if (cand.keyId) await markProviderKeyError(cand.keyId, errMessage(err));
         continue;
