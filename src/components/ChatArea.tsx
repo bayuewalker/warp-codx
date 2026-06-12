@@ -5,6 +5,7 @@ import { getBrowserSupabase } from "@/lib/supabase";
 import type { Message, Session, TodosPayload } from "@/lib/types";
 import MessageBubble from "./MessageBubble";
 import ChatInput from "./ChatInput";
+import type { AppView } from "./ViewToggle";
 import SessionBar from "./SessionBar";
 import WarningBanner from "./WarningBanner";
 import EmptyStateView from "./EmptyState";
@@ -28,6 +29,9 @@ type Props = {
   onSessionUpdated: (s: Session) => void;
   /** Guest users can send up to GUEST_MSG_LIMIT messages without signing in. */
   isGuest?: boolean;
+  /** Current top-level surface + setter — for the composer's Chat ⇆ Code toggle. */
+  view?: AppView;
+  onViewChange?: (v: AppView) => void;
 };
 
 export default function ChatArea({
@@ -37,6 +41,8 @@ export default function ChatArea({
   onNewDirective,
   onSessionUpdated,
   isGuest = false,
+  view,
+  onViewChange,
 }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
@@ -432,6 +438,20 @@ export default function ChatArea({
     [sessionId, scrollToBottom],
   );
 
+  /**
+   * Quick-command (ShortcutSheet) sink. A shortcut whose text is a slash
+   * command (e.g. `/test`) runs through the slash handler — not sent to the
+   * model as a literal message — so the showcase renders locally.
+   */
+  const handleShortcut = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (trimmed.startsWith("/") && (await handleSlashCommand(trimmed))) return;
+      handleSend(text);
+    },
+    [handleSlashCommand, handleSend],
+  );
+
   // Derive a 0–100 progress percentage from the last assistant message's
   // todo block, when present. The todo payload is parsed out of any
   // ```warp-todos … ``` fence in the most recent assistant turn.
@@ -633,8 +653,10 @@ export default function ChatArea({
             }
             onSend={handleSend}
             onSlashCommand={handleSlashCommand}
-            onShortcutSend={handleSend}
+            onShortcutSend={handleShortcut}
             onNewDirective={onNewDirective}
+            view={view}
+            onViewChange={onViewChange}
           />
         </div>
       </div>

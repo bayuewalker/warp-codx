@@ -7,6 +7,7 @@ import FileTree from "./FileTree";
 import CodeEditor from "./CodeEditor";
 import PreviewPane from "./PreviewPane";
 import TerminalPane from "./TerminalPane";
+import ViewToggle, { type AppView } from "../ViewToggle";
 
 /**
  * The Replit-style IDE surface.
@@ -25,9 +26,19 @@ type WorkspaceRecord = {
   status: WorkspaceStatus;
 };
 
-type Props = { onOpenDrawer?: () => void; isAdmin: boolean };
+type Props = {
+  onOpenDrawer?: () => void;
+  isAdmin: boolean;
+  view?: AppView;
+  onViewChange?: (v: AppView) => void;
+};
 
-export default function WorkspaceView({ onOpenDrawer, isAdmin }: Props) {
+export default function WorkspaceView({
+  onOpenDrawer,
+  isAdmin,
+  view,
+  onViewChange,
+}: Props) {
   const [record, setRecord] = useState<WorkspaceRecord | null | undefined>(undefined);
   const [repoUrl, setRepoUrl] = useState("");
   const [branch, setBranch] = useState("");
@@ -99,6 +110,8 @@ export default function WorkspaceView({ onOpenDrawer, isAdmin }: Props) {
         busy={busy}
         live={live}
         isAdmin={isAdmin}
+        view={view}
+        onViewChange={onViewChange}
         onRepoUrl={setRepoUrl}
         onBranch={setBranch}
         onStart={start}
@@ -155,6 +168,8 @@ function Header({
   busy,
   live,
   isAdmin,
+  view,
+  onViewChange,
   onRepoUrl,
   onBranch,
   onStart,
@@ -167,6 +182,8 @@ function Header({
   busy: boolean;
   live: boolean;
   isAdmin: boolean;
+  view?: AppView;
+  onViewChange?: (v: AppView) => void;
   onRepoUrl: (v: string) => void;
   onBranch: (v: string) => void;
   onStart: () => void;
@@ -185,7 +202,7 @@ function Header({
           ☰
         </button>
       )}
-      <span className="text-sm text-white/80 font-medium">Workspace</span>
+      {view && onViewChange && <ViewToggle view={view} onChange={onViewChange} />}
       <StatusBadge status={record?.status} live={live} />
       <div className="ml-auto flex items-center gap-2 text-xs">
         {!live && (

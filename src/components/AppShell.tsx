@@ -420,15 +420,6 @@ export default function AppShell() {
       </aside>
 
       <main className="flex-1 min-w-0 flex flex-col relative">
-        {/* Chat ⇆ Code surface toggle (also reachable via ⌘K). */}
-        <div className="flex items-center gap-1 px-3 py-1.5 border-b border-hair">
-          <ViewTab active={view === "chat"} onClick={() => setView("chat")}>
-            Chat
-          </ViewTab>
-          <ViewTab active={view === "workspace"} onClick={() => setView("workspace")}>
-            Code
-          </ViewTab>
-        </div>
         {view === "chat" ? (
           <>
             <ConstitutionWarningBanner sessionId={activeId} />
@@ -441,10 +432,17 @@ export default function AppShell() {
               onNewDirective={handleNewDirective}
               onSessionUpdated={handleSessionUpdated}
               isGuest={auth.kind === "guest"}
+              view={view}
+              onViewChange={setView}
             />
           </>
         ) : (
-          <WorkspaceView onOpenDrawer={() => setDrawerOpen(true)} isAdmin={isAdmin} />
+          <WorkspaceView
+            onOpenDrawer={() => setDrawerOpen(true)}
+            isAdmin={isAdmin}
+            view={view}
+            onViewChange={setView}
+          />
         )}
       </main>
       <WorkspaceSettings
@@ -462,29 +460,5 @@ export default function AppShell() {
       />
       </div>
     </div>
-  );
-}
-
-/** Segmented tab for the Chat ⇆ Code surface toggle. */
-function ViewTab({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "px-3 py-1 rounded text-xs font-medium transition-colors",
-        active ? "bg-white/10 text-white" : "text-white/50 hover:text-white/80",
-      )}
-    >
-      {children}
-    </button>
   );
 }
