@@ -413,9 +413,11 @@ export default function ChatInput({
 
       {/* Dedicated thinking zone — empty (but height-stable) when idle, the
           live thinking animation when the assistant is actually streaming. The
-          model + connection moved to the top status strip. The phase label
-          ("thinking" → "writing" → "writing code") and the m:ss timer are
-          driven by real stream state, not decorative. */}
+          model + connection moved to the top status strip. No box/pill — just
+          the orb (a constant circle whose inner glyph crossfades `>_` ⇆ ❚❚,
+          per the Warp reference) plus the phase label ("thinking" → "writing"
+          → "writing code") and the m:ss timer, all driven by real stream
+          state, not decorative. */}
       <div className="input-footer" data-streaming={isStreaming ? "true" : "false"}>
         {isStreaming && (
           <span className="footer-thinking" role="status" aria-live="polite">
@@ -429,17 +431,20 @@ export default function ChatInput({
                 strokeLinejoin="round"
               >
                 <circle cx="12" cy="12" r="9.5" />
-                <polyline points="8 9 11 12 8 15" />
-                <line x1="13" y1="15" x2="16.5" y2="15" />
+                {/* Glyph A — terminal prompt `>_` */}
+                <g className="footer-think-glyph footer-think-glyph-a">
+                  <polyline points="8 9 11 12 8 15" />
+                  <line x1="13" y1="15" x2="16.5" y2="15" />
+                </g>
+                {/* Glyph B — pause bars ❚❚ */}
+                <g className="footer-think-glyph footer-think-glyph-b">
+                  <line x1="10" y1="9" x2="10" y2="15" />
+                  <line x1="14" y1="9" x2="14" y2="15" />
+                </g>
               </svg>
             </span>
             <span className="footer-thinking-label">
               {thinkingLabel || "thinking"}
-            </span>
-            <span className="footer-thinking-dots" aria-hidden="true">
-              <i />
-              <i />
-              <i />
             </span>
             {thinkingSeconds > 0 && (
               <span className="footer-thinking-time">
