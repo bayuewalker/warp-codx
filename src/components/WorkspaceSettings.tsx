@@ -4,6 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import PushNotificationToggle from "@/components/PushNotificationToggle";
 import AgentRunsPanel from "@/components/AgentRunsPanel";
 import { authFetch } from "@/lib/api-fetch";
+import {
+  useDisplayPrefs,
+  setTextSize,
+  setFontPref,
+  type TextSize,
+  type FontPref,
+} from "@/lib/display-prefs";
 
 /**
  * Workspace settings — the operator-facing panel for the three workspace
@@ -15,7 +22,7 @@ import { authFetch } from "@/lib/api-fetch";
  * Reuses the existing `cs-*` modal styling from globals.css.
  */
 
-type Tab = "instructions" | "memory" | "skills" | "agent" | "admin";
+type Tab = "instructions" | "memory" | "skills" | "display" | "agent" | "admin";
 
 type Provider = "openrouter" | "openai" | "blackbox";
 
@@ -122,6 +129,9 @@ export default function WorkspaceSettings({
           <TabButton id="skills" tab={tab} setTab={setTab}>
             Skills
           </TabButton>
+          <TabButton id="display" tab={tab} setTab={setTab}>
+            Display
+          </TabButton>
           {isAdmin && (
             <TabButton id="agent" tab={tab} setTab={setTab}>
               Agent
@@ -137,6 +147,7 @@ export default function WorkspaceSettings({
         {tab === "instructions" && <InstructionsTab />}
         {tab === "memory" && <MemoryTab />}
         {tab === "skills" && <SkillsTab />}
+        {tab === "display" && <DisplayTab />}
         {tab === "agent" && isAdmin && <AgentRunsPanel />}
         {tab === "admin" && isAdmin && <AdminTab />}
 
@@ -405,6 +416,8 @@ function SkillsTab() {
   const [skills, setSkills] = useState<Skill[]>([]);
   const [markdown, setMarkdown] = useState("");
   const [url, setUrl] = useState("");
+  const [repoSource, setRepoSource] = useState("");
+  const [repoSkill, setRepoSkill] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -486,6 +499,36 @@ function SkillsTab() {
     }
   }, [url, load]);
 
+  // Install by GitHub repo source + skill name (Settings → Skills Add form).
+  const installFromRepo = useCallback(async () => {
+    const source = repoSource.trim();
+    const name = repoSkill.trim();
+    if (!source || !name) return;
+    setBusy(true);
+    setError(null);
+    setFlash(null);
+    try {
+      const res = await fetch("/api/skills/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source, name }),
+      });
+      const j = (await res.json().catch(() => ({}))) as {
+        skill?: Skill;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
+      setRepoSource("");
+      setRepoSkill("");
+      setFlash(`Installed "${j.skill?.name ?? name}" from ${source}.`);
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "install failed");
+    } finally {
+      setBusy(false);
+    }
+  }, [repoSource, repoSkill, load]);
+
   // One-tap install from a SKILL.md file — read it client-side and install.
   const onPickFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -543,11 +586,55 @@ function SkillsTab() {
         </button>
       </div>
 
-      <div className="ws-add-row">
+      <div className="ws-skill-add">
+        <label className="ws-field-label" htmlFor="skill-src">
+          Repository source
+        </label>
+        <input
+          id="skill-src"
+          className="ws-input"
+          value={repoSource}
+          placeholder="vercel/ai"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          onChange={(e) => setRepoSource(e.target.value)}
+        />
+        <label className="ws-field-label" htmlFor="skill-name">
+          Skill name
+        </label>
+        <input
+          id="skill-name"
+          className="ws-input"
+          value={repoSkill}
+          placeholder="ai-sdk"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          onChange={(e) => setRepoSkill(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void installFromRepo();
+          }}
+        />
+        <button
+          type="button"
+          className="ws-add-btn"
+          onClick={() => void installFromRepo()}
+          disabled={busy || !repoSource.trim() || !repoSkill.trim()}
+        >
+          {busy ? "Installing…" : "+ Add"}
+        </button>
+        <p className="ws-help" style={{ marginTop: 8, marginBottom: 0 }}>
+          Enter the GitHub <code>owner/repo</code> source and the skill name,
+          e.g. <code>vercel/ai</code> + <code>ai-sdk</code>.
+        </p>
+      </div>
+
+      <div className="ws-add-row" style={{ marginTop: 10 }}>
         <input
           className="ws-input"
           value={url}
-          placeholder="GitHub link to SKILL.md"
+          placeholder="…or a direct GitHub link to SKILL.md"
           inputMode="url"
           autoComplete="off"
           onChange={(e) => setUrl(e.target.value)}
@@ -562,7 +649,7 @@ function SkillsTab() {
           onClick={() => void installFromUrl()}
           disabled={busy || !url.trim()}
         >
-          {busy ? "Installing…" : "INSTALL FROM URL"}
+          {busy ? "…" : "INSTALL"}
         </button>
       </div>
 
@@ -620,6 +707,74 @@ function SkillsTab() {
       </div>
       {flash && <div className="cs-flash">{flash}</div>}
       {error && <div className="cs-error">{error}</div>}
+    </div>
+  );
+}
+
+// ──────────────────────────── Display ────────────────────────────
+
+const SIZE_OPTIONS: { id: TextSize; label: string }[] = [
+  { id: "small", label: "Small" },
+  { id: "medium", label: "Medium" },
+  { id: "big", label: "Big" },
+];
+
+const FONT_OPTIONS: { id: FontPref; label: string; hint: string }[] = [
+  { id: "inter", label: "Inter", hint: "Default — clean geometric sans" },
+  { id: "system", label: "System", hint: "Your device's native font" },
+  { id: "mono", label: "Mono", hint: "JetBrains Mono everywhere" },
+];
+
+function DisplayTab() {
+  const { textSize, fontPref } = useDisplayPrefs();
+
+  return (
+    <div>
+      <p className="ws-help">
+        Reading preferences for this device — stored locally, applied to the
+        chat feed instantly.
+      </p>
+
+      <div className="cs-section-title">Text size</div>
+      <div className="ws-seg" role="radiogroup" aria-label="Text size">
+        {SIZE_OPTIONS.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={textSize === o.id}
+            className={`ws-seg-btn${textSize === o.id ? " is-active" : ""}`}
+            onClick={() => setTextSize(o.id)}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="cs-section-title" style={{ marginTop: 18 }}>
+        Chat font
+      </div>
+      <div className="ws-font-list" role="radiogroup" aria-label="Chat font">
+        {FONT_OPTIONS.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={fontPref === o.id}
+            className={`ws-font-row${fontPref === o.id ? " is-active" : ""}`}
+            onClick={() => setFontPref(o.id)}
+          >
+            <span className={`ws-font-sample ws-font-sample--${o.id}`}>Aa</span>
+            <span className="ws-font-meta">
+              <span className="ws-font-name">{o.label}</span>
+              <span className="ws-font-hint">{o.hint}</span>
+            </span>
+            <span className="ws-font-check" aria-hidden="true">
+              {fontPref === o.id ? "✓" : ""}
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

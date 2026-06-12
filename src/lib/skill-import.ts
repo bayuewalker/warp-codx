@@ -107,3 +107,77 @@ export async function fetchSkillMarkdownFromUrl(input: string): Promise<string> 
   }
   return text;
 }
+
+/* ─────────────────────────────────────────────────────────────────
+   Repo-source install — "owner/repo" + skill name (the Add form in
+   Settings → Skills). We don't know the repo's layout, so probe the
+   well-known places a SKILL.md lives, on the default branches.
+   ───────────────────────────────────────────────────────────────── */
+
+const SOURCE_RE = /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/;
+const NAME_RE = /^[A-Za-z0-9_.-]+$/;
+
+/**
+ * Candidate raw URLs for `<owner>/<repo>` + `<name>`, most-specific first.
+ * Exported for unit tests.
+ */
+export function buildRepoCandidates(source: string, name: string): string[] {
+  const paths = [
+    `skills/${name}/SKILL.md`,
+    `${name}/SKILL.md`,
+    `.claude/skills/${name}/SKILL.md`,
+    `skills/${name}.md`,
+    `${name}.md`,
+  ];
+  const urls: string[] = [];
+  for (const branch of ["main", "master"]) {
+    for (const p of paths) {
+      urls.push(`https://raw.githubusercontent.com/${source}/${branch}/${p}`);
+    }
+  }
+  return urls;
+}
+
+/**
+ * Fetch skill markdown given a GitHub repo source ("owner/repo") and a skill
+ * name. Tries the candidate layouts in order and returns the first hit;
+ * throws with the probed locations when nothing matches.
+ */
+export async function fetchSkillMarkdownFromRepo(
+  source: string,
+  name: string,
+): Promise<string> {
+  const src = source.trim().replace(/^github\.com\//i, "");
+  const skill = name.trim();
+  if (!SOURCE_RE.test(src)) {
+    throw new Error('Repository source must look like "owner/repo".');
+  }
+  if (!NAME_RE.test(skill)) {
+    throw new Error("Skill name may only contain letters, digits, ., _ and -.");
+  }
+
+  for (const url of buildRepoCandidates(src, skill)) {
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "GET",
+        headers: { Accept: "text/plain, text/markdown, */*" },
+        redirect: "follow",
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        cache: "no-store",
+      });
+    } catch {
+      continue; // timeout / network — try the next layout
+    }
+    if (!res.ok) continue;
+    const text = await res.text();
+    if (!text.trim()) continue;
+    if (text.length > MAX_FETCH_BYTES) {
+      throw new Error("File too large to install as a skill.");
+    }
+    return text;
+  }
+  throw new Error(
+    `No SKILL.md found for "${skill}" in ${src} — looked in skills/${skill}/, ${skill}/, .claude/skills/${skill}/ on main and master.`,
+  );
+}

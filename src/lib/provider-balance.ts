@@ -135,17 +135,82 @@ async function openrouterBalance(
 }
 
 /**
- * OpenAI: no per-key balance endpoint, but GET {base}/models is authenticated,
- * so it doubles as a clean validity check.
+ * OpenAI: there is no official per-key balance endpoint on the v1 API, but
+ * the legacy dashboard billing endpoints still answer for many account/key
+ * types, so try those before giving up:
+ *   1. /dashboard/billing/credit_grants → { total_granted, total_used,
+ *      total_available } (prepaid credit accounts)
+ *   2. /dashboard/billing/subscription → { hard_limit_usd } plus
+ *      /dashboard/billing/usage?start_date&end_date → { total_usage } in
+ *      CENTS (monthly-billed accounts; remaining = limit − month-to-date)
+ * Keys without billing scope 401/404 on these — fall back to the /models
+ * validity probe with a graceful n/a, exactly as before.
  */
 async function openaiBalance(
   apiKey: string,
   baseURL: string,
 ): Promise<BalanceResult> {
-  const { status } = await probe(`${baseURL.replace(/\/$/, "")}/models`, apiKey);
+  // Billing endpoints live at the API root, not under /v1.
+  const root = baseURL.replace(/\/$/, "").replace(/\/v1$/, "");
+
+  // 1. Prepaid credit grants.
+  const grants = await probe(`${root}/dashboard/billing/credit_grants`, apiKey);
+  if (grants.status === 401 || grants.status === 403) {
+    // Key is rejected outright — no point probing further.
+    return base({
+      valid: "invalid",
+      note: "Key rejected by OpenAI.",
+    });
+  }
+  if (grants.json) {
+    const credits = num(grants.json.total_granted);
+    const usage = num(grants.json.total_used);
+    const remaining =
+      num(grants.json.total_available) ??
+      (credits !== null && usage !== null ? credits - usage : null);
+    if (remaining !== null || credits !== null) {
+      return base({
+        supported: true,
+        valid: "valid",
+        credits,
+        usage,
+        remaining,
+        currency: "USD",
+      });
+    }
+  }
+
+  // 2. Monthly subscription limit minus month-to-date usage.
+  const sub = await probe(`${root}/dashboard/billing/subscription`, apiKey);
+  const hardLimit = sub.json ? num(sub.json.hard_limit_usd) : null;
+  if (hardLimit !== null) {
+    const now = new Date();
+    const start = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}-01`;
+    const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const end = tomorrow.toISOString().slice(0, 10);
+    const usageRes = await probe(
+      `${root}/dashboard/billing/usage?start_date=${start}&end_date=${end}`,
+      apiKey,
+    );
+    // total_usage is reported in cents.
+    const usedCents = usageRes.json ? num(usageRes.json.total_usage) : null;
+    const used = usedCents !== null ? usedCents / 100 : null;
+    return base({
+      supported: true,
+      valid: "valid",
+      credits: hardLimit,
+      usage: used,
+      remaining: used !== null ? hardLimit - used : hardLimit,
+      currency: "USD",
+      note: "Monthly limit − month-to-date usage.",
+    });
+  }
+
+  // 3. Fallback — validity only, balance n/a.
+  const { status } = await probe(`${root}/v1/models`, apiKey);
   return base({
     valid: validityFromStatus(status),
-    note: "OpenAI exposes no per-key balance — see platform billing.",
+    note: "OpenAI billing endpoints not available for this key — see platform billing.",
   });
 }
 
