@@ -777,15 +777,15 @@ body {
 .new-env-btn {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 11px 14px;
   width: 100%;
   background: transparent;
   border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   color: var(--warp-text);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.15s;
@@ -800,8 +800,8 @@ body {
   cursor: not-allowed;
 }
 .new-env-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   color: var(--warp-text-dim);
   flex-shrink: 0;
 }
@@ -809,12 +809,12 @@ body {
 .nav-item {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
+  gap: 10px;
+  padding: 9px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  color: var(--warp-text);
-  font-size: 14px;
+  color: var(--warp-text-dim);
+  font-size: 13px;
   width: 100%;
   border: none;
   background: transparent;
@@ -824,10 +824,16 @@ body {
 }
 .nav-item:hover {
   background: var(--warp-bg-2);
+  color: var(--warp-text);
 }
+.nav-item[aria-current="page"] {
+  background: var(--warp-bg-2);
+  color: var(--warp-text);
+}
+.nav-item[aria-current="page"] svg { color: var(--warp-blue); }
 .nav-item svg {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   color: var(--warp-text-dim);
   flex-shrink: 0;
 }
@@ -852,7 +858,7 @@ body {
 }
 
 .session-row {
-  padding: 10px 14px;
+  padding: 9px 36px 9px 12px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   display: flex;
@@ -887,7 +893,7 @@ body {
   min-width: 0;
 }
 .session-row-title {
-  font-size: 14px;
+  font-size: 13px;
   color: var(--warp-text);
   font-weight: 500;
   overflow: hidden;
@@ -896,7 +902,7 @@ body {
 }
 .session-row-meta {
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--warp-text-mute);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2330,3 +2336,13 @@ html[data-fontpref="mono"] .chat-feed .message-content {
 }
 .ws-add-btn:hover { opacity: 0.9; }
 .ws-add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+
+/* Sidebar nav/list separator — replaces the old duplicated "Sessions"
+   drawer-section label with quiet structure. */
+.sb-divider {
+  height: 1px;
+  background: var(--border-faint);
+  margin: 8px 4px;
+  flex-shrink: 0;
+}

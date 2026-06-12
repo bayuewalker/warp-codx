@@ -136,15 +136,18 @@ async function openrouterBalance(
 
 /**
  * OpenAI: there is no official per-key balance endpoint on the v1 API, but
- * the legacy dashboard billing endpoints still answer for many account/key
+ * the legacy dashboard billing endpoints still answer for some account/key
  * types, so try those before giving up:
  *   1. /dashboard/billing/credit_grants → { total_granted, total_used,
  *      total_available } (prepaid credit accounts)
  *   2. /dashboard/billing/subscription → { hard_limit_usd } plus
  *      /dashboard/billing/usage?start_date&end_date → { total_usage } in
  *      CENTS (monthly-billed accounts; remaining = limit − month-to-date)
- * Keys without billing scope 401/404 on these — fall back to the /models
- * validity probe with a graceful n/a, exactly as before.
+ *
+ * IMPORTANT: a 401/403 on the billing endpoints says NOTHING about key
+ * validity — modern project keys (sk-proj…) are rejected there by design
+ * while being perfectly valid for the v1 API. Only the /models probe
+ * decides validity.
  */
 async function openaiBalance(
   apiKey: string,
@@ -153,15 +156,16 @@ async function openaiBalance(
   // Billing endpoints live at the API root, not under /v1.
   const root = baseURL.replace(/\/$/, "").replace(/\/v1$/, "");
 
-  // 1. Prepaid credit grants.
-  const grants = await probe(`${root}/dashboard/billing/credit_grants`, apiKey);
-  if (grants.status === 401 || grants.status === 403) {
-    // Key is rejected outright — no point probing further.
-    return base({
-      valid: "invalid",
-      note: "Key rejected by OpenAI.",
-    });
+  // Validity — the only authoritative signal for this provider.
+  const models = await probe(`${root}/v1/models`, apiKey);
+  const valid = validityFromStatus(models.status);
+  if (valid === "invalid") {
+    return base({ valid, note: "Key rejected by OpenAI." });
   }
+
+  // 1. Prepaid credit grants (legacy endpoint; project keys 401 here
+  //    even when valid — that just means "no balance available").
+  const grants = await probe(`${root}/dashboard/billing/credit_grants`, apiKey);
   if (grants.json) {
     const credits = num(grants.json.total_granted);
     const usage = num(grants.json.total_used);
@@ -171,7 +175,7 @@ async function openaiBalance(
     if (remaining !== null || credits !== null) {
       return base({
         supported: true,
-        valid: "valid",
+        valid,
         credits,
         usage,
         remaining,
@@ -197,7 +201,7 @@ async function openaiBalance(
     const used = usedCents !== null ? usedCents / 100 : null;
     return base({
       supported: true,
-      valid: "valid",
+      valid,
       credits: hardLimit,
       usage: used,
       remaining: used !== null ? hardLimit - used : hardLimit,
@@ -206,11 +210,10 @@ async function openaiBalance(
     });
   }
 
-  // 3. Fallback — validity only, balance n/a.
-  const { status } = await probe(`${root}/v1/models`, apiKey);
+  // 3. Balance n/a — validity already decided by /models above.
   return base({
-    valid: validityFromStatus(status),
-    note: "OpenAI billing endpoints not available for this key — see platform billing.",
+    valid,
+    note: "OpenAI doesn't expose balance for this key type (project keys can't read billing) — see platform billing.",
   });
 }
 

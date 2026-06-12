@@ -138,7 +138,7 @@ export default function Sidebar({
       </button>
 
       <nav aria-label="Primary">
-        <NavItem icon="home" label="Home" />
+        <NavItem icon="home" label="Home" onClick={onCloseDrawer} />
         <NavItem
           icon="grid"
           label="Sessions"
@@ -146,6 +146,8 @@ export default function Sidebar({
           onClick={() => setView("sessions")}
         />
       </nav>
+
+      <div className="sb-divider" aria-hidden="true" />
 
       {error && (
         <div className="mx-2 my-2 px-3 py-2 rounded-md border-hair border-warp-amber/50 bg-warp-amber/10">
@@ -164,19 +166,6 @@ export default function Sidebar({
           )}
         </div>
       )}
-
-      <div className="drawer-section" style={{ cursor: "default", pointerEvents: "none" }}>
-        <svg
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth={2}
-          aria-hidden="true"
-        >
-          <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><rect x="14" y="14" width="7" height="7" />
-        </svg>
-        Sessions
-      </div>
 
       <div
         ref={scrollContainerRef}
@@ -326,13 +315,7 @@ function NavItem({
       onClick={onClick}
       disabled={disabled}
       aria-current={active ? "page" : undefined}
-      style={
-        disabled
-          ? { opacity: 0.5, cursor: "not-allowed" }
-          : active
-            ? { color: "var(--warp-text)", background: "rgba(255,255,255,0.04)" }
-            : undefined
-      }
+      style={disabled ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
       title={disabled ? `${label} (coming soon)` : label}
     >
       <NavIcon name={icon} />
