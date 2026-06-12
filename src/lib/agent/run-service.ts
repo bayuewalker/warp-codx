@@ -99,6 +99,11 @@ async function executeRun(
   deps: CodingAgentDeps,
 ): Promise<void> {
   const steps: AgentStep[] = [];
+  // Live step updates are chained so they reach the DB in order — an
+  // unawaited fire-and-forget per step could land step N before N-1
+  // (monitor UI regresses) or after the terminal write below (clobbering
+  // the authoritative final transcript). updateAgentRun never rejects.
+  let stepWrites: Promise<void> = Promise.resolve();
   try {
     const result = await runCodingAgent(
       {
@@ -112,12 +117,17 @@ async function executeRun(
         onStep: (step) => {
           steps.push(step);
           // Best-effort live update; the final write below is authoritative.
-          void updateAgentRun(id, { steps: [...steps] });
+          const snapshot = [...steps];
+          stepWrites = stepWrites.then(() =>
+            updateAgentRun(id, { steps: snapshot }),
+          );
           deps.onStep?.(step);
         },
       },
     );
 
+    // Drain in-flight step writes so the terminal write always lands last.
+    await stepWrites;
     await updateAgentRun(id, {
       status: result.status,
       difficulty: result.difficulty,
@@ -131,6 +141,7 @@ async function executeRun(
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
+    await stepWrites;
     await updateAgentRun(id, {
       status: "error",
       summary: `Run failed: ${msg}`,

@@ -26,10 +26,12 @@ vi.mock("./provider-keys", () => ({ markProviderKeyError }));
 vi.mock("./models", () => ({ getModelForProvider: () => "test-model" }));
 
 import {
+  isContextLengthError,
   isCreditError,
   isInvalidModelError,
   openChatStreamWithFailover,
   createCompletionWithFailover,
+  CONTEXT_TOO_LONG_MESSAGE,
   NO_PROVIDER_MESSAGE,
 } from "./llm";
 
@@ -66,6 +68,53 @@ describe("isCreditError", () => {
     expect(isCreditError({ status: 400, message: "Invalid model name" })).toBe(false);
     expect(isCreditError({ status: 500 })).toBe(false);
     expect(isCreditError(new Error("boom"))).toBe(false);
+  });
+});
+
+describe("isContextLengthError", () => {
+  it("is true for OpenAI's context_length_exceeded code", () => {
+    expect(
+      isContextLengthError({
+        status: 400,
+        code: "context_length_exceeded",
+        message:
+          "This model's maximum context length is 128000 tokens. However, your messages resulted in 131015 tokens.",
+      }),
+    ).toBe(true);
+  });
+  it("is true for message-only variants (Anthropic / OpenRouter)", () => {
+    expect(
+      isContextLengthError({
+        status: 400,
+        message: "prompt is too long: 210011 tokens > 200000 maximum",
+      }),
+    ).toBe(true);
+    expect(
+      isContextLengthError({
+        error: { message: "This endpoint's maximum context length is 131072 tokens" },
+      }),
+    ).toBe(true);
+  });
+  it("is false for quota / billing / invalid-model errors", () => {
+    expect(isContextLengthError({ status: 429 })).toBe(false);
+    expect(
+      isContextLengthError({ error: { message: "You exceeded your quota" } }),
+    ).toBe(false);
+    expect(
+      isContextLengthError({ status: 400, message: "Invalid model name" }),
+    ).toBe(false);
+  });
+  it("keeps context errors OUT of the credit classification", () => {
+    // OpenAI's code contains "exceeded", which matched the credit regex
+    // and walked the failover chain with a doomed request — regression
+    // guard for the carve-out in isCreditError.
+    expect(
+      isCreditError({
+        status: 400,
+        code: "context_length_exceeded",
+        message: "This model's maximum context length is 128000 tokens.",
+      }),
+    ).toBe(false);
   });
 });
 
@@ -148,6 +197,26 @@ describe("openChatStreamWithFailover", () => {
       status: 400,
     });
     expect(createMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("fails fast with an actionable message on a context-length error (no key marked, no next candidate)", async () => {
+    resolveProviderChain.mockResolvedValueOnce([
+      cand("openrouter", "key-1"),
+      cand("blackbox", "key-2"),
+    ]);
+    createMock.mockRejectedValueOnce({
+      status: 400,
+      code: "context_length_exceeded",
+      message: "This model's maximum context length is 128000 tokens.",
+    });
+
+    await expect(openChatStreamWithFailover({ messages: [] })).rejects.toThrow(
+      CONTEXT_TOO_LONG_MESSAGE,
+    );
+    // Every candidate would reject the same oversized prompt — one try only,
+    // and the healthy key must NOT be stamped with a bogus last_error.
+    expect(createMock).toHaveBeenCalledTimes(1);
+    expect(markProviderKeyError).not.toHaveBeenCalled();
   });
 });
 
