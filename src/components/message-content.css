@@ -120,7 +120,7 @@
      / paths wrap instead of forcing horizontal overflow. */
   grid-template-columns: 38% minmax(0, 1fr);
   width: 100%;
-  margin: 0.6em 0;
+  margin: 0.7em 0;
   font-size: 12px;
   background: var(--warp-bg-1);
   border: 1px solid var(--border-soft);
@@ -140,7 +140,7 @@
 
 .message-content .md-table-kv-key,
 .message-content .md-table-kv-val {
-  padding: 0.6em 0.85em;
+  padding: 0.7em 1em;
   border-top: 1px solid var(--border-soft);
   margin: 0;
   min-width: 0;
@@ -206,7 +206,7 @@
 
 .message-content .md-table-status-key,
 .message-content .md-table-status-val {
-  padding: 0.6em 0.85em;
+  padding: 0.7em 1em;
   border-top: 1px solid var(--border-soft);
   margin: 0;
   min-width: 0;
@@ -260,14 +260,17 @@
 .message-content .md-table-badge--green {
   background: var(--warp-teal-bg);
   color: var(--warp-teal);
+  border: 1px solid rgba(29, 158, 117, 0.25);
 }
 .message-content .md-table-badge--muted {
   background: var(--warp-bg-3);
   color: var(--warp-text-mute);
+  border: 1px solid var(--border-soft);
 }
 .message-content .md-table-badge--red {
   background: var(--warp-red-bg);
   color: var(--warp-red);
+  border: 1px solid rgba(192, 57, 43, 0.30);
 }
 
 /* 3+ column stacked-cards layout. Each row of the source table

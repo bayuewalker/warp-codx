@@ -513,7 +513,7 @@ export default function ChatArea({
       {/* Messages */}
       <div
         ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-auto warp-scroll px-4 md:px-6 pt-4 pb-3"
+        className="chat-feed flex-1 min-h-0 overflow-y-auto warp-scroll px-4 md:px-6 pt-4 pb-3"
       >
         {!sessionId ? (
           <EmptyStateView

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { applyDisplayPrefs } from "@/lib/display-prefs";
 import { useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 import ChatArea from "./ChatArea";
@@ -53,6 +54,9 @@ export default function AppShell() {
 
   useEffect(() => {
     setMounted(true);
+    // Device-level reading prefs (text size / font) — applied as <html>
+    // data attributes so the CSS in globals.css can switch the chat feed.
+    applyDisplayPrefs();
     const redirect = () => router.replace("/sign-in");
 
     const initAuth = async () => {
