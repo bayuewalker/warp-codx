@@ -20,14 +20,14 @@
 .message-content .hljs-keyword,
 .message-content .hljs-selector-tag,
 .message-content .hljs-subst {
-  color: #79b8ff;
+  color: #6fa8dc;
 }
 
 /* Built-in values — true / false / null / undefined / NaN */
 .message-content .hljs-literal,
 .message-content .hljs-built_in,
 .message-content .hljs-type {
-  color: #b392f0;
+  color: #9b86e0;
 }
 
 /* String literals — single, double, template */
@@ -35,13 +35,13 @@
 .message-content .hljs-doctag,
 .message-content .hljs-template-variable,
 .message-content .hljs-template-tag {
-  color: #9ecbff;
+  color: #8fb4d9;
 }
 
 /* Numbers and special literals */
 .message-content .hljs-number,
 .message-content .hljs-regexp {
-  color: #f0a45d;
+  color: #c98a2e;
 }
 
 /* Comments — block and line */
@@ -55,13 +55,13 @@
 .message-content .hljs-title,
 .message-content .hljs-title.class_,
 .message-content .hljs-title.function_ {
-  color: #b4d0fb;
+  color: #9db8dc;
 }
 
 /* Class, interface, type alias names */
 .message-content .hljs-class .hljs-title,
 .message-content .hljs-type {
-  color: #79d4c8;
+  color: #4fb286;
 }
 
 /* Function / method parameters */
@@ -73,29 +73,29 @@
 .message-content .hljs-variable,
 .message-content .hljs-symbol,
 .message-content .hljs-bullet {
-  color: #ffab70;
+  color: #c98a2e;
 }
 
 /* Attribute names (HTML, JSX, CSS) */
 .message-content .hljs-attr,
 .message-content .hljs-attribute {
-  color: #f9e29b;
+  color: #d9c27a;
 }
 
 /* HTML / JSX tags */
 .message-content .hljs-tag {
-  color: #85e89d;
+  color: #4fb286;
 }
 
 /* HTML / XML tag names */
 .message-content .hljs-name {
-  color: #85e89d;
+  color: #4fb286;
 }
 
 /* Meta / preprocessor (#include, @decorator, import, …) */
 .message-content .hljs-meta,
 .message-content .hljs-meta .hljs-keyword {
-  color: #b392f0;
+  color: #9b86e0;
 }
 
 /* Punctuation — kept at the prose foreground */
@@ -106,25 +106,25 @@
 
 /* Link / URL text */
 .message-content .hljs-link {
-  color: #79b8ff;
+  color: #6fa8dc;
   text-decoration: underline;
   text-underline-offset: 3px;
 }
 
 /* Diff additions / deletions */
 .message-content .hljs-addition {
-  color: #85e89d;
+  color: #4fb286;
   background: rgba(133, 232, 157, 0.08);
 }
 
 .message-content .hljs-deletion {
-  color: #f97583;
+  color: #c9605a;
   background: rgba(249, 117, 131, 0.08);
 }
 
 /* Section headings inside markdown-like blocks */
 .message-content .hljs-section {
-  color: #79b8ff;
+  color: #6fa8dc;
   font-weight: 600;
 }
 

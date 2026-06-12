@@ -330,7 +330,9 @@
    custom code card. */
 .message-content .md-inline-code {
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.88em;
+  /* Pinned (not em-relative) so code stays mono-small even as the prose
+     body grew to --fs-prose. */
+  font-size: 12.5px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--warp-text);
   padding: 0.25em 0.45em;
@@ -356,7 +358,8 @@
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
   font-family: var(--font-mono), ui-monospace, monospace;
-  font-size: 0.88em;
+  /* Pinned so fenced code stays mono-small under the larger prose body. */
+  font-size: 12.5px;
   line-height: 1.55;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
@@ -405,7 +408,7 @@
 
 .message-content .md-task-check {
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: var(--fs-prose);
   line-height: 1.6;
 }
 
@@ -426,7 +429,7 @@
 .message-content .directive-block {
   position: relative;
   background: var(--warp-blue-soft);
-  border: 1px solid rgba(91, 164, 255, 0.20);
+  border: 1px solid rgba(55, 138, 221, 0.20);
   border-radius: var(--radius-sm);
   padding: 1.6em 0.9em 0.7em;
   margin: 0.6em 0;

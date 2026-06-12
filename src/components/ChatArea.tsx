@@ -14,7 +14,8 @@ import { adminFetch } from "@/lib/admin-fetch";
 import { authFetch } from "@/lib/api-fetch";
 import { summarizeRefresh, type RefreshBody } from "@/lib/refresh-summary";
 import { emitAssistantActivity } from "@/lib/assistant-activity";
-import { getSelectedModelId } from "@/lib/selected-model";
+import { getSelectedModelId, useSelectedModel } from "@/lib/selected-model";
+import { modelShort } from "@/lib/models";
 import ChatActionsMenu from "./ChatActionsMenu";
 
 const GUEST_MSG_KEY = "warp_guest_msg_count"; // kept for localStorage cleanup only
@@ -41,6 +42,11 @@ export default function ChatArea({
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
+  // Active model label shown as the badge in assistant rich-block / section
+  // headers. Reactive to the composer picker. Historical turns show the
+  // current selection (messages don't persist the generating model).
+  const [selectedModelId] = useSelectedModel();
+  const modelLabel = modelShort(selectedModelId);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const seenIds = useRef<Set<string>>(new Set());
   // Holds the AbortController for the in-flight /api/chat stream so
@@ -528,7 +534,11 @@ export default function ChatArea({
           <ul className="flex flex-col gap-5 max-w-3xl mx-auto w-full">
             {messages.map((m) => (
               <li key={m.id}>
-                <MessageBubble message={m} sessionId={sessionId} />
+                <MessageBubble
+                  message={m}
+                  sessionId={sessionId}
+                  modelLabel={modelLabel}
+                />
               </li>
             ))}
             {streaming && (
@@ -550,6 +560,7 @@ export default function ChatArea({
                     }}
                     streaming
                     sessionId={sessionId}
+                    modelLabel={modelLabel}
                   />
                 )}
               </li>

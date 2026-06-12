@@ -8,17 +8,16 @@ type Props = {
   payload: DiffPayload;
 };
 
-const DIFF_COLLAPSE_THRESHOLD = 8;
-
 export default function DiffBlock({ payload }: Props) {
   const added =
     payload.added ?? payload.lines.filter((l) => l.type === "add").length;
   const removed =
     payload.removed ?? payload.lines.filter((l) => l.type === "rem").length;
 
-  const [expanded, setExpanded] = useState(
-    added + removed <= DIFF_COLLAPSE_THRESHOLD,
-  );
+  // Diffs render expanded by default — they're the primary content of a
+  // turn. When part of a 2+ block cluster the outer CollapsibleSection
+  // ("Working — N actions") still hides them until the row is opened.
+  const [expanded, setExpanded] = useState(true);
 
   const header = (
     <>

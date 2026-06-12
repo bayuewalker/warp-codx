@@ -94,4 +94,15 @@ describe("buildChatSystemPrompt", () => {
     await buildChatSystemPrompt("fix my python");
     expect(renderSkillsSection).toHaveBeenCalledWith([], "fix my python");
   });
+
+  it("teaches the rich output formats and gates them to value-adding cases", () => {
+    // The formatting guide must document the typed fences/headings so the
+    // model actually emits renderable output…
+    expect(BASE_SYSTEM_PROMPT).toContain("warp-todos");
+    expect(BASE_SYSTEM_PROMPT).toContain("warp-diff");
+    expect(BASE_SYSTEM_PROMPT).toContain("## ✅ TODO");
+    // …and the value-gate sentence must remain so plain chat stays prose.
+    expect(BASE_SYSTEM_PROMPT).toContain("ONLY when they add real value");
+    expect(BASE_SYSTEM_PROMPT).toMatch(/NEVER wrap a normal conversational reply/);
+  });
 });

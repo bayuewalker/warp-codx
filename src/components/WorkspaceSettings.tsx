@@ -684,6 +684,7 @@ function AdminTab() {
   const [provider, setProvider] = useState<Provider>("blackbox");
   const [apiKey, setApiKey] = useState("");
   const [label, setLabel] = useState("");
+  const [priority, setPriority] = useState("100");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -733,12 +734,20 @@ function AdminTab() {
       const res = await authFetch("/api/admin/provider-keys", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ provider, apiKey: key, label: label.trim() }),
+        body: JSON.stringify({
+          provider,
+          apiKey: key,
+          label: label.trim(),
+          priority: Number.isFinite(Number(priority))
+            ? Math.trunc(Number(priority))
+            : undefined,
+        }),
       });
       const j = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(j.error ?? `HTTP ${res.status}`);
       setApiKey("");
       setLabel("");
+      setPriority("100");
       setFlash(`Saved ${provider} key.`);
       await load();
     } catch (e) {
@@ -753,6 +762,18 @@ function AdminTab() {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ enabled: !k.enabled }),
+    });
+    await load();
+  };
+  // Commit an inline priority edit. No-op when unchanged or non-numeric so a
+  // plain focus/blur doesn't fire a needless PATCH.
+  const savePriority = async (k: ProviderKeyPublic, value: string) => {
+    const n = Math.trunc(Number(value));
+    if (!Number.isFinite(n) || n === k.priority) return;
+    await authFetch(`/api/admin/provider-keys/${k.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priority: n }),
     });
     await load();
   };
@@ -787,7 +808,24 @@ function AdminTab() {
                 </strong>
                 <span className="ws-item-desc">
                   {k.keyPreview}
-                  {k.label ? ` · ${k.label}` : ""} · p{k.priority}
+                  {k.label ? ` · ${k.label}` : ""}
+                  {" · p"}
+                  <input
+                    // Re-key on priority so the uncommitted defaultValue resets
+                    // to the server value after each load().
+                    key={`prio-${k.id}-${k.priority}`}
+                    type="number"
+                    min={1}
+                    max={999}
+                    defaultValue={k.priority}
+                    className="ws-input ws-prio-input"
+                    title="Priority — lower is tried first"
+                    aria-label={`Priority for ${k.provider} key`}
+                    onBlur={(e) => void savePriority(k, e.currentTarget.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                    }}
+                  />
                   {k.last_error ? ` · ⚠ ${k.last_error}` : ""}
                 </span>
                 <span className="ws-credit">
@@ -850,6 +888,18 @@ function AdminTab() {
           placeholder="label (optional)"
           onChange={(e) => setLabel(e.target.value)}
           style={{ flex: "1 1 120px" }}
+        />
+        <input
+          className="ws-input"
+          value={priority}
+          type="number"
+          min={1}
+          max={999}
+          placeholder="priority"
+          title="Priority — lower is tried first"
+          aria-label="Priority for new key"
+          onChange={(e) => setPriority(e.target.value)}
+          style={{ flex: "0 0 84px" }}
         />
       </div>
       <div className="ws-add-row">
