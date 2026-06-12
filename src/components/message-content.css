@@ -34,15 +34,15 @@
   line-height: 1.3;
   color: var(--text-primary, var(--warp-text));
 }
-.message-content h1 { font-size: 15px; font-weight: 700; }
+.message-content h1 { font-size: 14px; font-weight: 700; }
 .message-content h2 {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   margin-top: 1.3em;
   padding-bottom: 5px;
   border-bottom: 1px solid var(--border-soft);
 }
-.message-content h3 { font-size: 13px; font-weight: 600; }
+.message-content h3 { font-size: 12.5px; font-weight: 600; }
 /* First heading hugs the top — no oversized gap above the reply. */
 .message-content > h1:first-child,
 .message-content > h2:first-child,
@@ -330,9 +330,9 @@
    custom code card. */
 .message-content .md-inline-code {
   font-family: var(--font-mono), ui-monospace, monospace;
-  /* Pinned (not em-relative) so code stays mono-small even as the prose
-     body grew to --fs-prose. */
-  font-size: 12.5px;
+  /* Pinned (not em-relative) so code stays mono-small independent of
+     the prose body. */
+  font-size: 11.5px;
   background: rgba(255, 255, 255, 0.05);
   color: var(--warp-text);
   padding: 0.25em 0.45em;
@@ -358,8 +358,8 @@
   -webkit-overflow-scrolling: touch;
   max-width: 100%;
   font-family: var(--font-mono), ui-monospace, monospace;
-  /* Pinned so fenced code stays mono-small under the larger prose body. */
-  font-size: 12.5px;
+  /* Pinned so fenced code stays mono-small independent of the body. */
+  font-size: 11.5px;
   line-height: 1.55;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
 }
