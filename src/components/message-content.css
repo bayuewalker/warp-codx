@@ -38,9 +38,9 @@
 .message-content h2 {
   font-size: 13.5px;
   font-weight: 600;
-  margin-top: 1.3em;
-  padding-bottom: 5px;
-  border-bottom: 1px solid var(--border-soft);
+  /* Section air comes from spacing, not rules — the old border-bottom
+     stacked with the model's `---` hr into a double line. */
+  margin-top: 1.7em;
 }
 .message-content h3 { font-size: 12.5px; font-weight: 600; }
 /* First heading hugs the top — no oversized gap above the reply. */
@@ -87,6 +87,15 @@
   text-decoration: underline;
   text-decoration-thickness: 1px;
   text-underline-offset: 3px;
+}
+
+/* The model separates sections with `---`. Browser-default <hr> is a
+   bright inset double line — restyle it as a whisper-thin rule with
+   generous air so it reads as a pause, not a wall. */
+.message-content hr {
+  border: 0;
+  border-top: 1px solid var(--border-faint);
+  margin: 1.6em 0;
 }
 
 .message-content blockquote {
