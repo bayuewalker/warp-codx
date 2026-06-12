@@ -117,18 +117,17 @@ function extractIssueDraft(raw: string): {
 /**
  * Phase 3.5 — `extractRichBlocks` lives in `src/lib/rich-blocks-extract.ts`
  * so it can be unit-tested without standing up a JSX environment. It
- * pulls every well-formed `warp-*` fence out of the raw markdown so
- * the rendered cluster can be wrapped in `<CollapsibleSection>` when
- * the count crosses the threshold. The remaining prose is fed to
- * ReactMarkdown unchanged; order is preserved.
+ * pulls every well-formed `warp-*` fence out of the raw markdown,
+ * leaving a slot marker at each fence's position so the card mounts
+ * exactly where the model placed it in the narration (Ona-style:
+ * prose → action row → prose → diff → prose).
  *
  * Why move blocks out of the markdown tree at all:
- *   - `<CollapsibleSection>` is a sibling wrapper; we cannot easily
- *     move ReactMarkdown-emitted children into a sibling wrapper
- *     after the fact.
- *   - The Replit-Agent collapsed-actions pattern in the spec puts
- *     all rich blocks together at the bottom when collapsed; pulling
- *     them out matches that mental model.
+ *   - `<CollapsibleSection>` wraps a consecutive RUN of 2+ blocks
+ *     (design-ref Pattern D); we cannot group ReactMarkdown-emitted
+ *     children into a sibling wrapper after the fact.
+ *   - JSON payloads inside fences must never hit the markdown
+ *     renderer (a malformed one would print raw JSON).
  *
  * The legacy inline `code` override below remains as a defensive
  * fallback — if a malformed fence slips past the regex it still
@@ -348,30 +347,53 @@ export default function MessageContent({
     : { proseOnly: taskExtract.cleaned, blocks: [] };
 
   const proseOnly = richExtract.proseOnly;
+  const richBlocks = richExtract.blocks;
 
-  // Split the cleaned prose back on the placeholder markers so we
-  // can interleave prose chunks with agent-reply badge cards.
-  const SLOT_RE = /\u0001AGENT_SLOT_(\d+)\u0001/g;
+  // Split the cleaned prose back on BOTH placeholder families so each
+  // card mounts exactly where its marker sat in the narration (the
+  // Ona/agent-transcript pattern: prose → action row → prose → diff).
+  //   - AGENT_SLOT_<i> → agent-reply badge card (index into proseSlots)
+  //   - RICH_SLOT_<i>  → rich-block card (index into richBlocks)
+  // Consecutive rich blocks with nothing but whitespace between them
+  // merge into one `rich-run`, which collapses behind a single
+  // <CollapsibleSection> when it holds 2+ blocks (design-ref Pattern D).
+  const COMBINED_SLOT_RE = /\u0001(AGENT|RICH)_SLOT_(\d+)\u0001/g;
   type RenderSeg =
     | { kind: "prose"; text: string }
-    | { kind: "agent"; name: AgentReplyName; body: string };
+    | { kind: "agent"; name: AgentReplyName; body: string }
+    | { kind: "rich-run"; indices: number[] };
   const renderSegs: RenderSeg[] = [];
-  if (agentSegments.some((s) => s.kind === "agent")) {
+  {
     let last = 0;
     let m: RegExpExecArray | null;
-    SLOT_RE.lastIndex = 0;
-    while ((m = SLOT_RE.exec(proseOnly)) !== null) {
+    COMBINED_SLOT_RE.lastIndex = 0;
+    while ((m = COMBINED_SLOT_RE.exec(proseOnly)) !== null) {
       const before = proseOnly.slice(last, m.index);
       if (before.trim().length > 0) {
         renderSegs.push({ kind: "prose", text: before });
       }
-      const slot = proseSlots[Number(m[1])];
-      if (slot && slot.kind === "agent" && slot.agentName && slot.agentBody !== undefined) {
-        renderSegs.push({
-          kind: "agent",
-          name: slot.agentName,
-          body: slot.agentBody,
-        });
+      if (m[1] === "AGENT") {
+        const slot = proseSlots[Number(m[2])];
+        if (slot && slot.kind === "agent" && slot.agentName && slot.agentBody !== undefined) {
+          renderSegs.push({
+            kind: "agent",
+            name: slot.agentName,
+            body: slot.agentBody,
+          });
+        }
+      } else {
+        const idx = Number(m[2]);
+        if (richBlocks[idx] !== undefined) {
+          const prev = renderSegs[renderSegs.length - 1];
+          // Whitespace-only prose between two rich slots was skipped
+          // above, so a trailing rich-run means this block belongs to
+          // the same consecutive burst — extend it.
+          if (prev && prev.kind === "rich-run") {
+            prev.indices.push(idx);
+          } else {
+            renderSegs.push({ kind: "rich-run", indices: [idx] });
+          }
+        }
       }
       last = m.index + m[0].length;
     }
@@ -379,31 +401,25 @@ export default function MessageContent({
     if (tail.trim().length > 0) {
       renderSegs.push({ kind: "prose", text: tail });
     }
-  } else {
-    renderSegs.push({ kind: "prose", text: proseOnly });
   }
   const draft = issueExtract.draft;
   const prAction = prExtract.action;
   const taskComplete = taskExtract.payload;
-  const richBlocks = richExtract.blocks;
 
-  // Build the ordered cluster of rich-block components that count
-  // toward the collapsible threshold. TaskCompleteCard intentionally
-  // sits OUTSIDE — it's the user-facing summary of the whole turn
-  // and must always be visible.
-  const clusterNodes: ReactNode[] = [];
-  richBlocks.forEach((b, i) => {
-    clusterNodes.push(renderRichBlock(b, i));
-  });
+  // Interactive call-to-action cards (issue draft / PR action) mount
+  // at the END of the message and are never collapsed — same rationale
+  // as TaskCompleteCard: hiding a button the user must tap behind a
+  // "Show" toggle hurts more than the saved scroll height.
+  const ctaNodes: ReactNode[] = [];
   if (draft) {
-    clusterNodes.push(
+    ctaNodes.push(
       <IssueCard key="issue-card" data={draft} sessionId={sessionId} />,
     );
   }
   if (prAction?.kind === "list") {
-    clusterNodes.push(<PRListCard key="pr-list" sessionId={sessionId} />);
+    ctaNodes.push(<PRListCard key="pr-list" sessionId={sessionId} />);
   } else if (prAction) {
-    clusterNodes.push(
+    ctaNodes.push(
       <PRCard
         key="pr-card"
         prNumber={prAction.prNumber}
@@ -412,8 +428,6 @@ export default function MessageContent({
       />,
     );
   }
-
-  const shouldCollapse = clusterNodes.length >= 2;
 
   /**
    * Render a prose string through the section-level dispatch pipeline.
@@ -522,33 +536,49 @@ export default function MessageContent({
 
   return (
     <div className={`message-content message-content--${roleClass}`}>
-      {renderSegs.map((seg, i) =>
-        seg.kind === "prose" ? (
-          <Fragment key={`p${i}`}>
-            {renderProseContent(seg.text, `p${i}`)}
+      {renderSegs.map((seg, i) => {
+        if (seg.kind === "prose") {
+          return (
+            <Fragment key={`p${i}`}>
+              {renderProseContent(seg.text, `p${i}`)}
+            </Fragment>
+          );
+        }
+        if (seg.kind === "agent") {
+          return (
+            <div key={`a${i}`} className={`agent-reply agent-reply--${seg.name}`}>
+              <div className="agent-reply-header">
+                <span className={`agent-pill ${seg.name}`}>
+                  {AGENT_LABELS[seg.name]}
+                </span>
+              </div>
+              <div className="agent-reply-body">
+                {renderProseContent(seg.body, `a${i}`)}
+              </div>
+            </div>
+          );
+        }
+        // rich-run — a burst of consecutive rich blocks. 2+ collapse
+        // behind one "Working — N actions" header (Pattern D); a lone
+        // block renders directly in place.
+        if (seg.indices.length >= 2) {
+          return (
+            <CollapsibleSection key={`r${i}`} count={seg.indices.length}>
+              {seg.indices.map((idx) => (
+                <Fragment key={idx}>
+                  {renderRichBlock(richBlocks[idx], idx)}
+                </Fragment>
+              ))}
+            </CollapsibleSection>
+          );
+        }
+        return (
+          <Fragment key={`r${i}`}>
+            {renderRichBlock(richBlocks[seg.indices[0]], seg.indices[0])}
           </Fragment>
-        ) : (
-          <div key={`a${i}`} className={`agent-reply agent-reply--${seg.name}`}>
-            <div className="agent-reply-header">
-              <span className={`agent-pill ${seg.name}`}>
-                {AGENT_LABELS[seg.name]}
-              </span>
-            </div>
-            <div className="agent-reply-body">
-              {renderProseContent(seg.body, `a${i}`)}
-            </div>
-          </div>
-        ),
-      )}
-      {shouldCollapse ? (
-        <CollapsibleSection count={clusterNodes.length}>
-          {clusterNodes.map((node, i) => (
-            <Fragment key={i}>{node}</Fragment>
-          ))}
-        </CollapsibleSection>
-      ) : (
-        clusterNodes.map((node, i) => <Fragment key={i}>{node}</Fragment>)
-      )}
+        );
+      })}
+      {ctaNodes}
       {taskComplete && <TaskCompleteCard payload={taskComplete} />}
     </div>
   );
