@@ -21,6 +21,16 @@ import type { AgentStep } from "./loop";
 /** Max simultaneously-running runs per user. */
 export const MAX_CONCURRENT_RUNS = 2;
 
+/**
+ * A `running` row whose transcript hasn't advanced in this long is treated as
+ * dead — the loop streams steps continuously, so a long gap means the process
+ * crashed (or the box was reclaimed) without writing a terminal status. Such a
+ * row would otherwise consume a concurrency slot forever, eventually locking
+ * the user out at MAX_CONCURRENT_RUNS. The reaper below marks it errored so it
+ * stops counting. A missing/invalid `updated_at` is treated as fresh.
+ */
+export const STALE_RUN_MS = 10 * 60 * 1000;
+
 export type StartRunInput = {
   userId: string;
   task: string;
@@ -44,10 +54,27 @@ export async function startAgentRun(
   const task = input.task?.trim();
   if (!task) return { error: "task is required", status: 400 };
 
-  // Concurrency limit — count the user's in-flight runs.
-  const running = (await listAgentRuns(input.userId)).filter(
+  // Concurrency limit — count the user's in-flight runs, but first reap any
+  // crashed ones so a dead run can't permanently hold a slot.
+  const now = Date.now();
+  const inFlight = (await listAgentRuns(input.userId)).filter(
     (r) => r.status === "running",
-  ).length;
+  );
+  const stale = inFlight.filter(
+    (r) => now - Date.parse(r.updated_at) > STALE_RUN_MS,
+  );
+  if (stale.length) {
+    await Promise.all(
+      stale.map((r) =>
+        updateAgentRun(r.id, {
+          status: "error",
+          summary: "Run timed out — no progress detected; reclaimed by the reaper.",
+          finished: true,
+        }),
+      ),
+    );
+  }
+  const running = inFlight.length - stale.length;
   if (running >= MAX_CONCURRENT_RUNS) {
     return {
       error: `You already have ${running} run(s) in progress (max ${MAX_CONCURRENT_RUNS}).`,

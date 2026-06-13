@@ -49,7 +49,15 @@ export default function WorkspaceView({
   const [error, setError] = useState<string | null>(null);
   const [activeFile, setActiveFile] = useState<string | null>(null);
   const [treeKey, setTreeKey] = useState(0);
-  const [rightTab, setRightTab] = useState<"ai" | "preview" | "terminal">("ai");
+  // Which surface is showing. On desktop the explorer + editor are always
+  // visible and this only drives the right panel (AI/Preview/Terminal). On
+  // mobile it's the single visible pane, switched via the top tab bar.
+  const [pane, setPane] = useState<
+    "files" | "editor" | "ai" | "preview" | "terminal"
+  >("ai");
+  // The right panel only ever shows ai/preview/terminal; files/editor are
+  // mobile-only panes, so fall back to the chat there.
+  const activeRight = pane === "preview" || pane === "terminal" ? pane : "ai";
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -132,30 +140,70 @@ export default function WorkspaceView({
           {chatSlot ?? <EmptyWorkspace status={record?.status} isAdmin={isAdmin} />}
         </div>
       ) : (
-        <div className="flex-1 min-h-0 flex">
-          {/* Explorer */}
-          <div className="w-60 shrink-0 border-r border-hair overflow-auto">
+        <div className="flex-1 min-h-0 flex flex-col md:flex-row">
+          {/* Mobile tab bar — single-column IDE on phones. Hidden on desktop,
+              where explorer + editor + right panel sit side by side. */}
+          <div className="md:hidden flex items-center gap-1 px-2 py-1 border-b border-hair text-xs overflow-x-auto">
+            <TabButton active={pane === "files"} onClick={() => setPane("files")}>
+              Files
+            </TabButton>
+            <TabButton active={pane === "editor"} onClick={() => setPane("editor")}>
+              Editor
+            </TabButton>
+            {chatSlot && (
+              <TabButton active={pane === "ai"} onClick={() => setPane("ai")}>
+                AI
+              </TabButton>
+            )}
+            <TabButton active={pane === "preview"} onClick={() => setPane("preview")}>
+              Preview
+            </TabButton>
+            <TabButton active={pane === "terminal"} onClick={() => setPane("terminal")}>
+              Terminal
+            </TabButton>
+          </div>
+
+          {/* Explorer — mobile: only when "files" pane is active; desktop: fixed column. */}
+          <div
+            className={cn(
+              "overflow-auto md:!flex md:flex-col md:w-60 md:flex-none md:border-r md:border-hair",
+              pane === "files" ? "flex flex-1 min-h-0 flex-col" : "hidden",
+            )}
+          >
             <div className="px-3 py-2 text-[11px] uppercase tracking-[0.2em] text-white/35">
               Explorer
             </div>
             <FileTree activePath={activeFile} refreshKey={treeKey} onOpenFile={setActiveFile} />
           </div>
-          {/* Editor */}
-          <div className="flex-1 min-w-0 flex flex-col border-r border-hair">
+          {/* Editor — mobile: only when "editor" pane; desktop: flexes to fill. */}
+          <div
+            className={cn(
+              "min-w-0 md:!flex md:flex-1 md:flex-col md:border-r md:border-hair",
+              pane === "editor" ? "flex flex-1 min-h-0 flex-col" : "hidden",
+            )}
+          >
             <CodeEditor path={activeFile} onSaved={() => setTreeKey((k) => k + 1)} />
           </div>
-          {/* AI / Preview / Terminal */}
-          <div className="w-[42%] min-w-[320px] flex flex-col border-l border-hair">
-            <div className="flex items-center gap-1 px-2 py-1 border-b border-hair text-xs">
+          {/* AI / Preview / Terminal — mobile: when one of those panes; desktop: fixed right column. */}
+          <div
+            className={cn(
+              "min-h-0 md:!flex md:flex-col md:w-[42%] md:min-w-[320px] md:flex-none md:border-l md:border-hair",
+              pane === "ai" || pane === "preview" || pane === "terminal"
+                ? "flex flex-1 flex-col"
+                : "hidden",
+            )}
+          >
+            {/* Desktop sub-tabs — mobile uses the top bar instead. */}
+            <div className="hidden md:flex items-center gap-1 px-2 py-1 border-b border-hair text-xs">
               {chatSlot && (
-                <TabButton active={rightTab === "ai"} onClick={() => setRightTab("ai")}>
+                <TabButton active={activeRight === "ai"} onClick={() => setPane("ai")}>
                   AI
                 </TabButton>
               )}
-              <TabButton active={rightTab === "preview"} onClick={() => setRightTab("preview")}>
+              <TabButton active={activeRight === "preview"} onClick={() => setPane("preview")}>
                 Preview
               </TabButton>
-              <TabButton active={rightTab === "terminal"} onClick={() => setRightTab("terminal")}>
+              <TabButton active={activeRight === "terminal"} onClick={() => setPane("terminal")}>
                 Terminal
               </TabButton>
             </div>
@@ -163,12 +211,12 @@ export default function WorkspaceView({
               {/* Keep the chat mounted across tab switches so its transcript +
                   stream survive; just toggle visibility. */}
               {chatSlot && (
-                <div className={cn("h-full", rightTab === "ai" ? "flex flex-col" : "hidden")}>
+                <div className={cn("h-full", activeRight === "ai" ? "flex flex-col" : "hidden")}>
                   {chatSlot}
                 </div>
               )}
-              {rightTab === "preview" && <PreviewPane />}
-              {rightTab === "terminal" && (
+              {activeRight === "preview" && <PreviewPane />}
+              {activeRight === "terminal" && (
                 <TerminalPane onAfterCommand={() => setTreeKey((k) => k + 1)} />
               )}
             </div>
