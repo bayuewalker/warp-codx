@@ -15,7 +15,7 @@ const { createAgentRun, listAgentRuns, updateAgentRun, runCodingAgent } =
 vi.mock("./agent-runs", () => ({ createAgentRun, listAgentRuns, updateAgentRun }));
 vi.mock("./orchestrator", () => ({ runCodingAgent }));
 
-import { startAgentRun, MAX_CONCURRENT_RUNS } from "./run-service";
+import { startAgentRun, MAX_CONCURRENT_RUNS, STALE_RUN_MS } from "./run-service";
 
 const deps = { resolveProvider: () => "openrouter" as const };
 
@@ -43,6 +43,36 @@ describe("startAgentRun", () => {
     const res = await startAgentRun({ userId: "u1", task: "do it" }, deps);
     expect(res).toMatchObject({ status: 429 });
     expect(createAgentRun).not.toHaveBeenCalled();
+  });
+
+  it("reaps a stale running row so it stops holding a concurrency slot", async () => {
+    const stale = new Date(Date.now() - STALE_RUN_MS - 1000).toISOString();
+    const fresh = new Date().toISOString();
+    listAgentRuns.mockResolvedValueOnce([
+      { id: "dead", status: "running", updated_at: stale },
+      { id: "live", status: "running", updated_at: fresh },
+    ]);
+    createAgentRun.mockResolvedValueOnce("run-3");
+    runCodingAgent.mockResolvedValueOnce({
+      status: "completed",
+      summary: "done",
+      steps: [],
+      difficulty: "easy",
+      tier: "haiku",
+      model: "m",
+      provider: "openrouter",
+      sandboxId: null,
+    });
+
+    // Two in-flight rows would hit the limit, but the stale one is reaped, so
+    // the new run is allowed through rather than 429'd.
+    const res = await startAgentRun({ userId: "u1", task: "do it" }, deps);
+    expect(res).toEqual({ id: "run-3" });
+    expect(updateAgentRun).toHaveBeenCalledWith(
+      "dead",
+      expect.objectContaining({ status: "error", finished: true }),
+    );
+    await flush();
   });
 
   it("surfaces a persistence failure", async () => {
