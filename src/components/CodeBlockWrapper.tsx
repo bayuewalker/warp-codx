@@ -32,6 +32,15 @@ export default function CodeBlockWrapper({ lang, rawText, children }: Props) {
   const collapsible = lineCount > COLLAPSE_LINES;
   const clamped = collapsible && !expanded;
 
+  // Static line-number gutter. Sits outside the horizontal scroll
+  // container so the numbers stay pinned to the left edge while long
+  // lines scroll under them; line-height matches the code pre so rows
+  // align 1:1.
+  const gutter = useMemo(
+    () => Array.from({ length: lineCount }, (_, i) => i + 1).join("\n"),
+    [lineCount],
+  );
+
   const handleCopy = useCallback(() => {
     const text = rawText.replace(/\n$/, "");
     if (navigator.clipboard?.writeText) {
@@ -103,10 +112,15 @@ export default function CodeBlockWrapper({ lang, rawText, children }: Props) {
           </button>
         </div>
       </div>
-      <div className={`cbw-scroll${clamped ? " cbw-scroll--clamped" : ""}`}>
-        <pre className="md-code-block cbw-pre">
-          {children}
+      <div className={`cbw-code${clamped ? " cbw-code--clamped" : ""}`}>
+        <pre className="cbw-gutter" aria-hidden="true">
+          {gutter}
         </pre>
+        <div className="cbw-scroll">
+          <pre className="md-code-block cbw-pre">
+            {children}
+          </pre>
+        </div>
         {clamped && <div className="cbw-fade" aria-hidden />}
       </div>
       {collapsible && (

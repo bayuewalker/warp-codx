@@ -32,8 +32,13 @@
 
 import type {
   ActionPayload,
+  CalloutPayload,
+  CommandPayload,
   DiffPayload,
+  FilePayload,
+  JsonPayload,
   StatusPayload,
+  TerminalPayload,
   TodosPayload,
 } from "@/lib/types";
 
@@ -41,10 +46,15 @@ export type RichBlockSpec =
   | { kind: "action"; payload: ActionPayload }
   | { kind: "diff"; payload: DiffPayload }
   | { kind: "todos"; payload: TodosPayload }
-  | { kind: "status"; payload: StatusPayload };
+  | { kind: "status"; payload: StatusPayload }
+  | { kind: "terminal"; payload: TerminalPayload }
+  | { kind: "command"; payload: CommandPayload }
+  | { kind: "callout"; payload: CalloutPayload }
+  | { kind: "json"; payload: JsonPayload }
+  | { kind: "file"; payload: FilePayload };
 
 const RICH_FENCE_RE =
-  /^```(warp-action|warp-diff|warp-todos|warp-status)[ \t]*\n([\s\S]*?)\n```[ \t]*(?=\n|$)/gm;
+  /^```(warp-action|warp-diff|warp-todos|warp-status|warp-terminal|warp-command|warp-callout|warp-json|warp-file)[ \t]*\n([\s\S]*?)\n```[ \t]*(?=\n|$)/gm;
 
 /** Slot marker for block `i` —  never occurs in model output. */
 export function richSlotMarker(i: number): string {
@@ -82,6 +92,21 @@ export function extractRichBlocks(raw: string): {
           break;
         case "warp-status":
           blocks.push({ kind: "status", payload: parsed as StatusPayload });
+          break;
+        case "warp-terminal":
+          blocks.push({ kind: "terminal", payload: parsed as TerminalPayload });
+          break;
+        case "warp-command":
+          blocks.push({ kind: "command", payload: parsed as CommandPayload });
+          break;
+        case "warp-callout":
+          blocks.push({ kind: "callout", payload: parsed as CalloutPayload });
+          break;
+        case "warp-json":
+          blocks.push({ kind: "json", payload: parsed as JsonPayload });
+          break;
+        case "warp-file":
+          blocks.push({ kind: "file", payload: parsed as FilePayload });
           break;
         default:
           return "";

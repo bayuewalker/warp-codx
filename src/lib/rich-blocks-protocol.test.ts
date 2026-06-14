@@ -3,12 +3,17 @@ import { RICH_BLOCKS_PROTOCOL } from "./rich-blocks-protocol";
 import { extractRichBlocks } from "./rich-blocks-extract";
 
 describe("RICH_BLOCKS_PROTOCOL", () => {
-  it("documents all four fence types", () => {
+  it("documents all nine fence types", () => {
     for (const lang of [
       "warp-action",
       "warp-diff",
       "warp-todos",
       "warp-status",
+      "warp-terminal",
+      "warp-command",
+      "warp-callout",
+      "warp-json",
+      "warp-file",
     ]) {
       expect(RICH_BLOCKS_PROTOCOL).toContain(`\`\`\`${lang}`);
     }
@@ -21,7 +26,17 @@ describe("RICH_BLOCKS_PROTOCOL", () => {
     // through the extractor and require one block per fence type.
     const { blocks } = extractRichBlocks(RICH_BLOCKS_PROTOCOL);
     const kinds = blocks.map((b) => b.kind).sort();
-    expect(kinds).toEqual(["action", "diff", "status", "todos"]);
+    expect(kinds).toEqual([
+      "action",
+      "callout",
+      "command",
+      "diff",
+      "file",
+      "json",
+      "status",
+      "terminal",
+      "todos",
+    ]);
   });
 
   it("example payloads carry the required fields", () => {

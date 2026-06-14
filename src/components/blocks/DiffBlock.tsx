@@ -1,12 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { DiffLine, DiffPayload } from "@/lib/types";
 import CollapsibleBlock from "./CollapsibleBlock";
+import { copyToClipboard } from "@/lib/chat-export";
 
 type Props = {
   payload: DiffPayload;
 };
+
+/** Build a unified-diff patch string (`+`/`-`/` ` prefixed) for copy. */
+function toUnifiedPatch(payload: DiffPayload): string {
+  const head = `--- a/${payload.path}\n+++ b/${payload.path}`;
+  const body = payload.lines
+    .map((l) => {
+      const prefix = l.type === "add" ? "+" : l.type === "rem" ? "-" : " ";
+      return prefix + l.text;
+    })
+    .join("\n");
+  return `${head}\n${body}\n`;
+}
 
 export default function DiffBlock({ payload }: Props) {
   const added =
@@ -18,6 +31,16 @@ export default function DiffBlock({ payload }: Props) {
   // turn. When part of a 2+ block cluster the outer CollapsibleSection
   // ("Working — N actions") still hides them until the row is opened.
   const [expanded, setExpanded] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const patch = useMemo(() => toUnifiedPatch(payload), [payload]);
+  const handleCopyPatch = useCallback(() => {
+    copyToClipboard(patch).then((ok) => {
+      if (!ok) return;
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }, [patch]);
 
   const header = (
     <>
@@ -44,6 +67,19 @@ export default function DiffBlock({ payload }: Props) {
       expanded={expanded}
       onToggle={() => setExpanded((v) => !v)}
     >
+      <div className="diff-toolbar">
+        <span className="diff-toolbar-stats">
+          <span className="add">+{added}</span>
+          <span className="rem">−{removed}</span>
+        </span>
+        <button
+          type="button"
+          className="diff-copy"
+          onClick={handleCopyPatch}
+        >
+          {copied ? "✓ Copied" : "Copy patch"}
+        </button>
+      </div>
       <div className="diff-content">
         {payload.lines.map((line, i) => (
           <DiffRow key={i} line={line} />

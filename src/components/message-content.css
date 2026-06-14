@@ -559,7 +559,32 @@
   background: rgba(34, 197, 94, 0.22);
 }
 
+/* Code body — a static line-number gutter pinned left, the scrollable
+   code to its right. Only the code scrolls horizontally so the numbers
+   stay put under long lines. */
+.message-content .cbw-code {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+}
+.message-content .cbw-gutter {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.85em 0.6em 0.85em 0.85em;
+  background: var(--warp-bg);
+  border-right: 1px solid var(--border-soft);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  text-align: right;
+  color: var(--warp-text-muted);
+  user-select: none;
+  white-space: pre;
+  font-variant-numeric: tabular-nums;
+}
 .message-content .cbw-scroll {
+  flex: 1;
+  min-width: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -573,8 +598,7 @@
 }
 
 /* Collapsed long code — clamp height + fade the cut edge, with a toggle. */
-.message-content .cbw-scroll--clamped {
-  position: relative;
+.message-content .cbw-code--clamped {
   max-height: 19em;
   overflow-y: hidden;
 }

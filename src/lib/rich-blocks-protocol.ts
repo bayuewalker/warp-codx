@@ -26,12 +26,14 @@ export const RICH_BLOCKS_PROTOCOL = `
 
 # RICH BLOCKS PROTOCOL
 
-The app renders four special fenced blocks as interactive cards.
+The app renders nine special fenced blocks as interactive cards.
 Each block is a fenced code block whose language tag is one of
-\`warp-action\`, \`warp-diff\`, \`warp-todos\`, \`warp-status\` and whose
-body is EXACTLY ONE valid JSON object (double-quoted keys/strings, no
-comments, no trailing commas). The opening fence must start at column
-0 (never indented, never nested inside a list item or quote).
+\`warp-action\`, \`warp-diff\`, \`warp-todos\`, \`warp-status\`,
+\`warp-terminal\`, \`warp-command\`, \`warp-callout\`, \`warp-json\`,
+\`warp-file\` and whose body is EXACTLY ONE valid JSON object
+(double-quoted keys/strings, no comments, no trailing commas). The
+opening fence must start at column 0 (never indented, never nested
+inside a list item or quote).
 
 WHEN TO USE WHICH
 
@@ -85,6 +87,61 @@ Environment / component check rundown with pass-fail chips. States:
 
 Use this for live system/check state. Keep using a 2-column markdown
 table (| Field | Value |) for plain key/value DATA.
+
+## warp-terminal
+Command / build / test / deploy output. NEVER paste terminal output as
+plain prose or a generic code fence — use this. Renders on a dark
+terminal surface with ANSI-style colours and a Copy button. Example:
+
+\`\`\`warp-terminal
+{"title":"BUILD","cwd":"~/warp-codx","lines":[{"text":"$ npm run build"},{"text":"✓ Build completed"},{"text":"✓ Type check passed"},{"text":"Duration: 4.8s","type":"dim"}]}
+\`\`\`
+
+Line \`type\` (optional, auto-detected from the leading glyph):
+"in" ($ prompt), "out", "ok" (✓), "warn" (⚠), "err" (✕), "dim".
+Optional: title, cwd, showLineNumbers (boolean).
+
+## warp-command
+One or more commands the user should run, kept apart from the
+explanation so they can be copied exactly. Never bury commands inside
+a paragraph. Example:
+
+\`\`\`warp-command
+{"title":"COMMAND","commands":["git checkout main","git pull","git merge WARP/ui-polish"]}
+\`\`\`
+
+Fields: commands (required, one per line), title, lang.
+
+## warp-callout
+A standardized status callout. Use for a single headline result.
+\`kind\` is "success" / "warning" / "error" / "info". Example:
+
+\`\`\`warp-callout
+{"kind":"success","title":"Task completed","text":"All 357 tests passed"}
+\`\`\`
+
+Fields: kind (required), title, text.
+
+## warp-json
+Structured JSON data. NEVER show raw JSON in prose — use this so the
+user gets a collapsible, colour-coded tree with Copy. Example:
+
+\`\`\`warp-json
+{"title":"API RESPONSE","data":{"status":"ok","prs":[{"number":9,"state":"open"}],"count":1}}
+\`\`\`
+
+Fields: data (required — the JSON value itself), title, collapsed.
+
+## warp-file
+A file you generated (md / json / txt / yaml / csv). Surface it as a
+card with Open / Download / Copy-path instead of pasting the whole
+body. Example:
+
+\`\`\`warp-file
+{"name":"REPORT.md","size":"12.4 KB","path":"reports/REPORT.md","content":"# Report\\n\\n..."}
+\`\`\`
+
+Fields: name (required), size, path, content, kind.
 
 HARD RULES
 - Body must parse as JSON — a malformed block is silently dropped and

@@ -508,3 +508,428 @@
   color: var(--warp-text);
   font-weight: 600;
 }
+
+/* ───────────── Diff toolbar (WARP/ui-polish) ─────────────
+   Small action strip at the top of an expanded diff body: a repeat of
+   the +/- counters plus a Copy-patch button. The block-summary header
+   itself sticks to the top of the message scroll so the file path stays
+   visible while a long hunk scrolls past. */
+.diff-block .diff-header {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--warp-bg-1);
+}
+.diff-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  background: var(--warp-bg-1);
+  border-bottom: 1px solid var(--border-faint);
+}
+.diff-toolbar-stats {
+  display: flex;
+  gap: 8px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+.diff-toolbar-stats .add { color: var(--warp-teal); }
+.diff-toolbar-stats .rem { color: var(--warp-red); }
+.diff-copy {
+  margin-left: auto;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  min-height: 24px;
+  border-radius: 5px;
+  border: 1px solid var(--border-medium);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--warp-text-dim);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.diff-copy:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--warp-text);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+/* ───────────── Shared block action button ─────────────
+   Compact mono "Copy" affordance reused by terminal / command / json
+   headers. 24px min-height keeps a comfortable tap target on mobile. */
+.term-copy,
+.cmd-copy,
+.json-copy,
+.file-btn {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  min-height: 24px;
+  border-radius: 5px;
+  border: 1px solid var(--border-medium);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--warp-text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.term-copy:hover,
+.cmd-copy:hover,
+.json-copy:hover,
+.file-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--warp-text);
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+/* ───────────── Terminal block ─────────────
+   Dedicated dark terminal surface for command / build / test output.
+   Always JetBrains Mono, ANSI-style status colours, horizontal scroll
+   on the body, optional line numbers. */
+.term-block {
+  margin: 0.75em 0;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #0a0a0c;
+}
+.term-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px 7px 12px;
+  background: #141417;
+  border-bottom: 1px solid var(--border-soft);
+  min-height: 34px;
+}
+.term-dots {
+  display: inline-flex;
+  gap: 5px;
+  flex-shrink: 0;
+}
+.term-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.term-dot--r { background: #FF5F56; }
+.term-dot--y { background: #FFBD2E; }
+.term-dot--g { background: #27C93F; }
+.term-title {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--warp-text-dim);
+}
+.term-cwd {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--warp-text-mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.term-copy { margin-left: auto; }
+.term-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.term-scroll::-webkit-scrollbar { height: 3px; }
+.term-scroll::-webkit-scrollbar-track { background: transparent; }
+.term-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+}
+.term-pre {
+  margin: 0;
+  padding: 10px 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  line-height: 1.6;
+  min-width: max-content;
+}
+.term-line {
+  display: flex;
+  gap: 12px;
+  padding: 0 12px;
+  white-space: pre;
+}
+.term-lnum {
+  flex-shrink: 0;
+  width: 2ch;
+  text-align: right;
+  color: var(--warp-text-muted);
+  user-select: none;
+}
+.term-ltext { white-space: pre; }
+.term-line--in   .term-ltext { color: #ECECEE; font-weight: 500; }
+.term-line--out  .term-ltext { color: var(--warp-text-dim); }
+.term-line--ok   .term-ltext { color: #3DD1A0; }
+.term-line--warn .term-ltext { color: #F2B946; }
+.term-line--err  .term-ltext { color: #FF6B5E; }
+.term-line--dim  .term-ltext { color: var(--warp-text-mute); }
+
+/* ───────────── Command block ─────────────
+   Commands rendered apart from the explanation so the operator copies
+   the exact lines to run — never buried in a paragraph. */
+.cmd-block {
+  margin: 0.75em 0;
+  border: 1px solid var(--border-soft);
+  border-left: 2px solid var(--warp-blue);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--warp-bg-1);
+}
+.cmd-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px 7px 12px;
+  background: var(--warp-bg-2);
+  border-bottom: 1px solid var(--border-soft);
+  min-height: 34px;
+}
+.cmd-title {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--warp-blue);
+}
+.cmd-lang {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  color: var(--warp-text-mute);
+}
+.cmd-copy { margin-left: auto; }
+.cmd-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.cmd-scroll::-webkit-scrollbar { height: 3px; }
+.cmd-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+}
+.cmd-pre {
+  margin: 0;
+  padding: 10px 0;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  line-height: 1.7;
+  min-width: max-content;
+}
+.cmd-line {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px;
+  white-space: pre;
+}
+.cmd-prompt {
+  color: var(--warp-teal);
+  user-select: none;
+  flex-shrink: 0;
+}
+.cmd-text { color: var(--warp-text); white-space: pre; }
+
+/* ───────────── Status callout ─────────────
+   SUCCESS / WARNING / ERROR / INFO — consistent icon, accent rail and
+   tinted surface across the app. */
+.callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0.7em 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-left-width: 3px;
+  border-radius: var(--radius-md);
+}
+.callout-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+.callout-body { flex: 1; min-width: 0; }
+.callout-title {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--warp-text);
+  line-height: 1.4;
+}
+.callout-text {
+  font-size: 12px;
+  color: var(--warp-text-dim);
+  line-height: 1.5;
+  margin-top: 2px;
+  overflow-wrap: anywhere;
+}
+.callout--success {
+  background: var(--warp-teal-bg);
+  border-left-color: var(--warp-teal);
+}
+.callout--success .callout-icon { background: var(--warp-teal); color: var(--warp-bg); }
+.callout--warning {
+  background: var(--warp-amber-bg);
+  border-left-color: var(--warp-amber);
+}
+.callout--warning .callout-icon { background: var(--warp-amber); color: var(--warp-bg); }
+.callout--error {
+  background: var(--warp-red-bg);
+  border-left-color: var(--warp-red);
+}
+.callout--error .callout-icon { background: var(--warp-red); color: #fff; }
+.callout--info {
+  background: var(--warp-blue-bg);
+  border-left-color: var(--warp-blue);
+}
+.callout--info .callout-icon { background: var(--warp-blue); color: #fff; }
+
+/* ───────────── JSON viewer ─────────────
+   Collapsible, syntax-coloured JSON tree — keeps raw JSON out of prose. */
+.json-block {
+  margin: 0.75em 0;
+  border: 1px solid var(--border-soft);
+  border-left: 2px solid var(--warp-purple, #7B61FF);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--warp-bg-1);
+}
+.json-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px 7px 12px;
+  background: var(--warp-bg-2);
+  border-bottom: 1px solid var(--border-soft);
+  min-height: 34px;
+}
+.json-title {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--warp-purple, #9B86E0);
+}
+.json-copy { margin-left: auto; }
+.json-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: var(--warp-bg);
+}
+.json-scroll::-webkit-scrollbar { height: 3px; }
+.json-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 2px;
+}
+.json-tree {
+  padding: 10px 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11.5px;
+  line-height: 1.6;
+  min-width: max-content;
+}
+.json-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  white-space: pre;
+}
+.json-row--toggle {
+  width: 100%;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+.json-row--toggle:hover { background: rgba(255, 255, 255, 0.03); }
+.json-chev {
+  display: inline-block;
+  width: 12px;
+  flex-shrink: 0;
+  color: var(--warp-text-mute);
+  transition: transform 0.15s;
+}
+.json-chev.open { transform: rotate(90deg); }
+.json-key { color: var(--warp-blue); }
+.json-punct { color: var(--warp-text-mute); }
+.json-collapsed { color: var(--warp-text-muted); }
+.json-str { color: #4FB286; overflow-wrap: anywhere; }
+.json-num { color: #9B86E0; }
+.json-bool { color: var(--warp-amber); }
+.json-null { color: var(--warp-text-mute); font-style: italic; }
+
+/* ───────────── File output block ─────────────
+   Generated-file card (md/json/txt/yaml/csv) — name, size, and
+   Open / Download / Copy-path actions instead of dumping the body. */
+.file-block {
+  margin: 0.75em 0;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--warp-bg-1);
+}
+.file-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+.file-icon { font-size: 20px; flex-shrink: 0; }
+.file-meta { flex: 1; min-width: 0; }
+.file-name {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--warp-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-size {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10.5px;
+  color: var(--warp-text-mute);
+  margin-top: 2px;
+}
+.file-actions {
+  display: flex;
+  gap: 6px;
+  padding: 0 12px 10px;
+  flex-wrap: wrap;
+}
+.file-preview {
+  border-top: 1px solid var(--border-soft);
+  background: var(--warp-bg);
+  max-height: 19em;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.file-preview-pre {
+  margin: 0;
+  padding: 10px 12px;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--warp-text-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
