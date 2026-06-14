@@ -63,6 +63,69 @@ All checks passed. Ready when you are — tap **Dispatch** to launch WARP•FORG
 
 For comparison, here's a WARP•SENTINEL alert and a WARP•ECHO note alongside the active branch WARP/feature-x.`;
 
+const POLISH_FIXTURE = `Build finished. Here's the output.
+
+\`\`\`warp-terminal
+{
+  "title": "BUILD",
+  "cwd": "~/warp-codx",
+  "showLineNumbers": true,
+  "lines": [
+    { "text": "$ npm run build" },
+    { "text": "✓ Build completed" },
+    { "text": "✓ Type check passed" },
+    { "text": "✓ Generated static pages" },
+    { "text": "Duration: 4.8s", "type": "dim" }
+  ]
+}
+\`\`\`
+
+\`\`\`warp-callout
+{ "kind": "success", "title": "Task completed", "text": "All 357 tests passed in 6.7s" }
+\`\`\`
+
+To sync your local checkout, run:
+
+\`\`\`warp-command
+{ "title": "COMMAND", "commands": ["git checkout main", "git pull", "git merge WARP/ui-polish"] }
+\`\`\`
+
+The PR list endpoint returned:
+
+\`\`\`warp-json
+{
+  "title": "API RESPONSE",
+  "data": {
+    "status": "ok",
+    "count": 2,
+    "prs": [
+      { "number": 9, "branch": "WARP/ui-fix-r3", "state": "open", "mergeable": true },
+      { "number": 7, "branch": "WARP/live-capital-activation", "state": "held" }
+    ]
+  }
+}
+\`\`\`
+
+I also generated a report artifact:
+
+\`\`\`warp-file
+{ "name": "REPORT.md", "size": "12.4 KB", "path": "reports/REPORT.md", "content": "# WARP CodX — UI Polish Report\\n\\n- Terminal blocks\\n- Code blocks\\n- JSON viewer\\n- File output\\n- Status callouts\\n" }
+\`\`\`
+
+\`\`\`warp-callout
+{ "kind": "warning", "title": "Validation required", "text": "MAJOR tier change — SENTINEL review needed before merge." }
+\`\`\`
+
+And a syntax-highlighted code block with line numbers:
+
+\`\`\`typescript
+export function greet(name: string): string {
+  const greeting = \`Hello, \${name}!\`;
+  console.log(greeting);
+  return greeting;
+}
+\`\`\``;
+
 const USER_FIXTURE =
   "Build dashboard dengan real-time PR panel dan metrics. Branch slug: dashboard-ui.";
 
@@ -99,6 +162,14 @@ export default function DevBlocksPage() {
             warp-status
           </div>
           <MessageContent content={FIXTURE} role="assistant" />
+        </section>
+
+        <section className="space-y-2">
+          <div className="text-[10px] uppercase tracking-[0.18em] text-white/40">
+            Assistant turn — warp-terminal + warp-callout + warp-command +
+            warp-json + warp-file + code block
+          </div>
+          <MessageContent content={POLISH_FIXTURE} role="assistant" />
         </section>
       </div>
     </div>

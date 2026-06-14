@@ -18,6 +18,11 @@ import ActionCard from "./blocks/ActionCard";
 import DiffBlock from "./blocks/DiffBlock";
 import TodoBlock from "./blocks/TodoBlock";
 import StatusTable from "./blocks/StatusTable";
+import TerminalBlock from "./blocks/TerminalBlock";
+import CommandBlock from "./blocks/CommandBlock";
+import CalloutBlock from "./blocks/CalloutBlock";
+import JsonBlock from "./blocks/JsonBlock";
+import FileBlock from "./blocks/FileBlock";
 import IssueCard, { type IssueDraftData } from "./IssueCard";
 import PRCard, { type PRInitialIntent } from "./PRCard";
 import PRListCard from "./PRListCard";
@@ -36,8 +41,13 @@ import {
 } from "@/lib/agent-reply-extract";
 import type {
   ActionPayload,
+  CalloutPayload,
+  CommandPayload,
   DiffPayload,
+  FilePayload,
+  JsonPayload,
   StatusPayload,
+  TerminalPayload,
   TodosPayload,
 } from "@/lib/types";
 import { splitIntoSections } from "@/lib/section-parser";
@@ -145,6 +155,16 @@ function renderRichBlock(spec: RichBlockSpec, key: number): ReactNode {
       return <TodoBlock key={key} payload={spec.payload} />;
     case "status":
       return <StatusTable key={key} payload={spec.payload} />;
+    case "terminal":
+      return <TerminalBlock key={key} payload={spec.payload} />;
+    case "command":
+      return <CommandBlock key={key} payload={spec.payload} />;
+    case "callout":
+      return <CalloutBlock key={key} payload={spec.payload} />;
+    case "json":
+      return <JsonBlock key={key} payload={spec.payload} />;
+    case "file":
+      return <FileBlock key={key} payload={spec.payload} />;
   }
 }
 
@@ -252,6 +272,26 @@ const mdComponents: Components = {
     if (lang === "warp-status") {
       const payload = parseJson<StatusPayload>(rawText);
       if (payload) return <StatusTable payload={payload} />;
+    }
+    if (lang === "warp-terminal") {
+      const payload = parseJson<TerminalPayload>(rawText);
+      if (payload) return <TerminalBlock payload={payload} />;
+    }
+    if (lang === "warp-command") {
+      const payload = parseJson<CommandPayload>(rawText);
+      if (payload) return <CommandBlock payload={payload} />;
+    }
+    if (lang === "warp-callout") {
+      const payload = parseJson<CalloutPayload>(rawText);
+      if (payload) return <CalloutBlock payload={payload} />;
+    }
+    if (lang === "warp-json") {
+      const payload = parseJson<JsonPayload>(rawText);
+      if (payload) return <JsonBlock payload={payload} />;
+    }
+    if (lang === "warp-file") {
+      const payload = parseJson<FilePayload>(rawText);
+      if (payload) return <FileBlock payload={payload} />;
     }
 
     if (lang === "directive") {
